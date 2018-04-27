@@ -1,6 +1,6 @@
 require 'digest/sha3'
 
-module Ethereum
+module Reth
   module Utils
 
     class << self

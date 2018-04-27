@@ -1,6 +1,6 @@
 require 'stringio'
 
-module Ethereum
+module Reth
   module RLP
     module Decode
 
