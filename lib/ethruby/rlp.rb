@@ -1,7 +1,7 @@
-require 'ethereum/rlp/decode'
-require 'ethereum/rlp/encode'
+require 'ethruby/rlp/decode'
+require 'ethruby/rlp/encode'
 
-module Ethereum
+module Eth
   module RLP
     class << self
 

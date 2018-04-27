@@ -1,4 +1,4 @@
-module Ethereum
+module Eth
   module RLP
     module Encode
 

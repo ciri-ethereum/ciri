@@ -4,7 +4,7 @@
 
 require 'openssl'
 
-module Ethereum
+module Eth
   module Devp2p
     module Crypto
       extend self
