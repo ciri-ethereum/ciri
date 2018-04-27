@@ -1,0 +1,3 @@
+module Ethereum
+end
+
