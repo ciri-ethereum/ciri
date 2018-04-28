@@ -49,7 +49,7 @@ module Eth
         end
 
         def int_from_binary(input)
-          input.each_byte.reduce(0) {|s, i| s * 256 + i}
+          Eth::Utils.big_endian_decode(input)
         end
 
       end
