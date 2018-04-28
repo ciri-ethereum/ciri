@@ -32,8 +32,8 @@ module Eth
         iv = cipher.random_iv
         cipher.key = key_enc
         cipher_text = cipher.update(message) + cipher.final
-        msg = "\x04" + ephem_raw_pubkey + iv + cipher_text
-        tag = hmac_sha256(key_mac, msg[(1 + 65)..-1] + shared_mac_data)
+        msg = ephem_raw_pubkey + iv + cipher_text
+        tag = hmac_sha256(key_mac, msg[ephem_raw_pubkey.size..-1] + shared_mac_data)
         msg + tag
       end
 
@@ -41,7 +41,8 @@ module Eth
         raise ECIESDecryptionError.new('invalid header') if data[0] != "\x04"
 
         # compute shared_secret
-        ephem_raw_pubkey = data[1..65]
+        ephem_raw_pubkey = data[0..64]
+        # add first byte tag
         ephem_pubkey = ec_pkey_from_raw(ephem_raw_pubkey)
         shared_secret = priv_key.dh_compute_key(ephem_pubkey.public_key)
 
@@ -52,14 +53,14 @@ module Eth
         key_mac = Digest::SHA256.digest(key_mac)
         tag = data[-32..-1]
         # should use secure_compare?
-        unless hmac_sha256(key_mac, data[66...-32] + shared_mac_data) == tag
+        unless hmac_sha256(key_mac, data[65...-32] + shared_mac_data) == tag
           raise ECIESDecryptionError.new("Fail to verify data")
         end
 
         # decrypt data
         cipher = OpenSSL::Cipher.new(ECIES_CIPHER_NAME)
 
-        iv_start = 66
+        iv_start = 65
         iv_end = iv_start + cipher.iv_len
         iv = data[iv_start...iv_end]
         ciphertext = data[iv_end...-32]
@@ -89,7 +90,7 @@ module Eth
       end
 
       def hmac_sha256(key, data)
-        OpenSSL::HMAC.digest(OpenSSL::Digest::Digest.new('sha256'), key, data)
+        OpenSSL::HMAC.digest(OpenSSL::Digest.new('sha256'), key, data)
       end
 
       def ec_pkey_from_raw(raw_pubkey, raw_privkey: nil)
