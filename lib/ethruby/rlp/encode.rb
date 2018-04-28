@@ -12,12 +12,6 @@ module Eth
                      encode_string(input)
                    elsif input.is_a?(Array)
                      encode_list(input)
-                   elsif input.is_a?(Numeric)
-                     to_binary(input)
-                   elsif input == true
-                     to_binary(0x01)
-                   elsif input == false
-                     to_binary(0x80)
                    else
                      raise ArgumentError.new('input must be a String or Array')
                    end
@@ -53,11 +47,7 @@ module Eth
         end
 
         def to_binary(n)
-          if n == 0
-            ''
-          else
-            to_binary(n / 256) + (n % 256).chr
-          end
+          Eth::Utils.big_endian_encode(n)
         end
 
       end

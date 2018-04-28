@@ -3,9 +3,10 @@
 # this module include several methods translated from pydevp2p.devp2p.crypto
 
 require 'openssl'
+require 'ethruby/utils'
 
 module Eth
-  module Devp2p
+  module DevP2P
     module Crypto
       extend self
 
@@ -94,13 +95,7 @@ module Eth
       end
 
       def ec_pkey_from_raw(raw_pubkey, raw_privkey: nil)
-        group = OpenSSL::PKey::EC::Group.new('secp256k1')
-        bn = OpenSSL::BN.new(raw_pubkey, 2)
-        public_key = OpenSSL::PKey::EC::Point.new(group, bn)
-        OpenSSL::PKey::EC.new('secp256k1').tap do |key|
-          key.public_key = public_key
-          key.private_key = OpenSSL::BN.new(raw_privkey, 2) if raw_privkey
-        end
+        Eth::Utils.create_ec_pk(raw_pubkey: raw_pubkey, raw_privkey: raw_privkey)
       end
 
     end
