@@ -4,13 +4,15 @@ module Eth
   module Utils
 
     class << self
-      def sha3(text)
-        Digest::SHA3.new(256).digest text
+      def sha3(*data)
+        s = Digest::SHA3.new(256)
+        data.each {|i| s.update(i)}
+        s.digest
       end
 
-      def big_endian_encode(n)
+      def big_endian_encode(n, zero = '')
         if n == 0
-          ''
+          zero
         else
           big_endian_encode(n / 256) + (n % 256).chr
         end
@@ -28,12 +30,15 @@ module Eth
         data.unpack("H*").first
       end
 
-      def create_ec_pk(raw_pubkey:, raw_privkey: nil)
-        group = OpenSSL::PKey::EC::Group.new('secp256k1')
-        bn = OpenSSL::BN.new(raw_pubkey, 2)
-        public_key = OpenSSL::PKey::EC::Point.new(group, bn)
+      def create_ec_pk(raw_pubkey: nil, raw_privkey: nil)
+        public_key = raw_pubkey && begin
+          group = OpenSSL::PKey::EC::Group.new('secp256k1')
+          bn = OpenSSL::BN.new(raw_pubkey, 2)
+          OpenSSL::PKey::EC::Point.new(group, bn)
+        end
+
         OpenSSL::PKey::EC.new('secp256k1').tap do |key|
-          key.public_key = public_key
+          key.public_key = public_key if public_key
           key.private_key = OpenSSL::BN.new(raw_privkey, 2) if raw_privkey
         end
       end
