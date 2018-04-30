@@ -18,7 +18,7 @@ module Eth
                  {got_plain: :bool},
                  :signature,
                  :initiator_pubkey,
-                 {nonce: [:int]},
+                 :nonce,
                  {version: :int}
                ]
         default_data(got_plain: false)
@@ -64,7 +64,11 @@ module Eth
         end
 
         def id
-          @id ||= key.public_key.to_bn.to_s(2)[1..-1]
+          @id ||= key.raw_public_key[1..-1]
+        end
+
+        def == (other)
+          self.class == other.class && id == other.id
         end
       end
 
@@ -105,7 +109,7 @@ module Eth
 
         def auth_msg
           # make nonce bytes
-          nonce = SHA_LENGTH.times.map {rand(8)}
+          nonce = random_nonce(SHA_LENGTH)
           @nonce_bytes = nonce
           # remote first byte tag
           token = dh_compute_key(private_key, remote_key)
@@ -129,7 +133,7 @@ module Eth
 
         def auth_ack_msg
           # make nonce bytes
-          nonce = SHA_LENGTH.times.map {rand(8)}
+          nonce = random_nonce(SHA_LENGTH)
           @nonce_bytes = nonce
           random_pubkey = random_key.raw_public_key[1..-1]
           AuthRespV4.new(random_pubkey: random_pubkey, nonce: nonce, version: 4)
@@ -146,7 +150,7 @@ module Eth
           shared_secret = Eth::Utils.sha3(secret, Eth::Utils.sha3(nonce_bytes, remote_nonce_bytes))
           aes_secret = Eth::Utils.sha3(secret, shared_secret)
           mac = Eth::Utils.sha3(secret, aes_secret)
-          HandShake::Secrets.new(remote_id: remote_id, aes: aes_secret, mac: mac)
+          Secrets.new(remote_id: remote_id, aes: aes_secret, mac: mac)
         end
 
         private
@@ -156,7 +160,11 @@ module Eth
         end
 
         def xor(b1, b2)
-          b1.each_byte.with_index.map {|b, i| b ^ b2[i]}.pack('c*')
+          b1.each_byte.with_index.map {|b, i| b ^ b2[i].ord}.pack('c*')
+        end
+
+        def random_nonce(size)
+          size.times.map {rand(8)}.pack('c*')
         end
 
       end

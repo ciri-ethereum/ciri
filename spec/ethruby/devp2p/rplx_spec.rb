@@ -35,9 +35,10 @@ RSpec.describe Eth::DevP2P::RLPX do
       expect(initiator.remote_nonce_bytes).to eq receiver.nonce_bytes
 
       #initiator derives secrets
-      # initiator_secrets = initiator.extract_secrets
-      # receiver_secrets = receiver.extract_secrets
-      # expect(initiator_secrets).to eq receiver_secrets
+      initiator_secrets = initiator.extract_secrets
+      receiver_secrets = receiver.extract_secrets
+      expect(initiator_secrets.remote_id).to eq receive_node_id
+      expect(receiver_secrets.remote_id).to eq initiator_node_id
     end
   end
 end
