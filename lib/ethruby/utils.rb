@@ -10,6 +10,10 @@ module Eth
         s.digest
       end
 
+      def secret_compare(s1, s2)
+        s1.each_byte.each_with_index.map {|b, i| b ^ s2[i].ord}.reduce(0, :+) == 0
+      end
+
       def big_endian_encode(n, zero = '')
         if n == 0
           zero

@@ -53,8 +53,7 @@ module Eth
         # verify data
         key_mac = Digest::SHA256.digest(key_mac)
         tag = data[-32..-1]
-        # should use secure_compare?
-        unless hmac_sha256(key_mac, data[65...-32] + shared_mac_data) == tag
+        unless Eth::Utils.secret_compare(hmac_sha256(key_mac, data[65...-32] + shared_mac_data), tag)
           raise ECIESDecryptionError.new("Fail to verify data")
         end
 

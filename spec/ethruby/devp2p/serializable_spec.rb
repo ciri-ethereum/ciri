@@ -1,6 +1,8 @@
-require 'ethruby/devp2p/message'
+require 'ethruby/devp2p/serializable'
 
-my_class = Class.new(Eth::DevP2P::Message) do
+my_class = Class.new do
+  include Eth::DevP2P::Serializable
+
   schema [
            {got_plain: :bool},
            :signature,
@@ -10,7 +12,7 @@ my_class = Class.new(Eth::DevP2P::Message) do
   default_data(got_plain: false)
 end
 
-RSpec.describe Eth::DevP2P::Message do
+RSpec.describe Eth::DevP2P::Serializable do
   it 'apply default value' do
     msg = my_class.new(signature: '123', nonce: [1, 2, 3], version: 4)
     expect(msg.got_plain).to be_falsey
@@ -19,7 +21,7 @@ RSpec.describe Eth::DevP2P::Message do
   it 'raise invalid if missing key' do
     expect do
       my_class.new(signature: '123', nonce: [1, 2, 3])
-    end.to raise_error(Eth::DevP2P::Message::Schema::InvalidSchema)
+    end.to raise_error(Eth::DevP2P::Serializable::Schema::InvalidSchemaError)
   end
 
   it 'rlp encoding/decoding' do

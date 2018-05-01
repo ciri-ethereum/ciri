@@ -1,11 +1,13 @@
 # frozen_string_literal: true
 #
 #
-# Message class handle message serialize/deserialize to RLP encoding
+# Serializable module allow objects serialize/deserialize between RLP encoding and ruby types
 #
 # Usage:
 #
-# class AuthMsgV4 < Eth::DevP2P::Message
+# class AuthMsgV4
+#   include Eth::DevP2P::Serializable
+#
 #   schema [
 #            {got_plain: :bool},
 #            :signature,
@@ -13,22 +15,21 @@
 #            {nonce: [:int]},
 #            {version: :int}
 #          ]
+#
 #   default_data(got_plain: false)
 #
-# schema is function to define data-schema of message
+#
+# schema method define data types of model
 #
 
 module Eth
   module DevP2P
-    class Message
+    module Serializable
       TYPES = %i{raw int bool}.map {|key| [key, true]}.to_h.freeze
 
       # represent message schema
       class Schema
-        class InvalidSchema < StandardError
-        end
-
-        class InvalidValue < StandardError
+        class InvalidSchemaError < StandardError
         end
 
         attr_reader :keys
@@ -39,7 +40,7 @@ module Eth
 
           schema.each do |key|
             key, type = key.is_a?(Hash) ? key.to_a[0] : [key, :raw]
-            raise InvalidSchema.new("missing type #{type} for key #{key}") unless check_key_type(type)
+            raise InvalidSchemaError.new("missing type #{type} for key #{key}") unless check_key_type(type)
             keys << key
             @_schema[key] = type
           end
@@ -54,7 +55,7 @@ module Eth
 
         def validate!(data)
           keys.each do |key|
-            raise InvalidSchema.new("missing key #{key}") unless data.key?(key)
+            raise InvalidSchemaError.new("missing key #{key}") unless data.key?(key)
           end
         end
 
@@ -63,7 +64,7 @@ module Eth
         def rlp_encode!(data)
           # pre-encode, encode data to rlp compatible format(only string or array)
           data_list = keys.map do |key|
-            encode_with_type(data[key], self[key])
+            RLP.encode_with_type(data[key], self[key])
           end
           RLP.encode(data_list)
         end
@@ -72,7 +73,7 @@ module Eth
           data = RLP.decode(input)
           keys.each_with_index.map do |key, i|
             # decode data by type
-            decoded_item = decode_with_type(data[i], self[key])
+            decoded_item = RLP.decode_with_type(data[i], self[key])
             [key, decoded_item]
           end.to_h
         end
@@ -88,42 +89,12 @@ module Eth
             false
           end
         end
-
-        def encode_with_type(item, type)
-          if type == :int
-            Eth::Utils.big_endian_encode(item)
-          elsif type == :bool
-            Eth::Utils.big_endian_encode(item ? 0x01 : 0x80)
-          elsif type.is_a?(Array)
-            item.map {|i| encode_with_type(i, type[0])}
-          else
-            item
-          end
-        end
-
-        def decode_with_type(item, type)
-          if type == :int
-            Eth::Utils.big_endian_decode(item)
-          elsif type == :bool
-            if item == Eth::Utils.big_endian_encode(0x01)
-              true
-            elsif item == Eth::Utils.big_endian_encode(0x80)
-              false
-            else
-              raise InvalidValue.new "invalid bool value #{item}"
-            end
-          elsif type.is_a?(Array)
-            item.map {|i| decode_with_type(i, type[0])}
-          else
-            item
-          end
-        end
       end
 
       class InvalidData < StandardError
       end
 
-      class << self
+      module ClassMethods
         def rlp_decode(input)
           data = schema.rlp_decode!(input)
           self.new(data)
@@ -138,6 +109,10 @@ module Eth
         def default_data(data = nil)
           @default_data ||= data
         end
+      end
+
+      def self.included(base)
+        base.send :extend, ClassMethods
       end
 
       attr_reader :data
