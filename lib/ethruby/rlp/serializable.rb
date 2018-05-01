@@ -23,15 +23,23 @@ module Eth
     #
     #     # default values
     #     default_data(got_plain: false)
+    #   end
+    #
+    #   msg = AuthMsgV4.new(signature: "\x00", initiator_pubkey: "keys...", nonce: [1, 2, 3], version: 4)
+    #   encoded = msg.rlp_encode!
+    #   msg2 = AuthMsgV4.rlp_decode!(encoded)
+    #   msg == msg2 # true
     #
     module Serializable
       TYPES = %i{raw int bool}.map {|key| [key, true]}.to_h.freeze
 
-      # represent message schema
+      # Schema specific columns types of classes, normally you should not use Serializable::Schema directly
+      #
       class Schema
         class InvalidSchemaError < StandardError
         end
 
+        # keys return data columns array
         attr_reader :keys
 
         def initialize(schema)
@@ -49,17 +57,17 @@ module Eth
           @keys = keys.freeze
         end
 
+        # Get column type, see Serializable::TYPES for supported type
         def [](key)
           @_schema[key]
         end
 
+        # Validate data, data is a Hash
         def validate!(data)
           keys.each do |key|
             raise InvalidSchemaError.new("missing key #{key}") unless data.key?(key)
           end
         end
-
-        # RLP Encoding
 
         def rlp_encode!(data)
           # pre-encode, encode data to rlp compatible format(only string or array)
@@ -95,6 +103,7 @@ module Eth
       end
 
       module ClassMethods
+        # Decode object from input
         def rlp_decode(input)
           data = schema.rlp_decode!(input)
           self.new(data)
@@ -164,6 +173,7 @@ module Eth
         self.class.schema.validate!(@data)
       end
 
+      # Encode object to rlp encoding string
       def rlp_encode!
         self.class.schema.rlp_encode!(data)
       end
