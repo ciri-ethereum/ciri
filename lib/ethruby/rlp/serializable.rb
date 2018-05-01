@@ -1,29 +1,29 @@
 # frozen_string_literal: true
-#
-#
-# Serializable module allow objects serialize/deserialize between RLP encoding and ruby types
-#
-# Usage:
-#
-# class AuthMsgV4
-#   include Eth::RLP::Serializable
-#
-#   schema [
-#            {got_plain: :bool},
-#            :signature,
-#            :initiator_pubkey,
-#            {nonce: [:int]},
-#            {version: :int}
-#          ]
-#
-#   default_data(got_plain: false)
-#
-#
-# schema method define data types of model
-#
 
 module Eth
   module RLP
+
+    # Serializable module allow ruby objects serialize/deserialize to or from RLP encoding.
+    # See Eth::RLP::Serializable::TYPES for supported type,
+    # if you don't specific a type, serializable will assume it have RLP encoding friendly type(string or array)
+    #
+    # Examples:
+    #
+    #   class AuthMsgV4
+    #     include Eth::RLP::Serializable
+    #
+    #     # define schema
+    #     schema [
+    #              {got_plain: :bool},
+    #              :signature,
+    #              :initiator_pubkey,
+    #              {nonce: [:int]},
+    #              {version: :int}
+    #            ]
+    #
+    #     # default values
+    #     default_data(got_plain: false)
+    #
     module Serializable
       TYPES = %i{raw int bool}.map {|key| [key, true]}.to_h.freeze
 
