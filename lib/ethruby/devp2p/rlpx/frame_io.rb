@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require 'stringio'
-require 'ethruby/devp2p/serializable'
+require 'ethruby/rlp/serializable'
 
 module Eth
   module DevP2P
@@ -9,7 +9,7 @@ module Eth
 
       # RLPX message
       class Message
-        include Eth::DevP2P::Serializable
+        include Eth::RLP::Serializable
 
         schema [
                  {code: :int},

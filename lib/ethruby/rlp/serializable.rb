@@ -6,7 +6,7 @@
 # Usage:
 #
 # class AuthMsgV4
-#   include Eth::DevP2P::Serializable
+#   include Eth::RLP::Serializable
 #
 #   schema [
 #            {got_plain: :bool},
@@ -23,7 +23,7 @@
 #
 
 module Eth
-  module DevP2P
+  module RLP
     module Serializable
       TYPES = %i{raw int bool}.map {|key| [key, true]}.to_h.freeze
 
@@ -111,8 +111,50 @@ module Eth
         end
       end
 
-      def self.included(base)
-        base.send :extend, ClassMethods
+      class << self
+        def included(base)
+          base.send :extend, ClassMethods
+        end
+
+        # use this method before RLP.encode
+        # encode item to string or array
+        def encode_with_type(item, type, zero: '')
+          if type == :int
+            Eth::Utils.big_endian_encode(item, zero)
+          elsif type == :bool
+            Eth::Utils.big_endian_encode(item ? 0x01 : 0x80)
+          elsif type.is_a?(Array)
+            item.map {|i| encode_with_type(i, type[0])}
+          else
+            item
+          end
+        end
+
+        # Use this method after RLP.decode, decode values from string or array to specific types
+        # see Eth::RLP::Serializable::TYPES for supported types
+        #
+        # Examples:
+        #
+        #   item = Eth::RLP.decode(encoded_text)
+        #   decode_with_type(item, :int)
+        #
+        def decode_with_type(item, type)
+          if type == :int
+            Eth::Utils.big_endian_decode(item)
+          elsif type == :bool
+            if item == Eth::Utils.big_endian_encode(0x01)
+              true
+            elsif item == Eth::Utils.big_endian_encode(0x80)
+              false
+            else
+              raise InvalidValueError.new "invalid bool value #{item}"
+            end
+          elsif type.is_a?(Array)
+            item.map {|i| decode_with_type(i, type[0])}
+          else
+            item
+          end
+        end
       end
 
       attr_reader :data

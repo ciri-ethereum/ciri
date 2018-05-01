@@ -2,7 +2,7 @@
 #
 # RLPX
 require 'ethruby/key'
-require 'ethruby/devp2p/serializable'
+require 'ethruby/rlp/serializable'
 
 module Eth
   module DevP2P
@@ -11,7 +11,7 @@ module Eth
       ### messages
 
       class AuthMsgV4
-        include Eth::DevP2P::Serializable
+        include Eth::RLP::Serializable
 
         schema [
                  {got_plain: :bool},
@@ -33,7 +33,7 @@ module Eth
       end
 
       class AuthRespV4
-        include Eth::DevP2P::Serializable
+        include Eth::RLP::Serializable
 
         schema [
                  :random_pubkey,

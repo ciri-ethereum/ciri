@@ -1,5 +1,6 @@
-require 'ethruby/rlp/decode'
-require 'ethruby/rlp/encode'
+require_relative 'rlp/decode'
+require_relative 'rlp/encode'
+require_relative 'rlp/serializable'
 
 module Eth
   module RLP
@@ -8,46 +9,48 @@ module Eth
 
     class << self
 
+      # Decode input from rlp encoding, only produce string or array
+      #
+      # Examples:
+      #
+      #   Eth::RLP.decode(input)
+      #
       def decode(input)
         Decode.decode(input)
       end
 
+      # Encode input to rlp encoding, only allow string or array
+      #
+      # Examples:
+      #
+      #   Eth::RLP.encode("hello world")
+      #
       def encode(input)
         Encode.encode(input)
       end
 
-      # use this method before RLP.encode
-      # encode item to string or array
+      # Use this method before RLP.encode, this method encode ruby objects to rlp friendly format, string or array.
+      # see Eth::RLP::Serializable::TYPES for supported types
+      #
+      # Examples:
+      #
+      #   item = Eth::RLP.encode_with_type(number, :int, zero: "\x00".b)
+      #   encoded_text = Eth::RLP.encode(item)
+      #
       def encode_with_type(item, type, zero: '')
-        if type == :int
-          Eth::Utils.big_endian_encode(item, zero)
-        elsif type == :bool
-          Eth::Utils.big_endian_encode(item ? 0x01 : 0x80)
-        elsif type.is_a?(Array)
-          item.map {|i| encode_with_type(i, type[0])}
-        else
-          item
-        end
+        Serializable.encode_with_type(item, type, zero: zero)
       end
 
-      # use this method after RLP.decode
-      # decode values from string or array to specific types
+      # Use this method after RLP.decode, decode values from string or array to specific types
+      # see Eth::RLP::Serializable::TYPES for supported types
+      #
+      # Examples:
+      #
+      #   item = Eth::RLP.decode(encoded_text)
+      #   number = Eth::RLP.decode_with_type(item, :int)
+      #
       def decode_with_type(item, type)
-        if type == :int
-          Eth::Utils.big_endian_decode(item)
-        elsif type == :bool
-          if item == Eth::Utils.big_endian_encode(0x01)
-            true
-          elsif item == Eth::Utils.big_endian_encode(0x80)
-            false
-          else
-            raise InvalidValueError.new "invalid bool value #{item}"
-          end
-        elsif type.is_a?(Array)
-          item.map {|i| decode_with_type(i, type[0])}
-        else
-          item
-        end
+        Serializable.decode_with_type(item, type)
       end
 
     end
