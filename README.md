@@ -1,7 +1,7 @@
 Ethruby
 ===============
 
-Ethruby project intent to implement full feature set of ethereum in pure ruby, to provide usable cli and ruby library.
+Ethruby project intent to implement full feature set of ethereum in pure ruby, to provide both usable cli and well documented ruby library.
 
 ### Install
 
@@ -20,6 +20,10 @@ puts Eth::Version
 
 `eth -h`
 
+### Documentation
+
+[YARD documentation](https://www.rubydoc.info/github/ruby-ethereum/ethereum/master)
+
 ### Author
 
-[Jiang Jinyang](justjjy.com)
+[Jiang Jinyang](https://justjjy.com)

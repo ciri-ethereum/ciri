@@ -10,7 +10,7 @@ Gem::Specification.new do |spec|
   spec.email         = ["jjyruby@gmail.com"]
 
   spec.summary       = %q{Ruby implementation of the ethereum}
-  spec.description   = %q{Ethruby project intent to implement full feature set of ethereum in pure ruby, to provide usable cli and ruby library.}
+  spec.description   = %q{Ethruby project intent to implement full feature set of ethereum in pure ruby, to provide both usable cli and well documented ruby library.}
   spec.homepage      = "https://github.com/ruby-ethereum/ethereum"
   spec.license       = "MIT"
 
