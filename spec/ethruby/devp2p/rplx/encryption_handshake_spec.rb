@@ -3,7 +3,7 @@
 require 'ethruby/devp2p/rlpx'
 require 'ethruby/key'
 
-RSpec.describe Eth::DevP2P::RLPX::HandShake do
+RSpec.describe Eth::DevP2P::RLPX::EncryptionHandshake do
   it 'do handshake' do
     pk1 = Eth::Key.random
     pk2 = Eth::Key.random
@@ -11,8 +11,8 @@ RSpec.describe Eth::DevP2P::RLPX::HandShake do
     initiator_node_id = Eth::DevP2P::RLPX::NodeID.new pk1
     receive_node_id = Eth::DevP2P::RLPX::NodeID.new pk2
 
-    initiator = Eth::DevP2P::RLPX::HandShake.new(private_key: pk1, remote_id: receive_node_id)
-    receiver = Eth::DevP2P::RLPX::HandShake.new(private_key: pk2, remote_id: initiator_node_id)
+    initiator = Eth::DevP2P::RLPX::EncryptionHandshake.new(private_key: pk1, remote_id: receive_node_id)
+    receiver = Eth::DevP2P::RLPX::EncryptionHandshake.new(private_key: pk2, remote_id: initiator_node_id)
 
     # initiator send auth-msg
     initiator_auth_msg = initiator.auth_msg

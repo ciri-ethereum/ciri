@@ -12,7 +12,7 @@ module Eth
       ECIES_OVERHEAD = 65 + 16 + 32
 
       # handle handshake protocols
-      class HandShake
+      class EncryptionHandshake
         attr_reader :private_key, :remote_key, :remote_random_key, :nonce_bytes, :remote_nonce_bytes, :remote_id
 
         def initialize(private_key:, remote_id:)
