@@ -7,6 +7,17 @@ require 'ethruby/rlp/serializable'
 module Eth
   module DevP2P
     module RLPX
+      MESSAGES = {
+        handshake: 0x00,
+        discover: 0x01,
+        ping: 0x02,
+        pong: 0x03
+      }.freeze
+
+      BASE_PROTOCOL_VERSION = 5
+      BASE_PROTOCOL_LENGTH = 16
+      BASE_PROTOCOL_MAX_MSG_SIZE = 2 * 1024
+      SNAPPY_PROTOCOL_VERSION = 5
 
       ### messages
 
@@ -21,15 +32,6 @@ module Eth
                  {version: :int}
                ]
         default_data(got_plain: false)
-
-        def seal_eip8(remote_key)
-          encoded = rlp_encode!
-          # pad
-          encoded += ([0] * rand(100..300)).pack('c*')
-          prefix = Utils.big_endian_encode(encoded.size)
-          enc = Devp2p::Crypto.ecies_encrypt(encoded, remote_key, prefix)
-          prefix + enc
-        end
       end
 
       class AuthRespV4
@@ -37,18 +39,9 @@ module Eth
 
         schema [
                  :random_pubkey,
-                 {nonce: [:int]},
+                 :nonce,
                  {version: :int}
                ]
-
-        # def seal_eip8(remote_key)
-        #   encoded = rlp_encode!
-        #   # pad
-        #   encoded += ([0] * rand(100..300)).pack('c*')
-        #   prefix = Utils.big_endian_encode(encoded.size)
-        #   enc = Devp2p::Crypto.ecies_encrypt(encoded, remote_key, prefix)
-        #   prefix + enc
-        # end
       end
     end
   end

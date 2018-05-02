@@ -16,8 +16,8 @@ RSpec.describe Eth::DevP2P::RLPX::EncryptionHandshake do
 
     # initiator send auth-msg
     initiator_auth_msg = initiator.auth_msg
-    binary_auth_msg = initiator_auth_msg.rlp_encode!
-    auth_msg = Eth::DevP2P::RLPX::AuthMsgV4.rlp_decode(binary_auth_msg)
+    auth_packet = initiator_auth_msg.rlp_encode!
+    auth_msg = Eth::DevP2P::RLPX::AuthMsgV4.rlp_decode(auth_packet)
 
     # check serialize/deserialize
     expect(auth_msg).to eq initiator_auth_msg
@@ -25,17 +25,18 @@ RSpec.describe Eth::DevP2P::RLPX::EncryptionHandshake do
     # receiver handle auth-msg, get remote random_pubkey nonce_bytes
     receiver.handle_auth_msg(auth_msg)
     expect(receiver.remote_random_key.raw_public_key).to eq initiator.random_key.raw_public_key
-    expect(receiver.remote_nonce_bytes).to eq initiator.nonce_bytes
+    expect(receiver.initiator_nonce).to eq initiator.initiator_nonce
 
     # receiver send auth-ack
     auth_ack_msg = receiver.auth_ack_msg
+    auth_ack_packet = auth_ack_msg.rlp_encode!
     initiator.handle_auth_ack_msg(auth_ack_msg)
     expect(initiator.remote_random_key.raw_public_key).to eq receiver.random_key.raw_public_key
-    expect(initiator.remote_nonce_bytes).to eq receiver.nonce_bytes
+    expect(initiator.receiver_nonce).to eq receiver.receiver_nonce
 
     #initiator derives secrets
-    initiator_secrets = initiator.extract_secrets
-    receiver_secrets = receiver.extract_secrets
+    initiator_secrets = initiator.extract_secrets(auth_packet, auth_ack_packet, initiator: true)
+    receiver_secrets = receiver.extract_secrets(auth_packet, auth_ack_packet, initiator: false)
     expect(initiator_secrets.remote_id).to eq receive_node_id
     expect(receiver_secrets.remote_id).to eq initiator_node_id
   end

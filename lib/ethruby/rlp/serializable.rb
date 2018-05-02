@@ -4,8 +4,19 @@ module Eth
   module RLP
 
     # Serializable module allow ruby objects serialize/deserialize to or from RLP encoding.
-    # See Eth::RLP::Serializable::TYPES for supported type,
-    # if you don't specific a type, serializable will assume it have RLP encoding friendly type(string or array)
+    # See Eth::RLP::Serializable::TYPES for supported type.
+    #
+    # schema method define ordered data structure for class, and determine how to encoding objects.
+    #
+    # schema follow `{attr_name: :type}` format,
+    # if attr is raw type(string or array of string), you can just use `:attr_name` to define it
+    # schema simple types include :int, :bool, :raw(string or array of string)...
+    #
+    # schema also support complex types: array and serializable.
+    #
+    # array types represented as `{attr_name: [:type]}`, for example: `{bills: [:int]}` means value of bill attr is an array of int
+    # serializable type represent value of attr is a RLP serializable object
+    #
     #
     # Examples:
     #
@@ -15,8 +26,8 @@ module Eth
     #     # define schema
     #     schema [
     #              {got_plain: :bool},
-    #              :signature,
-    #              :initiator_pubkey,
+    #              :signature, # raw type: string
+    #              {initiator_pubkey: MySerializableKey}, # this attr is a RLP serializable object
     #              {nonce: [:int]},
     #              {version: :int}
     #            ]
@@ -25,7 +36,7 @@ module Eth
     #     default_data(got_plain: false)
     #   end
     #
-    #   msg = AuthMsgV4.new(signature: "\x00", initiator_pubkey: "keys...", nonce: [1, 2, 3], version: 4)
+    #   msg = AuthMsgV4.new(signature: "\x00", initiator_pubkey: my_pubkey, nonce: [1, 2, 3], version: 4)
     #   encoded = msg.rlp_encode!
     #   msg2 = AuthMsgV4.rlp_decode!(encoded)
     #   msg == msg2 # true
@@ -90,6 +101,7 @@ module Eth
         private
         def check_key_type(type)
           return true if TYPES.key?(type)
+          return true if type.is_a?(Class) && type < Serializable
 
           if type.is_a?(Array) && type.size == 1
             check_key_type(type[0])
@@ -97,9 +109,6 @@ module Eth
             false
           end
         end
-      end
-
-      class InvalidData < StandardError
       end
 
       module ClassMethods
@@ -132,8 +141,14 @@ module Eth
             Eth::Utils.big_endian_encode(item, zero)
           elsif type == :bool
             Eth::Utils.big_endian_encode(item ? 0x01 : 0x80)
+          elsif type.is_a?(Class) && type < Serializable
+            item.rlp_encode!
           elsif type.is_a?(Array)
-            item.map {|i| encode_with_type(i, type[0])}
+            if type.size == 1 # array type
+              item.map {|i| encode_with_type(i, type[0])}
+            else # unknown
+              raise InvalidValueError.new "type size should be 1, got #{type}"
+            end
           else
             item
           end
@@ -158,6 +173,8 @@ module Eth
             else
               raise InvalidValueError.new "invalid bool value #{item}"
             end
+          elsif type.is_a?(Class) && type < Serializable
+            type.rlp_decode!(item)
           elsif type.is_a?(Array)
             item.map {|i| decode_with_type(i, type[0])}
           else

@@ -2,6 +2,7 @@
 
 require 'stringio'
 require 'ethruby/rlp/serializable'
+require_relative 'error'
 
 module Eth
   module DevP2P
@@ -25,7 +26,7 @@ module Eth
         # max message size, took 3 byte to store message size, equal to uint24 max size
         MAX_MESSAGE_SIZE = (1 << 24) - 1
 
-        class Error < StandardError
+        class Error < RLPX::Error
         end
 
         class OverflowError < Error
@@ -54,9 +55,8 @@ module Eth
           @decrypt.key = secrets.aes
         end
 
-        def send(code, data)
-          encoded = RLP.encode(data)
-          msg = Message.new(code: code, size: encoded.size, payload: encoded)
+        def send_data(code, data)
+          msg = Message.new(code: code, size: data.size, payload: data)
           write_msg(msg)
         end
 
@@ -143,7 +143,9 @@ module Eth
         end
 
         def update_mac(mac, seed)
-          aes_buf = (@mac.update(seed) + @mac.final)[0...@mac.block_size]
+          # reset mac each time
+          @mac.reset
+          aes_buf = (@mac.update(mac.digest) + @mac.final)[0...@mac.block_size]
           aes_buf = aes_buf.each_byte.with_index.map {|b, i| b ^ seed[i].ord}.pack('c*')
           mac.update(aes_buf)
           # return first 16 byte
