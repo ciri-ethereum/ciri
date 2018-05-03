@@ -25,7 +25,6 @@ module Eth
     #
     #     # define schema
     #     schema [
-    #              {got_plain: :bool},
     #              :signature, # raw type: string
     #              {initiator_pubkey: MySerializableKey}, # this attr is a RLP serializable object
     #              {nonce: [:int]},

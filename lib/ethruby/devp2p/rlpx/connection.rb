@@ -55,7 +55,7 @@ module Eth
           auth_ack_msg = receiver.auth_ack_msg
           auth_ack_msg_plain_text = auth_ack_msg.rlp_encode!
           auth_ack_packet = if auth_msg.got_plain
-                              auth_ack_msg_plain_text
+                              raise NotImplementedError.new('not support pre eip8 plain text seal')
                             else
                               seal_eip8(auth_ack_msg_plain_text, receiver)
                             end

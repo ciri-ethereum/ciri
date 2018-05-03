@@ -25,13 +25,14 @@ module Eth
         include Eth::RLP::Serializable
 
         schema [
-                 {got_plain: :bool},
                  :signature,
                  :initiator_pubkey,
                  :nonce,
                  {version: :int}
                ]
-        default_data(got_plain: false)
+
+        # keep this field let client known how to format(plain or eip8)
+        attr_accessor :got_plain
       end
 
       class AuthRespV4

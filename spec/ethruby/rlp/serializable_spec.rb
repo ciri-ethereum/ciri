@@ -4,23 +4,24 @@ my_class = Class.new do
   include Eth::RLP::Serializable
 
   schema [
-           {got_plain: :bool},
            :signature,
            {nonce: [:int]},
            {version: :int}
          ]
-  default_data(got_plain: false)
+  default_data(version: 1)
 end
 
 RSpec.describe Eth::RLP::Serializable do
   it 'apply default value' do
     msg = my_class.new(signature: '123', nonce: [1, 2, 3], version: 4)
-    expect(msg.got_plain).to be_falsey
+    expect(msg.version).to eq 4
+    msg = my_class.new(signature: '123', nonce: [1, 2, 3])
+    expect(msg.version).to eq 1
   end
 
   it 'raise invalid if missing key' do
     expect do
-      my_class.new(signature: '123', nonce: [1, 2, 3])
+      my_class.new(signature: '123')
     end.to raise_error(Eth::RLP::Serializable::Schema::InvalidSchemaError)
   end
 
