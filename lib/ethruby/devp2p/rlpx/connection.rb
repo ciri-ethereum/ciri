@@ -28,7 +28,7 @@ module Eth
         end
 
         def initialize(io)
-          set_socket_timeout(io, HANDSHAKE_TIMEOUT) if io.is_a?(BasicSocket)
+          set_timeout(io)
           @io = io
           @frame_io = nil
         end
@@ -117,12 +117,16 @@ module Eth
           ProtocolHandshake.rlp_decode!(msg.payload)
         end
 
-        def set_socket_timeout(socket, timeout)
-          secs = Integer(timeout)
-          usecs = Integer((timeout - secs) * 1_000_000)
-          optval = [secs, usecs].pack("l_2")
-          socket.setsockopt Socket::SOL_SOCKET, Socket::SO_RCVTIMEO, optval
-          socket.setsockopt Socket::SOL_SOCKET, Socket::SO_SNDTIMEO, optval
+        def set_timeout(io)
+          timeout = HANDSHAKE_TIMEOUT
+
+          if io.is_a?(BasicSocket)
+            secs = Integer(timeout)
+            usecs = Integer((timeout - secs) * 1_000_000)
+            optval = [secs, usecs].pack("l_2")
+            io.setsockopt Socket::SOL_SOCKET, Socket::SO_RCVTIMEO, optval
+            io.setsockopt Socket::SOL_SOCKET, Socket::SO_SNDTIMEO, optval
+          end
         end
 
         def seal_eip8(encoded_msg, handshake)
