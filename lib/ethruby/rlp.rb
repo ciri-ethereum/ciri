@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require_relative 'rlp/decode'
 require_relative 'rlp/encode'
 require_relative 'rlp/serializable'

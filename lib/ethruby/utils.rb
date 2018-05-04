@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require 'digest/sha3'
 
 module Eth

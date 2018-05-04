@@ -4,6 +4,7 @@
 
 require 'openssl'
 require 'ethruby/utils'
+require 'secp256k1'
 
 module Eth
   module Crypto
@@ -13,6 +14,23 @@ module Eth
     end
 
     ECIES_CIPHER_NAME = 'aes-128-ctr'
+
+    def ecdsa_signature(key, data)
+      secp256k1_key = ensure_secp256k1_key(privkey: key)
+      signature, recid = secp256k1_key.ecdsa_recoverable_serialize(secp256k1_key.ecdsa_sign_recoverable(data, raw: true))
+      signature + Eth::Utils.big_endian_encode(recid, "\x00")
+    end
+
+    def ecdsa_recover(msg, signature, return_raw_key: true)
+      pk = Secp256k1::PrivateKey.new(flags: Secp256k1::ALL_FLAGS)
+      sig, recid = signature[0..-2], Eth::Utils.big_endian_decode(signature[-1])
+
+      recsig = pk.ecdsa_recoverable_deserialize(sig, recid)
+      pubkey = pk.ecdsa_recover(msg, recsig, raw: true)
+
+      key = Secp256k1::PublicKey.new(pubkey: pubkey)
+      return_raw_key ? key.serialize(compressed: false) : key
+    end
 
     def ecies_encrypt(message, raw_pubkey, shared_mac_data = '')
       pubkey = raw_pubkey.is_a?(OpenSSL::PKey::EC) ? raw_pubkey : ec_pkey_from_raw(raw_pubkey)
@@ -68,6 +86,10 @@ module Eth
       cipher.key = key_enc
       cipher.iv = iv
       cipher.update(ciphertext) + cipher.final
+    end
+
+    def ensure_secp256k1_key(privkey:)
+      privkey.is_a?(Secp256k1::BaseKey) ? privkey : Secp256k1::PrivateKey.new(privkey: privkey)
     end
 
     private
