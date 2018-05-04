@@ -11,6 +11,27 @@ my_class = Class.new do
   default_data(version: 1)
 end
 
+my_cap = Class.new do
+  include Eth::RLP::Serializable
+
+  schema [
+           :name,
+           {version: :int}
+         ]
+end
+
+my_protocol_handshake = Class.new do
+  include Eth::RLP::Serializable
+
+  schema [
+           {version: :int},
+           :name,
+           {caps: [my_cap]},
+           {listen_port: :int},
+           :id
+         ]
+end
+
 RSpec.describe Eth::RLP::Serializable do
   it 'apply default value' do
     msg = my_class.new(signature: '123', nonce: [1, 2, 3], version: 4)
@@ -33,5 +54,13 @@ RSpec.describe Eth::RLP::Serializable do
 
     decoded_msg = my_class.rlp_decode!(binary)
     expect(decoded_msg).to eq msg
+  end
+
+  it 'deserialize real world geth handshake' do
+    encoded_handshake = ['f87d05b1476574682f76312e382e372d756e737461626c652d38366265393162332f64617277696e2d616d6436342f676f312e3130c6c5836574683f80b840da982df3c882252c126ac3ee8fa008ade932c4166dfdc7c117c9852b5df0c6ddcf34bf2555a38596268b3b6bcbdaf48bba57b84a1abc400b4ba65c59ee5342c3'].pack("H*")
+    hs = my_protocol_handshake.rlp_decode(encoded_handshake)
+    expect(hs.version).to eq 5
+    expect(hs.listen_port).to eq 0
+    expect(hs.caps[0].name).to eq 'eth'
   end
 end

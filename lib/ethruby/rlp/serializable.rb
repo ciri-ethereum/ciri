@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require 'ethruby/utils'
+
 module Eth
   module RLP
 
@@ -79,19 +81,19 @@ module Eth
           end
         end
 
-        def rlp_encode!(data)
+        def rlp_encode!(data, raw: raw)
           # pre-encode, encode data to rlp compatible format(only string or array)
           data_list = keys.map do |key|
-            RLP.encode_with_type(data[key], self[key])
+            Serializable.encode_with_type(data[key], self[key])
           end
-          RLP.encode(data_list)
+          raw ? RLP.encode(data_list) : data_list
         end
 
-        def rlp_decode!(input)
-          data = RLP.decode(input)
+        def rlp_decode!(input, raw: true)
+          data = raw ? RLP.decode(input) : input
           keys.each_with_index.map do |key, i|
             # decode data by type
-            decoded_item = RLP.decode_with_type(data[i], self[key])
+            decoded_item = Serializable.decode_with_type(data[i], self[key])
             [key, decoded_item]
           end.to_h
         end
@@ -112,8 +114,8 @@ module Eth
 
       module ClassMethods
         # Decode object from input
-        def rlp_decode(input)
-          data = schema.rlp_decode!(input)
+        def rlp_decode(input, raw: true)
+          data = schema.rlp_decode!(input, raw: raw)
           self.new(data)
         end
 
@@ -137,11 +139,18 @@ module Eth
         # encode item to string or array
         def encode_with_type(item, type, zero: '')
           if type == :int
-            Eth::Utils.big_endian_encode(item, zero)
+            if item == 0
+              "\x80".b
+            elsif item < 128
+              Eth::Utils.big_endian_encode(item, zero)
+            else
+              buf = Eth::Utils.big_endian_encode(item, zero)
+              [0x80 + buf.size].pack("c*") + buf
+            end
           elsif type == :bool
             Eth::Utils.big_endian_encode(item ? 0x01 : 0x80)
           elsif type.is_a?(Class) && type < Serializable
-            item.rlp_encode!
+            item.rlp_encode!(raw: false)
           elsif type.is_a?(Array)
             if type.size == 1 # array type
               item.map {|i| encode_with_type(i, type[0])}
@@ -163,7 +172,14 @@ module Eth
         #
         def decode_with_type(item, type)
           if type == :int
-            Eth::Utils.big_endian_decode(item)
+            if item == "\x80".b || item.empty?
+              0
+            elsif item[0].ord < 0x80
+              Eth::Utils.big_endian_decode(item)
+            else
+              size = item[0].ord - 0x80
+              Eth::Utils.big_endian_decode(item[1..size])
+            end
           elsif type == :bool
             if item == Eth::Utils.big_endian_encode(0x01)
               true
@@ -173,7 +189,8 @@ module Eth
               raise InvalidValueError.new "invalid bool value #{item}"
             end
           elsif type.is_a?(Class) && type < Serializable
-            type.rlp_decode!(item)
+            # already decoded from RLP encoding
+            type.rlp_decode!(item, raw: false)
           elsif type.is_a?(Array)
             item.map {|i| decode_with_type(i, type[0])}
           else
@@ -190,8 +207,8 @@ module Eth
       end
 
       # Encode object to rlp encoding string
-      def rlp_encode!
-        self.class.schema.rlp_encode!(data)
+      def rlp_encode!(raw: true)
+        self.class.schema.rlp_encode!(data, raw: raw)
       end
 
       def ==(other)

@@ -41,8 +41,8 @@ module Eth
 
           mac_aes_version = secrets.mac.size * 8
           @mac = OpenSSL::Cipher.new("AES#{mac_aes_version}")
-          @mac.key = secrets.mac
           @mac.encrypt
+          @mac.key = secrets.mac
 
           # init encrypt/decrypt
           aes_version = secrets.aes.size * 8
@@ -138,7 +138,7 @@ module Eth
         end
 
         def read_frame_size(buf)
-          size_bytes = buf[0..2].unpack('c*')
+          size_bytes = buf[0..2].each_byte.map(&:ord)
           (size_bytes[0] << 16) + (size_bytes[1] << 8) + (size_bytes[2])
         end
 

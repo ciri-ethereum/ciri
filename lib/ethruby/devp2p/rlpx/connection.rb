@@ -109,10 +109,10 @@ module Eth
           end
           if msg.code == MESSAGES[:discovery]
             payload = RLP.decode(msg.payload)
-            raise UnexpectedMessageError.new("expected handshake, but get discovery, reason: #{payload}")
+            raise UnexpectedMessageError.new("expected handshake, get discovery, reason: #{payload}")
           end
           if msg.code != MESSAGES[:handshake]
-            raise UnexpectedMessageError.new("expected handshake, but get #{MESSAGES.find {|_k, v| v == msg.code}[0]}")
+            raise UnexpectedMessageError.new("expected handshake, get #{msg.code}")
           end
           ProtocolHandshake.rlp_decode!(msg.payload)
         end
