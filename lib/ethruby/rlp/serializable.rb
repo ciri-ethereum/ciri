@@ -81,7 +81,7 @@ module Eth
           end
         end
 
-        def rlp_encode!(data, raw: raw)
+        def rlp_encode!(data, raw: true)
           # pre-encode, encode data to rlp compatible format(only string or array)
           data_list = keys.map do |key|
             Serializable.encode_with_type(data[key], self[key])

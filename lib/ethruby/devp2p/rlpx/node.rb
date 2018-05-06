@@ -9,6 +9,13 @@ module Eth
 
       # present node id
       class NodeID
+
+        class << self
+          def from_raw_id(raw_id)
+            NodeID.new(Eth::Key.new(raw_public_key: "\x04".b + raw_id))
+          end
+        end
+
         attr_reader :public_key
 
         alias key public_key
@@ -28,6 +35,23 @@ module Eth
           self.class == other.class && id == other.id
         end
       end
+
+      class Node
+        attr_reader :node_id, :ip, :udp_port, :tcp_port, :added_at
+
+        def initialize(node_id:, ip:, udp_port:, tcp_port:, added_at: nil)
+          @node_id = node_id
+          @ip = ip
+          @udp_port = udp_port
+          @tcp_port = tcp_port
+          @added_at = added_at
+        end
+
+        def == (other)
+          self.class == other.class && node_id == other.node_id
+        end
+      end
+
     end
   end
 end

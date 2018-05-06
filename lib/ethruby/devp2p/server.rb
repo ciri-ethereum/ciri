@@ -1,0 +1,167 @@
+# frozen_string_literal: true
+
+require 'concurrent'
+require 'forwardable'
+require_relative 'rlpx/connection'
+require_relative 'rlpx/protocol_handshake'
+require_relative 'peer'
+
+module Eth
+  module DevP2P
+
+    # DevP2P Server
+    # maintain connection, node discovery, rlpx handshake and protocols
+    class Server
+      include RLPX
+
+      MAX_ACTIVE_DIAL_TASKS = 16
+      DEFAULT_MAX_PENDING_PEERS = 50
+      DEFAULT_DIAL_RATIO = 3
+
+      class Error < StandardError
+      end
+      class UselessPeerError < Error
+      end
+
+      attr_reader :handshake, :dial
+      attr_accessor :logger, :bootstrap_nodes, :protocols
+
+      def initialize(private_key:)
+        @private_key = private_key
+        @name = 'ethruby'
+        @scheduler = Scheduler.new(self)
+        @protocols = []
+      end
+
+      def start
+        #TODO start dialer, discovery nodes and connect to them
+        #TODO listen udp, for discovery protocol
+
+        server_node_id = NodeID.new(@private_key)
+        caps = [Cap.new(name: 'eth', version: 63)]
+        @handshake = ProtocolHandshake.new(version: BASE_PROTOCOL_VERSION, name: @name, id: server_node_id.id, caps: caps)
+        # start listen tcp
+        @dial = Dial.new(self)
+        @scheduler.start
+      end
+
+      def setup_connection(node)
+        socket = TCPSocket.new(node.ip, node.tcp_port)
+        c = Connection.new(socket)
+        c.encryption_handshake!(private_key: @private_key, node_id: node.node_id)
+        remote_handshake = c.protocol_handshake!(handshake)
+        @scheduler.inbox << [:add_peer, c, remote_handshake]
+      end
+
+      def protocol_handshake_checks(handshake)
+        if !protocols.empty? && count_matching_protocols(protocols, handshake.caps) == 0
+          raise UselessPeerError.new('discovery useless peer')
+        end
+      end
+
+      def count_matching_protocols(protocols, caps)
+        #TODO implement this
+        1
+      end
+
+      # scheduler task
+      class Task
+        attr_reader :name
+
+        def initialize(name:, &blk)
+          @name = name
+          @blk = blk
+        end
+
+        def call(*args)
+          @blk.call(*args)
+        end
+      end
+
+      # Discovery and dial new nodes
+      class Dial
+        def initialize(server)
+          @server = server
+          @cache = []
+        end
+
+        # return new tasks to find peers
+        def find_peer_tasks(running_count, peers, now)
+          node = @server.bootstrap_nodes[0]
+          return [] if @cache.include?(node)
+          @cache << node
+          [Task.new(name: 'find peer') {
+            @server.setup_connection(node)
+          }]
+        end
+      end
+
+      class Scheduler
+        extend Forwardable
+
+        attr_reader :inbox, :server
+
+        def_delegators :server, :logger
+
+        def initialize(server)
+          @server = server
+          @queued_tasks = []
+          @running_tasks = []
+          @peers = {}
+          @inbox = Queue.new
+          @executor = Concurrent::CachedThreadPool.new
+        end
+
+        # start scheduler react loop
+        def start
+          loop do
+            # schedule tasks
+            schedule_tasks
+
+            # check inbox
+            next if inbox.empty?
+            msg, *args = inbox.pop
+            send(msg, *args)
+          end
+        end
+
+        def start_tasks(tasks)
+          tasks = tasks.dup
+          while @running_tasks.size < MAX_ACTIVE_DIAL_TASKS
+            break unless (task = tasks.pop)
+            @executor.post(task) do |task|
+              task.call
+              inbox << [:task_done, task]
+            end
+            @running_tasks << task
+          end
+          tasks
+        end
+
+        # invoke tasks, and prepare search peer tasks
+        def schedule_tasks
+          @queued_tasks = start_tasks(@queued_tasks)
+          if @queued_tasks.size < MAX_ACTIVE_DIAL_TASKS
+            tasks = server.dial.find_peer_tasks(@running_tasks.size + @queued_tasks.size, @peers, Time.now)
+            @queued_tasks += tasks
+          end
+        end
+
+        private
+        def add_peer(connection, handshake)
+          server.protocol_handshake_checks(handshake)
+          peer = Peer.new(connection, handshake, nil)
+          @peers[peer.node_id] = peer
+          # run peer logic, do sub protocol handshake
+          logger.debug("add peer: #{peer}")
+        end
+
+        def task_done(task, *args)
+          logger.debug("task done: #{task.name}")
+        end
+
+      end
+
+    end
+  end
+end

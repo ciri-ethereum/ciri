@@ -26,6 +26,7 @@ module Eth
                  {listen_port: :int},
                  :id
                ]
+        default_data(listen_port: 0)
       end
 
     end
