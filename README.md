@@ -13,7 +13,7 @@ As library
 
 ``` ruby
 require 'ethruby'
-puts Eth::Version
+puts ETH::Version
 ```
 
 ### Command line
