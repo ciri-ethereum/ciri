@@ -2,7 +2,7 @@
 
 require 'digest/sha3'
 
-module Eth
+module ETH
   module Utils
 
     class << self

@@ -7,7 +7,7 @@ require_relative 'messages'
 require_relative 'error'
 require_relative 'encryption_handshake'
 
-module Eth
+module ETH
   module DevP2P
     module RLPX
 
@@ -92,7 +92,7 @@ module Eth
 
           # try decode eip8 format
           prefix = packet[0...2]
-          size = Eth::Utils.big_endian_decode(prefix)
+          size = ETH::Utils.big_endian_decode(prefix)
           raise FormatError.new("EIP8 format message size #{size} less than plain_size #{plain_size}") if size < plain_size
 
           # continue read remain bytes

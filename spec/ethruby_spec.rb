@@ -1,5 +1,5 @@
-RSpec.describe Eth do
+RSpec.describe ETH do
   it "has a version number" do
-    expect(Eth::VERSION).not_to be nil
+    expect(ETH::VERSION).not_to be nil
   end
 end

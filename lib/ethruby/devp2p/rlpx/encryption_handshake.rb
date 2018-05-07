@@ -5,7 +5,7 @@ require 'ethruby/key'
 require 'digest/sha3'
 require_relative 'secrets'
 
-module Eth
+module ETH
   module DevP2P
     module RLPX
 
@@ -35,7 +35,7 @@ module Eth
         end
 
         def random_key
-          @random_key ||= Eth::Key.random
+          @random_key ||= ETH::Key.random
         end
 
         def auth_msg
@@ -54,12 +54,12 @@ module Eth
         end
 
         def handle_auth_msg(msg)
-          @remote_key = Eth::Key.new(raw_public_key: "\x04" + msg.initiator_pubkey)
+          @remote_key = ETH::Key.new(raw_public_key: "\x04" + msg.initiator_pubkey)
           @initiator_nonce = msg.nonce
 
           token = dh_compute_key(private_key, @remote_key)
           signed = xor(token, msg.nonce)
-          @remote_random_key = Eth::Key.ecdsa_recover(signed, msg.signature)
+          @remote_random_key = ETH::Key.ecdsa_recover(signed, msg.signature)
         end
 
         def auth_ack_msg
@@ -73,14 +73,14 @@ module Eth
         def handle_auth_ack_msg(msg)
           # make nonce bytes
           @receiver_nonce = msg.nonce
-          @remote_random_key = Eth::Key.new(raw_public_key: "\x04" + msg.random_pubkey)
+          @remote_random_key = ETH::Key.new(raw_public_key: "\x04" + msg.random_pubkey)
         end
 
         def extract_secrets(auth_packet, auth_ack_packet, initiator:)
           secret = dh_compute_key(random_key, remote_random_key)
-          shared_secret = Eth::Utils.sha3(secret, Eth::Utils.sha3(receiver_nonce, initiator_nonce))
-          aes_secret = Eth::Utils.sha3(secret, shared_secret)
-          mac = Eth::Utils.sha3(secret, aes_secret)
+          shared_secret = ETH::Utils.sha3(secret, ETH::Utils.sha3(receiver_nonce, initiator_nonce))
+          aes_secret = ETH::Utils.sha3(secret, shared_secret)
+          mac = ETH::Utils.sha3(secret, aes_secret)
           secrets = Secrets.new(remote_id: remote_id, aes: aes_secret, mac: mac)
 
           # initial secrets macs

@@ -4,13 +4,13 @@ require 'stringio'
 require 'ethruby/rlp/serializable'
 require_relative 'error'
 
-module Eth
+module ETH
   module DevP2P
     module RLPX
 
       # RLPX message
       class Message
-        include Eth::RLP::Serializable
+        include ETH::RLP::Serializable
 
         schema [
                  {code: :int},
@@ -95,7 +95,7 @@ module Eth
           # verify header mac
           head_buf = @io.read(32)
           verify_mac = update_mac(@secrets.ingress_mac, head_buf[0...16])
-          unless Eth::Utils.secret_compare(verify_mac, head_buf[16...32])
+          unless ETH::Utils.secret_compare(verify_mac, head_buf[16...32])
             raise InvalidError.new('bad header mac')
           end
 
@@ -115,7 +115,7 @@ module Eth
           verify_mac = update_mac(@secrets.ingress_mac, frame_digest)
           # clear head_buf 16...32 bytes(header mac), since we will not need it
           frame_mac = head_buf[16...32] = @io.read(16)
-          unless Eth::Utils.secret_compare(verify_mac, frame_mac)
+          unless ETH::Utils.secret_compare(verify_mac, frame_mac)
             raise InvalidError.new('bad frame mac')
           end
 

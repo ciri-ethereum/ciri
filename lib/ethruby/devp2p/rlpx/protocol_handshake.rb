@@ -2,12 +2,12 @@
 
 require 'ethruby/rlp/serializable'
 
-module Eth
+module ETH
   module DevP2P
     module RLPX
 
       class Cap
-        include Eth::RLP::Serializable
+        include ETH::RLP::Serializable
 
         schema [
                  :name,
@@ -17,7 +17,7 @@ module Eth
 
       # handle protocol handshake
       class ProtocolHandshake
-        include Eth::RLP::Serializable
+        include ETH::RLP::Serializable
 
         schema [
                  {version: :int},

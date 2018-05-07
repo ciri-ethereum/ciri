@@ -4,7 +4,7 @@
 require 'ethruby/key'
 require 'ethruby/rlp/serializable'
 
-module Eth
+module ETH
   module DevP2P
     module RLPX
       MESSAGES = {
@@ -22,7 +22,7 @@ module Eth
       ### messages
 
       class AuthMsgV4
-        include Eth::RLP::Serializable
+        include ETH::RLP::Serializable
 
         schema [
                  :signature,
@@ -36,7 +36,7 @@ module Eth
       end
 
       class AuthRespV4
-        include Eth::RLP::Serializable
+        include ETH::RLP::Serializable
 
         schema [
                  :random_pubkey,

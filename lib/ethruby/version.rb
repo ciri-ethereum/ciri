@@ -1,5 +1,5 @@
 # frozen_string_literal: true
 
-module Eth
+module ETH
   VERSION = "0.0.0"
 end

@@ -6,7 +6,7 @@ require 'openssl'
 require 'ethruby/utils'
 require 'secp256k1'
 
-module Eth
+module ETH
   module Crypto
     extend self
 
@@ -18,12 +18,12 @@ module Eth
     def ecdsa_signature(key, data)
       secp256k1_key = ensure_secp256k1_key(privkey: key)
       signature, recid = secp256k1_key.ecdsa_recoverable_serialize(secp256k1_key.ecdsa_sign_recoverable(data, raw: true))
-      signature + Eth::Utils.big_endian_encode(recid, "\x00")
+      signature + ETH::Utils.big_endian_encode(recid, "\x00")
     end
 
     def ecdsa_recover(msg, signature, return_raw_key: true)
       pk = Secp256k1::PrivateKey.new(flags: Secp256k1::ALL_FLAGS)
-      sig, recid = signature[0..-2], Eth::Utils.big_endian_decode(signature[-1])
+      sig, recid = signature[0..-2], ETH::Utils.big_endian_decode(signature[-1])
 
       recsig = pk.ecdsa_recoverable_deserialize(sig, recid)
       pubkey = pk.ecdsa_recover(msg, recsig, raw: true)
@@ -70,7 +70,7 @@ module Eth
       # verify data
       key_mac = Digest::SHA256.digest(key_mac)
       tag = data[-32..-1]
-      unless Eth::Utils.secret_compare(hmac_sha256(key_mac, data[65...-32] + shared_mac_data), tag)
+      unless ETH::Utils.secret_compare(hmac_sha256(key_mac, data[65...-32] + shared_mac_data), tag)
         raise ECIESDecryptionError.new("Fail to verify data")
       end
 
@@ -115,7 +115,7 @@ module Eth
     end
 
     def ec_pkey_from_raw(raw_pubkey, raw_privkey: nil)
-      Eth::Utils.create_ec_pk(raw_pubkey: raw_pubkey, raw_privkey: raw_privkey)
+      ETH::Utils.create_ec_pk(raw_pubkey: raw_pubkey, raw_privkey: raw_privkey)
     end
 
   end

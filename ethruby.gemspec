@@ -5,7 +5,7 @@ require "ethruby/version"
 
 Gem::Specification.new do |spec|
   spec.name          = "ethruby"
-  spec.version       = Eth::VERSION
+  spec.version       = ETH::VERSION
   spec.authors       = ["Jiang Jinyang"]
   spec.email         = ["jjyruby@gmail.com"]
 

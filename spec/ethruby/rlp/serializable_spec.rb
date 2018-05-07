@@ -1,7 +1,7 @@
 require 'ethruby/rlp/serializable'
 
 my_class = Class.new do
-  include Eth::RLP::Serializable
+  include ETH::RLP::Serializable
 
   schema [
            :signature,
@@ -12,7 +12,7 @@ my_class = Class.new do
 end
 
 my_cap = Class.new do
-  include Eth::RLP::Serializable
+  include ETH::RLP::Serializable
 
   schema [
            :name,
@@ -21,7 +21,7 @@ my_cap = Class.new do
 end
 
 my_protocol_handshake = Class.new do
-  include Eth::RLP::Serializable
+  include ETH::RLP::Serializable
 
   schema [
            {version: :int},
@@ -32,7 +32,7 @@ my_protocol_handshake = Class.new do
          ]
 end
 
-RSpec.describe Eth::RLP::Serializable do
+RSpec.describe ETH::RLP::Serializable do
   it 'apply default value' do
     msg = my_class.new(signature: '123', nonce: [1, 2, 3], version: 4)
     expect(msg.version).to eq 4
@@ -43,14 +43,14 @@ RSpec.describe Eth::RLP::Serializable do
   it 'raise invalid if missing key' do
     expect do
       my_class.new(signature: '123')
-    end.to raise_error(Eth::RLP::Serializable::Schema::InvalidSchemaError)
+    end.to raise_error(ETH::RLP::Serializable::Schema::InvalidSchemaError)
   end
 
   it 'rlp encoding/decoding' do
     msg = my_class.new(signature: '123', nonce: [1, 2, 3], version: 4)
     binary = msg.rlp_encode!
     # is valid RLP encoding format
-    expect {Eth::RLP.decode(binary)}.to_not raise_error
+    expect {ETH::RLP.decode(binary)}.to_not raise_error
 
     decoded_msg = my_class.rlp_decode!(binary)
     expect(decoded_msg).to eq msg

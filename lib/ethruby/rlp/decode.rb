@@ -1,6 +1,8 @@
+# frozen_string_literal: true
+
 require 'stringio'
 
-module Eth
+module ETH
   module RLP
     module Decode
 
@@ -49,7 +51,7 @@ module Eth
         end
 
         def int_from_binary(input)
-          Eth::Utils.big_endian_decode(input)
+          ETH::Utils.big_endian_decode(input)
         end
 
       end

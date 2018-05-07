@@ -3,13 +3,13 @@
 require 'openssl'
 require_relative 'crypto'
 
-module Eth
+module ETH
 
-  # Eth::Key represent private/public key pair, it support several encryption methods used in Ethereum
+  # ETH::Key represent private/public key pair, it support several encryption methods used in Ethereum
   #
   # Examples:
   #
-  #   key = Eth::Key.random
+  #   key = ETH::Key.random
   #   key.ecdsa_signature(data)
   #
   class Key
@@ -17,13 +17,13 @@ module Eth
     class << self
       def ecdsa_recover(msg, signature)
         raw_public_key = Crypto.ecdsa_recover(msg, signature, return_raw_key: true)
-        Eth::Key.new(raw_public_key: raw_public_key)
+        ETH::Key.new(raw_public_key: raw_public_key)
       end
 
       def random
         ec_key = OpenSSL::PKey::EC.new('secp256k1')
         ec_key.generate_key
-        Eth::Key.new(ec_key: ec_key)
+        ETH::Key.new(ec_key: ec_key)
       end
     end
 
@@ -32,7 +32,7 @@ module Eth
     # initialized from ec_key or raw keys
     # ec_key is a OpenSSL::PKey::EC object, raw keys is bytes presented keys
     def initialize(ec_key: nil, raw_public_key: nil, raw_private_key: nil)
-      @ec_key = ec_key || Eth::Utils.create_ec_pk(raw_privkey: raw_private_key, raw_pubkey: raw_public_key)
+      @ec_key = ec_key || ETH::Utils.create_ec_pk(raw_privkey: raw_private_key, raw_pubkey: raw_public_key)
     end
 
     # raw public key

@@ -2,7 +2,7 @@
 
 require_relative 'rlpx/node'
 
-module Eth
+module ETH
   module DevP2P
 
     # represent a connected remote node

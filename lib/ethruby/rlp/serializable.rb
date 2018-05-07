@@ -2,11 +2,11 @@
 
 require 'ethruby/utils'
 
-module Eth
+module ETH
   module RLP
 
     # Serializable module allow ruby objects serialize/deserialize to or from RLP encoding.
-    # See Eth::RLP::Serializable::TYPES for supported type.
+    # See ETH::RLP::Serializable::TYPES for supported type.
     #
     # schema method define ordered data structure for class, and determine how to encoding objects.
     #
@@ -23,7 +23,7 @@ module Eth
     # Examples:
     #
     #   class AuthMsgV4
-    #     include Eth::RLP::Serializable
+    #     include ETH::RLP::Serializable
     #
     #     # define schema
     #     schema [
@@ -142,13 +142,13 @@ module Eth
             if item == 0
               "\x80".b
             elsif item < 128
-              Eth::Utils.big_endian_encode(item, zero)
+              ETH::Utils.big_endian_encode(item, zero)
             else
-              buf = Eth::Utils.big_endian_encode(item, zero)
+              buf = ETH::Utils.big_endian_encode(item, zero)
               [0x80 + buf.size].pack("c*") + buf
             end
           elsif type == :bool
-            Eth::Utils.big_endian_encode(item ? 0x01 : 0x80)
+            ETH::Utils.big_endian_encode(item ? 0x01 : 0x80)
           elsif type.is_a?(Class) && type < Serializable
             item.rlp_encode!(raw: false)
           elsif type.is_a?(Array)
@@ -163,11 +163,11 @@ module Eth
         end
 
         # Use this method after RLP.decode, decode values from string or array to specific types
-        # see Eth::RLP::Serializable::TYPES for supported types
+        # see ETH::RLP::Serializable::TYPES for supported types
         #
         # Examples:
         #
-        #   item = Eth::RLP.decode(encoded_text)
+        #   item = ETH::RLP.decode(encoded_text)
         #   decode_with_type(item, :int)
         #
         def decode_with_type(item, type)
@@ -175,15 +175,15 @@ module Eth
             if item == "\x80".b || item.empty?
               0
             elsif item[0].ord < 0x80
-              Eth::Utils.big_endian_decode(item)
+              ETH::Utils.big_endian_decode(item)
             else
               size = item[0].ord - 0x80
-              Eth::Utils.big_endian_decode(item[1..size])
+              ETH::Utils.big_endian_decode(item[1..size])
             end
           elsif type == :bool
-            if item == Eth::Utils.big_endian_encode(0x01)
+            if item == ETH::Utils.big_endian_encode(0x01)
               true
-            elsif item == Eth::Utils.big_endian_encode(0x80)
+            elsif item == ETH::Utils.big_endian_encode(0x80)
               false
             else
               raise InvalidValueError.new "invalid bool value #{item}"

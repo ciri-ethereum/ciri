@@ -4,31 +4,31 @@ require 'socket'
 require 'ethruby/devp2p/rlpx/connection'
 require 'ethruby/devp2p/rlpx/protocol_handshake'
 
-RSpec.describe Eth::DevP2P::RLPX::Connection do
+RSpec.describe ETH::DevP2P::RLPX::Connection do
 
   it 'handshake' do
 
-    pk1 = Eth::Key.random
-    pk2 = Eth::Key.random
+    pk1 = ETH::Key.random
+    pk2 = ETH::Key.random
 
     s1, s2 = UNIXSocket.pair
 
-    initiator_node_id = Eth::DevP2P::RLPX::NodeID.new pk1
-    receive_node_id = Eth::DevP2P::RLPX::NodeID.new pk2
+    initiator_node_id = ETH::DevP2P::RLPX::NodeID.new pk1
+    receive_node_id = ETH::DevP2P::RLPX::NodeID.new pk2
 
-    initiator = Eth::DevP2P::RLPX::Connection.new(s1)
-    receiver = Eth::DevP2P::RLPX::Connection.new(s2)
+    initiator = ETH::DevP2P::RLPX::Connection.new(s1)
+    receiver = ETH::DevP2P::RLPX::Connection.new(s2)
 
-    initiator_protocol_handshake = Eth::DevP2P::RLPX::ProtocolHandshake.new(
+    initiator_protocol_handshake = ETH::DevP2P::RLPX::ProtocolHandshake.new(
       version: 1,
       name: "initiator",
-      caps: [Eth::DevP2P::RLPX::Cap.new(name: 'hello', version: 1)],
+      caps: [ETH::DevP2P::RLPX::Cap.new(name: 'hello', version: 1)],
       listen_port: 33333,
       id: "ethruby-initiator")
-    receiver_protocol_handshake = Eth::DevP2P::RLPX::ProtocolHandshake.new(
+    receiver_protocol_handshake = ETH::DevP2P::RLPX::ProtocolHandshake.new(
       version: 1,
       name: "receiver",
-      caps: [Eth::DevP2P::RLPX::Cap.new(name: 'nihao', version: 2)],
+      caps: [ETH::DevP2P::RLPX::Cap.new(name: 'nihao', version: 2)],
       listen_port: 22222,
       id: "ethruby-receiver")
 

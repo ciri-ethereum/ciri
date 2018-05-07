@@ -1,4 +1,6 @@
-module Eth
+# frozen_string_literal: true
+
+module ETH
   module RLP
     module Encode
 
@@ -47,7 +49,7 @@ module Eth
         end
 
         def to_binary(n)
-          Eth::Utils.big_endian_encode(n)
+          ETH::Utils.big_endian_encode(n)
         end
 
       end

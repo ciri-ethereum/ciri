@@ -1,5 +1,5 @@
 require "ethruby/version"
 
-module Eth
+module ETH
   # Your code goes here...
 end

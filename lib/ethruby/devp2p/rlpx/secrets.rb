@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-module Eth
+module ETH
   module DevP2P
     module RLPX
 

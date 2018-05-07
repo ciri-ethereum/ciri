@@ -3,7 +3,7 @@
 # RLPX
 require 'ethruby/key'
 
-module Eth
+module ETH
   module DevP2P
     module RLPX
 
@@ -12,7 +12,7 @@ module Eth
 
         class << self
           def from_raw_id(raw_id)
-            NodeID.new(Eth::Key.new(raw_public_key: "\x04".b + raw_id))
+            NodeID.new(ETH::Key.new(raw_public_key: "\x04".b + raw_id))
           end
         end
 
@@ -21,8 +21,8 @@ module Eth
         alias key public_key
 
         def initialize(public_key)
-          unless public_key.is_a?(Eth::Key)
-            raise TypeError.new("expect Eth::Key but get #{public_key.class}")
+          unless public_key.is_a?(ETH::Key)
+            raise TypeError.new("expect ETH::Key but get #{public_key.class}")
           end
           @public_key = public_key
         end

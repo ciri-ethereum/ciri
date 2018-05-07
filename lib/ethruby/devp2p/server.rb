@@ -6,7 +6,7 @@ require_relative 'rlpx/connection'
 require_relative 'rlpx/protocol_handshake'
 require_relative 'peer'
 
-module Eth
+module ETH
   module DevP2P
 
     # DevP2P Server
