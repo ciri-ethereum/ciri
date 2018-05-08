@@ -122,11 +122,29 @@ module ETH
         alias rlp_decode! rlp_decode
 
         def schema(data_schema = nil)
-          @data_schema ||= Schema.new(data_schema)
+          @data_schema ||= Schema.new(data_schema).tap do |schema|
+            # define attributes methods
+            define_attributes(schema)
+          end
         end
 
         def default_data(data = nil)
           @default_data ||= data
+        end
+
+        private
+        def define_attributes(schema)
+          schema.keys.each do |attribute|
+            module_eval <<-ATTR_METHODS
+            def #{attribute}
+              data[:"#{attribute}"]
+            end
+
+            def #{attribute}=(value)
+              data[:"#{attribute}"] = value 
+            end
+            ATTR_METHODS
+          end
         end
       end
 
@@ -213,13 +231,6 @@ module ETH
 
       def ==(other)
         self.class == other.class && data == other.data
-      end
-
-      def method_missing(method, *args)
-        if args.size == 0 && data.key?(method)
-          return data[method]
-        end
-        super
       end
 
     end
