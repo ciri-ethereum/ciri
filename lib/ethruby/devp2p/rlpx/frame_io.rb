@@ -93,7 +93,7 @@ module ETH
 
         def read_msg
           # verify header mac
-          head_buf = @io.read(32)
+          head_buf = read(32)
           verify_mac = update_mac(@secrets.ingress_mac, head_buf[0...16])
           unless ETH::Utils.secret_compare(verify_mac, head_buf[16...32])
             raise InvalidError.new('bad header mac')
@@ -107,14 +107,14 @@ module ETH
           # frame size should padded to n*16 bytes
           need_padding = frame_size % 16
           padded_frame_size = need_padding > 0 ? frame_size + (16 - need_padding) : frame_size
-          frame_buf = @io.read(padded_frame_size)
+          frame_buf = read(padded_frame_size)
 
           # verify frame mac
           @secrets.ingress_mac.update(frame_buf)
           frame_digest = @secrets.ingress_mac.digest
           verify_mac = update_mac(@secrets.ingress_mac, frame_digest)
           # clear head_buf 16...32 bytes(header mac), since we will not need it
-          frame_mac = head_buf[16...32] = @io.read(16)
+          frame_mac = head_buf[16...32] = read(16)
           unless ETH::Utils.secret_compare(verify_mac, frame_mac)
             raise InvalidError.new('bad frame mac')
           end
@@ -127,6 +127,14 @@ module ETH
         end
 
         private
+        def read(length)
+          if (buf = @io.read(length)).nil?
+            @io.close
+            raise EOFError.new('read EOF, connection closed')
+          end
+          buf
+        end
+
         def write_frame_size(buf, frame_size)
           # frame-size: 3-byte integer size of frame, big endian encoded (excludes padding)
           bytes_of_frame_size = [
