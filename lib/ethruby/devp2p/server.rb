@@ -5,6 +5,7 @@ require 'forwardable'
 require_relative 'rlpx/connection'
 require_relative 'rlpx/protocol_handshake'
 require_relative 'peer'
+require_relative 'actor'
 
 module ETH
   module DevP2P
@@ -23,7 +24,7 @@ module ETH
       class UselessPeerError < Error
       end
 
-      attr_reader :handshake, :dial
+      attr_reader :handshake, :dial, :scheduler
       attr_accessor :logger, :bootstrap_nodes, :protocols
 
       def initialize(private_key:)
@@ -50,7 +51,7 @@ module ETH
         c = Connection.new(socket)
         c.encryption_handshake!(private_key: @private_key, node_id: node.node_id)
         remote_handshake = c.protocol_handshake!(handshake)
-        @scheduler.inbox << [:add_peer, c, remote_handshake]
+        scheduler << [:add_peer, c, remote_handshake]
       end
 
       def protocol_handshake_checks(handshake)
@@ -97,10 +98,11 @@ module ETH
       end
 
       class Scheduler
+        include Actor
+
         extend Forwardable
 
-        attr_reader :inbox, :server
-
+        attr_reader :server
         def_delegators :server, :logger
 
         def initialize(server)
@@ -108,30 +110,24 @@ module ETH
           @queued_tasks = []
           @running_tasks = []
           @peers = {}
-          @inbox = Queue.new
-          @executor = Concurrent::CachedThreadPool.new
+          executor = Concurrent::CachedThreadPool.new
+          # init actor
+          super(executor: executor)
         end
 
-        # start scheduler react loop
-        def start
-          loop do
-            # schedule tasks
-            schedule_tasks
-
-            # check inbox
-            next if inbox.empty?
-            msg, *args = inbox.pop
-            send(msg, *args)
-          end
+        # called by actor loop
+        def loop_callback
+          schedule_tasks
+          yield
         end
 
         def start_tasks(tasks)
           tasks = tasks.dup
           while @running_tasks.size < MAX_ACTIVE_DIAL_TASKS
             break unless (task = tasks.pop)
-            @executor.post(task) do |task|
+            executor.post(task) do |task|
               task.call
-              inbox << [:task_done, task]
+              self << [:task_done, task]
             end
             @running_tasks << task
           end
@@ -150,10 +146,29 @@ module ETH
         private
         def add_peer(connection, handshake)
           server.protocol_handshake_checks(handshake)
-          peer = Peer.new(connection, handshake, nil)
+          peer = Peer.new(connection, handshake, server.protocols)
+          # set actor executor
+          peer.executor = executor
           @peers[peer.node_id] = peer
-          # run peer logic, do sub protocol handshake
+          # run peer logic
+          # do sub protocol handshake...
+          executor.post {
+            peer.start
+
+            exit_error = nil
+            begin
+              peer.wait
+            rescue StandardError => e
+              exit_error = e
+            end
+            # remove peer
+            self << [:remove_peer, peer, exit_error]
+          }
           logger.debug("add peer: #{peer}")
+        end
+
+        def remove_peer(peer, *args)
+          logger.debug("remove peer: #{peer}")
         end
 
         def task_done(task, *args)

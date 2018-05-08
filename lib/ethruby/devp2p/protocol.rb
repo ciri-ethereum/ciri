@@ -12,6 +12,10 @@ module ETH
         @version = version
         @length = length
       end
+
+      # start protocol handling
+      def start
+      end
     end
 
   end

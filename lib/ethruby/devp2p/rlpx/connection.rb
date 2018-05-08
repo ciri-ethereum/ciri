@@ -2,6 +2,7 @@
 
 require 'ethruby/rlp'
 require 'socket'
+require 'forwardable'
 require_relative 'frame_io'
 require_relative 'messages'
 require_relative 'error'
@@ -14,6 +15,9 @@ module ETH
       # RLPX::Connection implement RLPX protocol operations
       # all operations end with bang(!)
       class Connection
+        extend Forwardable
+
+        def_delegators :@frame_io, :read_msg, :write_msg, :send_data
 
         class Error < RLPX::Error
         end
