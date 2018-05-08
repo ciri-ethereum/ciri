@@ -135,10 +135,7 @@ module ETH
 
       # start loop
       def start_loop
-        loop do
-
-          loop_callback
-
+        loop_callback do
           # check inbox
           next if @inbox.empty?
           msg = @inbox.pop
@@ -150,7 +147,6 @@ module ETH
             future = method
             method, *args = args
           end
-          puts "method #{method}, args #{args}"
           begin
             val = send(method, *args)
           rescue StandardError => e
@@ -159,21 +155,32 @@ module ETH
           end
           # if future not nil, set value
           future.value = val if future
-        end
+        end while true
 
       rescue StopError
-        puts 'stop'
         # actor stop
         @future.value = nil
       rescue StandardError => e
-        puts 'error', e
         @future.raise_error e
       ensure
         @running = false
       end
 
-      # do nothing
+      # allow inject callback into actor loop
+      # Example:
+      #
+      #   class A
+      #     include Actor
+      #
+      #     def loop_callback
+      #       # before handle msg
+      #       yield
+      #       # after handle msg
+      #     end
+      #   end
+      #
       def loop_callback
+        yield
       end
 
       private
