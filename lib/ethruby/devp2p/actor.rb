@@ -71,11 +71,14 @@ module ETH
         end
       end
 
-      # stop actor
-      class StopError < StandardError
+      class Error < StandardError
       end
 
-      class StateError < StandardError
+      # stop actor
+      class StopError < Error
+      end
+
+      class StateError < Error
       end
 
       attr_accessor :executor
@@ -110,6 +113,8 @@ module ETH
 
       # start actor
       def start
+        raise Error.new("must set executor before start") unless executor
+
         @running = true
         executor.post do
           start_loop
@@ -124,7 +129,7 @@ module ETH
       #   actor.wait
       #
       def send_stop
-        self << :raise_stop_error
+        self << [:raise_error, StopError.new]
       end
 
       # wait until an error occurs
@@ -137,7 +142,7 @@ module ETH
       def start_loop
         loop_callback do
           # check inbox
-          next if @inbox.empty?
+          next Thread.pass if @inbox.empty?
           msg = @inbox.pop
 
           # extract sync or async call
@@ -183,9 +188,8 @@ module ETH
         yield
       end
 
-      private
-      def raise_stop_error
-        raise StopError.new
+      def raise_error(e)
+        raise e
       end
     end
 

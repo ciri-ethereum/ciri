@@ -9,6 +9,8 @@ module ETH
     # represent a connected remote node
     class Peer
 
+      class DiscoverError < StandardError
+      end
       class UnknownMessageCodeError < StandardError
       end
 
@@ -54,10 +56,13 @@ module ETH
           msg.received_at = Time.now
           handle(msg)
         end
+      rescue StandardError => e
+        self << [:raise_error, e]
       end
 
       def start_protocols
         @protocols.each do |protocol|
+          protocol.executor ||= executor
           protocol.start(self, @protocol_io_hash[protocol.name])
         end
       end
@@ -65,6 +70,9 @@ module ETH
       def handle(msg)
         if msg.code == RLPX::MESSAGES[:ping]
           #TODO send pong
+        elsif msg.code == RLPX::MESSAGES[:discover]
+          reason = RLP.decode(msg.payload).ord
+          raise DiscoverError.new("receive error discovery message, reason: #{reason}")
         else
           # send msg to sub protocol
           if (protocol = find_protocol_by_msg_code(msg.code)).nil?
@@ -76,9 +84,11 @@ module ETH
 
       private
       def find_protocol_by_msg_code(code)
-        @protocols.find do |protocol|
-          code >= protocol.offset && code <= protocol.offset + protocol.length
-        end
+        @protocol_io_hash.values.find do |protocol_io|
+          offset = protocol_io.offset
+          protocol = protocol_io.protocol
+          code >= offset && code < offset + protocol.length
+        end.protocol
       end
 
       # return protocol_io_hash
@@ -88,7 +98,7 @@ module ETH
         offset = RLPX::BASE_PROTOCOL_LENGTH
         result = {}
         # [name, version] as key
-        protocols_hash = protocols.map {|protocol| [protocol.name, protocol.version]}.to_h
+        protocols_hash = protocols.map {|protocol| [[protocol.name, protocol.version], protocol]}.to_h
         sorted_caps = caps.sort_by {|c| [c.name, c.version]}
 
         sorted_caps.each do |cap|
@@ -97,7 +107,7 @@ module ETH
           # ignore same name old protocols
           if (old = result[cap.name])
             result.delete(cap.name)
-            offset -= old.length
+            offset -= old.protocol.length
           end
           result[cap.name] = ProtocolIO.new(protocol, offset, io)
           # move offset, to support next protocol

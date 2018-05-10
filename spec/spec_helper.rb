@@ -11,4 +11,8 @@ RSpec.configure do |config|
   config.expect_with :rspec do |c|
     c.syntax = :expect
   end
+
+  # set concurrent ruby logger
+  require 'concurrent'
+  Concurrent.use_simple_logger(level = Logger::DEBUG)
 end
