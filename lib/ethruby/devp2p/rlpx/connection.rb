@@ -47,7 +47,10 @@ module ETH
         # protocol handshake
         def protocol_handshake!(our_hs)
           @frame_io.send_data(MESSAGES[:handshake], our_hs.rlp_encode!)
-          read_protocol_handshake
+          remote_hs = read_protocol_handshake
+          # enable snappy compress if remote peer support
+          @frame_io.snappy = remote_hs.version >= SNAPPY_PROTOCOL_VERSION
+          remote_hs
         end
 
         private

@@ -5,6 +5,8 @@ require 'ethruby/rlp/serializable'
 require_relative 'error'
 require_relative 'message'
 
+require 'snappy'
+
 module ETH
   module DevP2P
     module RLPX
@@ -23,9 +25,12 @@ module ETH
         class InvalidError < Error
         end
 
+        attr_accessor :snappy
+
         def initialize(io, secrets)
           @io = io
           @secrets = secrets
+          @snappy = false # snappy compress
 
           mac_aes_version = secrets.mac.size * 8
           @mac = OpenSSL::Cipher.new("AES#{mac_aes_version}")
@@ -50,6 +55,15 @@ module ETH
 
         def write_msg(msg)
           pkg_type = RLP.encode_with_type msg.code, :int, zero: "\x00"
+
+          # use snappy compress if enable
+          if snappy
+            if msg.size > MAX_MESSAGE_SIZE
+              raise OverflowError.new("Message size is overflow, msg size: #{msg.size}")
+            end
+            msg.payload = Snappy.deflate(msg.payload)
+            msg.size = msg.payload.size
+          end
 
           # write header
           head_buf = "\x00".b * 32
@@ -111,7 +125,15 @@ module ETH
           frame_content = @decrypt.update(frame_buf) + @decrypt.final
           frame_content = frame_content[0...frame_size]
           msg_code = RLP.decode_with_type frame_content[0], :int
-          Message.new(code: msg_code, size: frame_content.size - 1, payload: frame_content[1..-1])
+          msg = Message.new(code: msg_code, size: frame_content.size - 1, payload: frame_content[1..-1])
+
+          # snappy decompress if enable
+          if snappy
+            msg.payload = Snappy.inflate(msg.payload)
+            msg.size = msg.payload.size
+          end
+
+          msg
         end
 
         private

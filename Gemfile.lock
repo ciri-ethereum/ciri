@@ -5,6 +5,7 @@ PATH
       bitcoin-secp256k1 (~> 0.4.0)
       concurrent-ruby (~> 1.0.5)
       digest-sha3 (~> 1.1.0)
+      snappy (~> 0.0.17)
 
 GEM
   remote: https://rubygems.org/
@@ -29,6 +30,7 @@ GEM
       diff-lcs (>= 1.2.0, < 2.0)
       rspec-support (~> 3.7.0)
     rspec-support (3.7.1)
+    snappy (0.0.17)
 
 PLATFORMS
   ruby
