@@ -3,23 +3,11 @@
 require 'stringio'
 require 'ethruby/rlp/serializable'
 require_relative 'error'
+require_relative 'message'
 
 module ETH
   module DevP2P
     module RLPX
-
-      # RLPX message
-      class Message
-        include ETH::RLP::Serializable
-
-        schema [
-                 {code: :int},
-                 {size: :int},
-                 :payload,
-                 :received_at
-               ]
-        default_data(received_at: nil)
-      end
 
       class FrameIO
 

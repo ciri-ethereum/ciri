@@ -4,7 +4,7 @@ require 'ethruby/rlp'
 require 'socket'
 require 'forwardable'
 require_relative 'frame_io'
-require_relative 'messages'
+require_relative 'protocol_messages'
 require_relative 'error'
 require_relative 'encryption_handshake'
 

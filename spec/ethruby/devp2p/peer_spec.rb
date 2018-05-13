@@ -30,21 +30,12 @@ RSpec.describe ETH::DevP2P::Peer do
 
   let(:mock_protocol) do
     Class.new(ETH::DevP2P::Protocol) do
-      attr_reader :histories, :peer, :protocol_io
-
-      def initialize(*args)
-        super(*args)
-        @histories = []
-      end
+      attr_reader :peer, :protocol_io
 
       def start(peer, io)
         @peer = peer
         @protocol_io = io
         super
-      end
-
-      def handle_msg(msg)
-        histories << msg
       end
     end
   end
@@ -82,21 +73,21 @@ RSpec.describe ETH::DevP2P::Peer do
     protocol_1.send_stop
     protocol_1.wait
     expect(protocol_1.peer).to be peer
-    expect(protocol_1.protocol_io.io).to be connection
-    expect(protocol_1.histories).to eq [msg_1, msg_2]
+    expect(protocol_1.protocol_io.read_msg).to eq msg_1
+    expect(protocol_1.protocol_io.read_msg).to eq msg_2
+    expect(protocol_1.protocol_io.msg_queue.empty?).to be_truthy
 
     # old 'eth' protocol
     protocol_2.send_stop
     protocol_2.wait
     expect(protocol_2.peer).to be peer
-    expect(protocol_2.protocol_io.io).to be connection
-    expect(protocol_2.histories).to eq []
+    expect(protocol_2.protocol_io.msg_queue.empty?).to be_truthy
 
     # 'hello' protocol
     protocol_3.send_stop
     protocol_3.wait
     expect(protocol_3.peer).to be peer
-    expect(protocol_3.protocol_io.io).to be connection
-    expect(protocol_3.histories).to eq [msg_3]
+    expect(protocol_3.protocol_io.read_msg).to eq msg_3
+    expect(protocol_3.protocol_io.msg_queue.empty?).to be_truthy
   end
 end

@@ -2,6 +2,7 @@
 
 require_relative 'rlpx'
 require_relative 'actor'
+require_relative 'protocol_io'
 
 module ETH
   module DevP2P
@@ -12,17 +13,6 @@ module ETH
       class DiscoverError < StandardError
       end
       class UnknownMessageCodeError < StandardError
-      end
-
-      # helper class for send/read sub protocol msg
-      class ProtocolIO
-        attr_reader :protocol, :offset, :io
-
-        def initialize(protocol, offset, io)
-          @protocol = protocol
-          @offset = offset
-          @io = io
-        end
       end
 
       include Actor
@@ -75,20 +65,20 @@ module ETH
           raise DiscoverError.new("receive error discovery message, reason: #{reason}")
         else
           # send msg to sub protocol
-          if (protocol = find_protocol_by_msg_code(msg.code)).nil?
+          if (protocol_io = find_protocol_io_by_msg_code(msg.code)).nil?
             raise UnknownMessageCodeError.new("can't find protocol with msg code #{msg.code}")
           end
-          protocol << [:handle_msg, msg]
+          protocol_io.msg_queue << msg
         end
       end
 
       private
-      def find_protocol_by_msg_code(code)
+      def find_protocol_io_by_msg_code(code)
         @protocol_io_hash.values.find do |protocol_io|
           offset = protocol_io.offset
           protocol = protocol_io.protocol
           code >= offset && code < offset + protocol.length
-        end.protocol
+        end
       end
 
       # return protocol_io_hash
