@@ -68,6 +68,26 @@ RSpec.describe ETH::RLP::Serializable do
       expect(hs.listen_port).to eq 0
       expect(hs.caps[0].name).to eq 'eth'
     end
+
+    it 'decode eth getBlockHashes' do
+      get_block_hashes = Class.new do
+        include ETH::RLP::Serializable
+        CODE = 0x03
+        schema [
+                 {hash_or_number: :int},
+                 {amount: :int},
+                 {skip: :int},
+                 {reverse: :bool},
+               ]
+      end
+
+      encoded_handshake = ['c7831d4c00018080'].pack("H*")
+      msg = get_block_hashes.rlp_decode(encoded_handshake)
+      expect(msg.hash_or_number).to eq 1920000
+      expect(msg.amount).to eq 1
+      expect(msg.skip).to eq 0
+      expect(msg.reverse).to be_falsey
+    end
   end
 
 end

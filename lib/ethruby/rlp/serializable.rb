@@ -201,7 +201,7 @@ module ETH
           elsif type == :bool
             if item == ETH::Utils.big_endian_encode(0x01)
               true
-            elsif item == ETH::Utils.big_endian_encode(0x80)
+            elsif item == '' || item == ETH::Utils.big_endian_encode(0x80)
               false
             else
               raise InvalidValueError.new "invalid bool value #{item}"
