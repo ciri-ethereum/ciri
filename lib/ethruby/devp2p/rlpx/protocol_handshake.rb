@@ -11,7 +11,7 @@ module ETH
 
         schema [
                  :name,
-                 {version: :int}
+                 {version: Integer}
                ]
       end
 
@@ -20,10 +20,10 @@ module ETH
         include ETH::RLP::Serializable
 
         schema [
-                 {version: :int},
+                 {version: Integer},
                  :name,
                  {caps: [Cap]},
-                 {listen_port: :int},
+                 {listen_port: Integer},
                  :id
                ]
         default_data(listen_port: 0)

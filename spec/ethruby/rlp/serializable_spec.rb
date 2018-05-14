@@ -9,8 +9,8 @@ RSpec.describe ETH::RLP::Serializable do
 
       schema [
                :signature,
-               {nonce: [:int]},
-               {version: :int}
+               {nonce: [Integer]},
+               {version: Integer}
              ]
       default_data(version: 1)
     end
@@ -46,7 +46,7 @@ RSpec.describe ETH::RLP::Serializable do
 
         schema [
                  :name,
-                 {version: :int}
+                 {version: Integer}
                ]
       end
 
@@ -54,10 +54,10 @@ RSpec.describe ETH::RLP::Serializable do
         include ETH::RLP::Serializable
 
         schema [
-                 {version: :int},
+                 {version: Integer},
                  :name,
                  {caps: [my_cap]},
-                 {listen_port: :int},
+                 {listen_port: Integer},
                  :id
                ]
       end
@@ -74,10 +74,10 @@ RSpec.describe ETH::RLP::Serializable do
         include ETH::RLP::Serializable
         CODE = 0x03
         schema [
-                 {hash_or_number: :int},
-                 {amount: :int},
-                 {skip: :int},
-                 {reverse: :bool},
+                 {hash_or_number: Integer},
+                 {amount: Integer},
+                 {skip: Integer},
+                 {reverse: ETH::RLP::Bool},
                ]
       end
 

@@ -5,18 +5,22 @@ require 'ethruby/utils'
 module ETH
   module RLP
 
+    # represent bool types: true | false
+    class Bool
+    end
+
     # Serializable module allow ruby objects serialize/deserialize to or from RLP encoding.
     # See ETH::RLP::Serializable::TYPES for supported type.
     #
     # schema method define ordered data structure for class, and determine how to encoding objects.
     #
-    # schema follow `{attr_name: :type}` format,
+    # schema follow `{attr_name: type}` format,
     # if attr is raw type(string or array of string), you can just use `:attr_name` to define it
-    # schema simple types include :int, :bool, :raw(string or array of string)...
+    # schema simple types include Integer, Bool, String, Array...
     #
     # schema also support complex types: array and serializable.
     #
-    # array types represented as `{attr_name: [:type]}`, for example: `{bills: [:int]}` means value of bill attr is an array of int
+    # array types represented as `{attr_name: [type]}`, for example: `{bills: [Integer]}` means value of bill attr is an array of integer
     # serializable type represent value of attr is a RLP serializable object
     #
     #
@@ -29,8 +33,8 @@ module ETH
     #     schema [
     #              :signature, # raw type: string
     #              {initiator_pubkey: MySerializableKey}, # this attr is a RLP serializable object
-    #              {nonce: [:int]},
-    #              {version: :int}
+    #              {nonce: [Integer]},
+    #              {version: Integer}
     #            ]
     #
     #     # default values
@@ -43,7 +47,8 @@ module ETH
     #   msg == msg2 # true
     #
     module Serializable
-      TYPES = %i{raw int bool}.map {|key| [key, true]}.to_h.freeze
+      # nil represent RLP raw value(string or array of string)
+      TYPES = [nil, Integer, Bool].map {|key| [key, true]}.to_h.freeze
 
       # Schema specific columns types of classes, normally you should not use Serializable::Schema directly
       #
@@ -59,7 +64,7 @@ module ETH
           @_schema = {}
 
           schema.each do |key|
-            key, type = key.is_a?(Hash) ? key.to_a[0] : [key, :raw]
+            key, type = key.is_a?(Hash) ? key.to_a[0] : [key, nil]
             raise InvalidSchemaError.new("missing type #{type} for key #{key}") unless check_key_type(type)
             keys << key
             @_schema[key] = type
@@ -156,7 +161,7 @@ module ETH
         # use this method before RLP.encode
         # encode item to string or array
         def encode_with_type(item, type, zero: '')
-          if type == :int
+          if type == Integer
             if item == 0
               "\x80".b
             elsif item < 128
@@ -165,7 +170,7 @@ module ETH
               buf = ETH::Utils.big_endian_encode(item, zero)
               [0x80 + buf.size].pack("c*") + buf
             end
-          elsif type == :bool
+          elsif type == Bool
             ETH::Utils.big_endian_encode(item ? 0x01 : 0x80)
           elsif type.is_a?(Class) && type < Serializable
             item.rlp_encode!(raw: false)
@@ -176,6 +181,7 @@ module ETH
               raise InvalidValueError.new "type size should be 1, got #{type}"
             end
           else
+            raise InvalidValueError.new "unknown type #{type}" unless TYPES.key?(type)
             item
           end
         end
@@ -186,10 +192,10 @@ module ETH
         # Examples:
         #
         #   item = ETH::RLP.decode(encoded_text)
-        #   decode_with_type(item, :int)
+        #   decode_with_type(item, Integer)
         #
         def decode_with_type(item, type)
-          if type == :int
+          if type == Integer
             if item == "\x80".b || item.empty?
               0
             elsif item[0].ord < 0x80
@@ -198,7 +204,7 @@ module ETH
               size = item[0].ord - 0x80
               ETH::Utils.big_endian_decode(item[1..size])
             end
-          elsif type == :bool
+          elsif type == Bool
             if item == ETH::Utils.big_endian_encode(0x01)
               true
             elsif item == '' || item == ETH::Utils.big_endian_encode(0x80)
@@ -212,6 +218,7 @@ module ETH
           elsif type.is_a?(Array)
             item.map {|i| decode_with_type(i, type[0])}
           else
+            raise InvalidValueError.new "unknown type #{type}" unless TYPES.key?(type)
             item
           end
         end

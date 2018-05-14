@@ -12,8 +12,8 @@ module ETH
         include ETH::RLP::Serializable
 
         schema [
-                 {code: :int},
-                 {size: :int},
+                 {code: Integer},
+                 {size: Integer},
                  :payload,
                  :received_at
                ]

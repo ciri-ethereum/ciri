@@ -50,19 +50,19 @@ RSpec.describe ETH::RLP::Encode do
 
   context 'encode int' do
     it '0' do
-      expect(ETH::RLP.encode_with_type(0, :int)).to eq "\x80".b
+      expect(ETH::RLP.encode_with_type(0, Integer)).to eq "\x80".b
     end
 
     it '127' do
-      expect(ETH::RLP.encode_with_type(127, :int)).to eq "\x7f".b
+      expect(ETH::RLP.encode_with_type(127, Integer)).to eq "\x7f".b
     end
 
     it '128' do
-      expect(ETH::RLP.encode_with_type(128, :int)).to eq "\x81\x80".b
+      expect(ETH::RLP.encode_with_type(128, Integer)).to eq "\x81\x80".b
     end
 
     it '1024' do
-      expect(ETH::RLP.encode_with_type(1024, :int)).to eq "\x82\x04\x00".b
+      expect(ETH::RLP.encode_with_type(1024, Integer)).to eq "\x82\x04\x00".b
     end
   end
 end

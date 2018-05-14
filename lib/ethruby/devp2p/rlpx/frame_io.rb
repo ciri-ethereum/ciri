@@ -54,7 +54,7 @@ module ETH
         end
 
         def write_msg(msg)
-          pkg_type = RLP.encode_with_type msg.code, :int, zero: "\x00"
+          pkg_type = RLP.encode_with_type msg.code, Integer, zero: "\x00"
 
           # use snappy compress if enable
           if snappy
@@ -124,7 +124,7 @@ module ETH
           # decrypt frame
           frame_content = @decrypt.update(frame_buf) + @decrypt.final
           frame_content = frame_content[0...frame_size]
-          msg_code = RLP.decode_with_type frame_content[0], :int
+          msg_code = RLP.decode_with_type frame_content[0], Integer
           msg = Message.new(code: msg_code, size: frame_content.size - 1, payload: frame_content[1..-1])
 
           # snappy decompress if enable

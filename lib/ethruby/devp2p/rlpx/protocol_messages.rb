@@ -28,7 +28,7 @@ module ETH
                  :signature,
                  :initiator_pubkey,
                  :nonce,
-                 {version: :int}
+                 {version: Integer}
                ]
 
         # keep this field let client known how to format(plain or eip8)
@@ -41,7 +41,7 @@ module ETH
         schema [
                  :random_pubkey,
                  :nonce,
-                 {version: :int}
+                 {version: Integer}
                ]
       end
     end
