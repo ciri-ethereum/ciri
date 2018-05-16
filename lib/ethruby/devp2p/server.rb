@@ -168,7 +168,8 @@ module ETH
         end
 
         def remove_peer(peer, *args)
-          logger.debug("remove peer: #{peer}")
+          error, * = args
+          logger.debug("remove peer: #{peer}, error: #{error}")
         end
 
         def task_done(task, *args)
