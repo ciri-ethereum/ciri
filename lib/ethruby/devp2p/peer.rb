@@ -61,7 +61,7 @@ module ETH
         if msg.code == RLPX::MESSAGES[:ping]
           #TODO send pong
         elsif msg.code == RLPX::MESSAGES[:discover]
-          reason = RLP.decode(msg.payload).ord
+          reason = RLP.decode_with_type(msg.payload, Integer)
           raise DiscoverError.new("receive error discovery message, reason: #{reason}")
         else
           # send msg to sub protocol
