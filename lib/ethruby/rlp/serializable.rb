@@ -7,6 +7,8 @@ module ETH
 
     # represent bool types: true | false
     class Bool
+      ENCODED_TRUE = ETH::Utils.big_endian_encode(0x01)
+      ENCODED_FALSE = ETH::Utils.big_endian_encode(0x00)
     end
 
     # Serializable module allow ruby objects serialize/deserialize to or from RLP encoding.
@@ -171,7 +173,7 @@ module ETH
               [0x80 + buf.size].pack("c*") + buf
             end
           elsif type == Bool
-            ETH::Utils.big_endian_encode(item ? 0x01 : 0x80)
+            item ? Bool::ENCODED_TRUE : Bool::ENCODED_FALSE
           elsif type.is_a?(Class) && type < Serializable
             item.rlp_encode!(raw: false)
           elsif type.is_a?(Array)
@@ -205,9 +207,9 @@ module ETH
               ETH::Utils.big_endian_decode(item[1..size])
             end
           elsif type == Bool
-            if item == ETH::Utils.big_endian_encode(0x01)
+            if item == Bool::ENCODED_TRUE
               true
-            elsif item == '' || item == ETH::Utils.big_endian_encode(0x80)
+            elsif item == Bool::ENCODED_FALSE
               false
             else
               raise InvalidValueError.new "invalid bool value #{item}"
