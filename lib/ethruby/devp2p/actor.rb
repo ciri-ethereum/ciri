@@ -1,4 +1,7 @@
 # frozen_string_literal: true
+
+require 'logger'
+
 module ETH
   module DevP2P
 
@@ -30,6 +33,8 @@ module ETH
     #   actor.wait
     #
     module Actor
+
+      LOGGER = Logger.new(STDERR, datetime_format: '%Y-%m-%d %H:%M:%S', level: Logger::INFO)
 
       # future, use this to wait actor msg respond
       class Future
@@ -167,6 +172,7 @@ module ETH
         @future.value = nil
       rescue StandardError => e
         @future.raise_error e
+        LOGGER.error("Actor #{self}") {"#{e}\n#{e.backtrace.join("\n")}"}
       ensure
         @running = false
       end
