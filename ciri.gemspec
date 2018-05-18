@@ -9,8 +9,8 @@ Gem::Specification.new do |spec|
   spec.authors       = ["Jiang Jinyang"]
   spec.email         = ["jjyruby@gmail.com"]
 
-  spec.summary       = %q{Ruby implementation of the ethereum}
-  spec.description   = %q{Ciri project intent to implement full feature set of ethereum in pure ruby, to provide both usable cli and well documented ruby library.}
+  spec.summary       = %q{Ciri ethereum client.}
+  spec.description   = %q{Ciri project intent to implement a full feature set ethereum client.}
   spec.homepage      = "https://github.com/ruby-ethereum/ethereum"
   spec.license       = "MIT"
 
