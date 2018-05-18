@@ -1,7 +1,7 @@
-Ethruby
+Ciri
 ===============
 
-Ethruby project intent to implement full feature set of ethereum in pure ruby, to provide both usable cli and well documented ruby library.
+Ciri project intent to implement a full feature set ethereum client.
 
 ### Check List
 
@@ -26,23 +26,23 @@ Ethruby project intent to implement full feature set of ethereum in pure ruby, t
 ### Install
 
 ``` bash
-gem install ethruby
+gem install ciri
 ```
 
 As library
 
 ``` ruby
-require 'ethruby'
-puts ETH::Version
+require 'ciri'
+puts Ciri::Version
 ```
 
 ### Command line
 
-`eth -h`
+`ciri -h`
 
 ### Documentation
 
-[YARD documentation](https://www.rubydoc.info/github/ruby-ethereum/ethereum/master)
+[YARD documentation](https://www.rubydoc.info/github/ruby-ethereum/ciri/master)
 
 ### Author
 
