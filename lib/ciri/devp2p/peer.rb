@@ -22,8 +22,8 @@
 # THE SOFTWARE.
 
 
+require 'ciri/actor'
 require_relative 'rlpx'
-require_relative 'actor'
 require_relative 'protocol_io'
 
 module Ciri
@@ -74,7 +74,7 @@ module Ciri
 
       def start_protocols
         @protocols.each do |protocol|
-          protocol.start.(self, @protocol_io_hash[protocol.name])
+          protocol.start(self, @protocol_io_hash[protocol.name])
         end
       end
 

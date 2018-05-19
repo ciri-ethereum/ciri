@@ -24,10 +24,10 @@
 
 require 'concurrent'
 require 'forwardable'
+require 'ciri/actor'
 require_relative 'rlpx/connection'
 require_relative 'rlpx/protocol_handshake'
 require_relative 'peer'
-require_relative 'actor'
 
 module Ciri
   module DevP2P
@@ -49,10 +49,10 @@ module Ciri
       attr_reader :handshake, :dial, :scheduler, :protocol_manage, :protocols
       attr_accessor :logger, :bootstrap_nodes
 
-      def initialize(private_key:, protocol_manage:, executor:)
+      def initialize(private_key:, protocol_manage:)
         @private_key = private_key
         @name = 'ciri'
-        @scheduler = Scheduler.new(self, executor: executor)
+        @scheduler = Scheduler.new(self)
         @protocol_manage = protocol_manage
         @protocols = protocol_manage.protocols
       end
@@ -66,7 +66,6 @@ module Ciri
         @handshake = ProtocolHandshake.new(version: BASE_PROTOCOL_VERSION, name: @name, id: server_node_id.id, caps: caps)
         # start listen tcp
         @dial = Dial.new(self)
-        @protocol_manage.executor ||= @scheduler.executor
         @protocol_manage.start
         @scheduler.start
       end
@@ -130,13 +129,13 @@ module Ciri
         attr_reader :server
         def_delegators :server, :logger
 
-        def initialize(server, executor:)
+        def initialize(server)
           @server = server
           @queued_tasks = []
           @running_tasks = []
           @peers = {}
           # init actor
-          super(executor: executor)
+          super()
         end
 
         # called by actor loop
@@ -171,8 +170,6 @@ module Ciri
         def add_peer(connection, handshake)
           server.protocol_handshake_checks(handshake)
           peer = Peer.new(connection, handshake, server.protocols)
-          # set actor executor
-          peer.executor = executor
           @peers[peer.node_id] = peer
           # run peer logic
           # do sub protocol handshake...

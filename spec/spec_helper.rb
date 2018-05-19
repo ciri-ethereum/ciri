@@ -12,7 +12,7 @@ RSpec.configure do |config|
     c.syntax = :expect
   end
 
-  # set concurrent ruby logger
+  # set concurrent logger
   require 'concurrent'
   Concurrent.use_simple_logger(level = Logger::DEBUG)
 end

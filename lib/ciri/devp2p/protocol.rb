@@ -22,8 +22,6 @@
 # THE SOFTWARE.
 
 
-require_relative 'actor'
-
 module Ciri
   module DevP2P
 
@@ -31,12 +29,22 @@ module Ciri
     class Protocol
 
       attr_reader :name, :version, :length
-      attr_accessor :node_info, :peer_info, :start
+      attr_accessor :node_info, :peer_info
 
       def initialize(name:, version:, length:)
         @name = name
         @version = version
         @length = length
+        @start = nil
+      end
+
+      def start=(start_proc)
+        @start = start_proc
+      end
+
+      def start(peer, io)
+        raise NotImplementedError.new('not set protocol start proc') unless @start
+        @start.call(peer, io)
       end
     end
 

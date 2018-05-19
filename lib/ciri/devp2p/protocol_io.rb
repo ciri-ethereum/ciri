@@ -21,7 +21,7 @@
 # THE SOFTWARE.
 
 
-require_relative 'actor'
+require 'ciri/actor'
 require_relative 'rlpx/message'
 
 module Ciri

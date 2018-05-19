@@ -23,10 +23,10 @@
 
 require 'spec_helper'
 require 'concurrent'
-require 'ciri/devp2p/actor'
+require 'ciri/actor'
 
 my_actor = Class.new do
-  include Ciri::DevP2P::Actor
+  include Ciri::Actor
 
   def histories
     @histories ||= []
@@ -50,7 +50,7 @@ my_actor = Class.new do
   end
 end
 
-RSpec.describe Ciri::DevP2P::Actor do
+RSpec.describe Ciri::Actor do
   let(:executor) {Concurrent::FixedThreadPool.new(1)}
   let(:actor) {my_actor.new(executor: executor)}
 
@@ -91,6 +91,6 @@ RSpec.describe Ciri::DevP2P::Actor do
   it 'wait' do
     expect do
       actor.wait
-    end.to raise_error(Ciri::DevP2P::Actor::StateError)
+    end.to raise_error(Ciri::Actor::StateError)
   end
 end
