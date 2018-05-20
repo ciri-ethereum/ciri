@@ -1,0 +1,27 @@
+FROM ruby:2.5.1
+MAINTAINER Jiang Jinyang<jjyruby@gmail.com>
+
+RUN apt-get update -y
+RUN apt-get install -y cmake
+
+# install bitcoin secp256k1
+WORKDIR /build
+RUN git clone https://github.com/bitcoin-core/secp256k1.git
+WORKDIR /build/secp256k1
+RUN git checkout 452d8e4d2a2f9f1b5be6b02e18f1ba102e5ca0b4
+RUN ./autogen.sh
+RUN ./configure --enable-module-recovery --enable-experimental --enable-module-ecdh
+RUN make && make install
+
+# install snappy
+#WORKDIR /build
+#RUN git clone https://github.com/google/snappy.git
+#WORKDIR /build/snappy
+#RUN git checkout 1.1.7 && cmake . && make install
+RUN apt-get install -y libsnappy-dev
+
+WORKDIR /app
+COPY . /app
+
+# bundle
+RUN bundle install
