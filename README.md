@@ -5,7 +5,8 @@ Ciri
 
 Ciri project intent to implement a full feature set ethereum client.
 
-### Check List
+Check List
+---------------
 
 * [ ] RLPX
   * [x] HandShake
@@ -25,27 +26,45 @@ Ciri project intent to implement a full feature set ethereum client.
 * [ ] Web3 RPC
 * [ ] CLI
 
-### Install
+Installation
+---------------
 
 ``` bash
 gem install ciri
 ```
 
-As library
-
-``` ruby
-require 'ciri'
-puts Ciri::Version
-```
-
-### Command line
+Usage
+---------------
 
 `ciri -h`
 
-### Documentation
+Develop
+---------------
+
+Ciri depends on [secp256k1](https://github.com/bitcoin-core/secp256k1) and [snappy](https://github.com/google/snappy).
+
+It's recommended to use docker to handle Ciri environment and dependencies:
+``` bash
+docker -v
+
+# prepare Ciri base image
+rake docker:base
+# run tests
+rake docker:test
+``` 
+Check [docker](/docker) directory for docker-files.
+ 
+Otherwise you need install these libraries first (remember check [docker](/docker) directory for hint).
+
+then run: 
+`bundle install && bundle exec rake`
+
+Documentation
+---------------
 
 [YARD documentation](https://www.rubydoc.info/github/ruby-ethereum/ciri/master)
 
-### Author
+Authors
+---------------
 
-[Jiang Jinyang](https://justjjy.com)
+* [Jiang Jinyang](https://justjjy.com) <jjyruby@gmail.com>
