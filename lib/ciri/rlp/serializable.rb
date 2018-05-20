@@ -29,7 +29,7 @@ module Ciri
     # represent bool types: true | false
     class Bool
       ENCODED_TRUE = Ciri::Utils.big_endian_encode(0x01)
-      ENCODED_FALSE = Ciri::Utils.big_endian_encode(0x00)
+      ENCODED_FALSE = Ciri::Utils.big_endian_encode(0x80)
     end
 
     # Serializable module allow ruby objects serialize/deserialize to or from RLP encoding.
@@ -76,6 +76,9 @@ module Ciri
       # Schema specific columns types of classes, normally you should not use Serializable::Schema directly
       #
       class Schema
+        include Encode
+        include Decode
+
         class InvalidSchemaError < StandardError
         end
 
@@ -109,23 +112,24 @@ module Ciri
           end
         end
 
-        def rlp_encode!(data, raw: true)
+        def rlp_encode!(data)
           # pre-encode, encode data to rlp compatible format(only string or array)
           data_list = keys.map do |key|
-            Serializable.encode_with_type(data[key], self[key])
+            encode_with_type(data[key], self[key])
           end
-          raw ? RLP.encode(data_list) : data_list
+          encode_list(data_list)
         end
 
-        def rlp_decode!(input, raw: true)
-          data = raw ? RLP.decode(input) : input
-          keys.each_with_index.map do |key, i|
-            # decode data by type
-            decoded_item = Serializable.decode_with_type(data[i], self[key])
-            [key, decoded_item]
-          end.to_h
+        def rlp_decode!(input)
+          values = decode_list(input) do |list, stream|
+            keys.each do |key|
+              # decode data by type
+              list << decode_with_type(stream, self[key])
+            end
+          end
+          # convert to key value hash
+          keys.zip(values).to_h
         end
-
 
         private
         def check_key_type(type)
@@ -143,7 +147,7 @@ module Ciri
       module ClassMethods
         # Decode object from input
         def rlp_decode(input, raw: true)
-          data = schema.rlp_decode!(input, raw: raw)
+          data = schema.rlp_decode!(input)
           self.new(data)
         end
 
@@ -180,71 +184,6 @@ module Ciri
         def included(base)
           base.send :extend, ClassMethods
         end
-
-        # use this method before RLP.encode
-        # encode item to string or array
-        def encode_with_type(item, type, zero: '')
-          if type == Integer
-            if item == 0
-              "\x80".b
-            elsif item < 128
-              Ciri::Utils.big_endian_encode(item, zero)
-            else
-              buf = Ciri::Utils.big_endian_encode(item, zero)
-              [0x80 + buf.size].pack("c*") + buf
-            end
-          elsif type == Bool
-            item ? Bool::ENCODED_TRUE : Bool::ENCODED_FALSE
-          elsif type.is_a?(Class) && type < Serializable
-            item.rlp_encode!(raw: false)
-          elsif type.is_a?(Array)
-            if type.size == 1 # array type
-              item.map {|i| encode_with_type(i, type[0])}
-            else # unknown
-              raise InvalidValueError.new "type size should be 1, got #{type}"
-            end
-          else
-            raise InvalidValueError.new "unknown type #{type}" unless TYPES.key?(type)
-            item
-          end
-        end
-
-        # Use this method after RLP.decode, decode values from string or array to specific types
-        # see Ciri::RLP::Serializable::TYPES for supported types
-        #
-        # Examples:
-        #
-        #   item = Ciri::RLP.decode(encoded_text)
-        #   decode_with_type(item, Integer)
-        #
-        def decode_with_type(item, type)
-          if type == Integer
-            if item == "\x80".b || item.empty?
-              0
-            elsif item[0].ord < 0x80
-              Ciri::Utils.big_endian_decode(item)
-            else
-              size = item[0].ord - 0x80
-              Ciri::Utils.big_endian_decode(item[1..size])
-            end
-          elsif type == Bool
-            if item == Bool::ENCODED_TRUE
-              true
-            elsif item == Bool::ENCODED_FALSE
-              false
-            else
-              raise InvalidValueError.new "invalid bool value #{item}"
-            end
-          elsif type.is_a?(Class) && type < Serializable
-            # already decoded from RLP encoding
-            type.rlp_decode!(item, raw: false)
-          elsif type.is_a?(Array)
-            item.map {|i| decode_with_type(i, type[0])}
-          else
-            raise InvalidValueError.new "unknown type #{type}" unless TYPES.key?(type)
-            item
-          end
-        end
       end
 
       attr_reader :data
@@ -255,8 +194,8 @@ module Ciri
       end
 
       # Encode object to rlp encoding string
-      def rlp_encode!(raw: true)
-        self.class.schema.rlp_encode!(data, raw: raw)
+      def rlp_encode!
+        self.class.schema.rlp_encode!(data)
       end
 
       def ==(other)

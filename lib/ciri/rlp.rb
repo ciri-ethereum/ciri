@@ -27,62 +27,12 @@ require_relative 'rlp/serializable'
 
 module Ciri
   module RLP
+
     class InvalidValueError < StandardError
     end
 
-    class << self
+    extend Encode
+    extend Decode
 
-      # Decode input from rlp encoding, only produce string or array
-      #
-      # Examples:
-      #
-      #   Ciri::RLP.decode(input)
-      #
-      def decode(input, type = nil)
-        output = Decode.decode(input)
-        if type
-          output = decode_with_type(output, type)
-        end
-        output
-      end
-
-      # Encode input to rlp encoding, only allow string or array
-      #
-      # Examples:
-      #
-      #   Ciri::RLP.encode("hello world")
-      #
-      def encode(input, type = nil)
-        if type
-          input = encode_with_type(input, type)
-        end
-        Encode.encode(input)
-      end
-
-      # Use this method before RLP.encode, this method encode ruby objects to rlp friendly format, string or array.
-      # see Ciri::RLP::Serializable::TYPES for supported types
-      #
-      # Examples:
-      #
-      #   item = Ciri::RLP.encode_with_type(number, :int, zero: "\x00".b)
-      #   encoded_text = Ciri::RLP.encode(item)
-      #
-      def encode_with_type(item, type, zero: '')
-        Serializable.encode_with_type(item, type, zero: zero)
-      end
-
-      # Use this method after RLP.decode, decode values from string or array to specific types
-      # see Ciri::RLP::Serializable::TYPES for supported types
-      #
-      # Examples:
-      #
-      #   item = Ciri::RLP.decode(encoded_text)
-      #   number = Ciri::RLP.decode_with_type(item, :int)
-      #
-      def decode_with_type(item, type)
-        Serializable.decode_with_type(item, type)
-      end
-
-    end
   end
 end

@@ -64,5 +64,9 @@ RSpec.describe Ciri::RLP::Encode do
     it '1024' do
       expect(Ciri::RLP.encode_with_type(1024, Integer)).to eq "\x82\x04\x00".b
     end
+
+    it '1833967303248889' do
+      expect(Ciri::RLP.encode_with_type(1833967303248889, Integer)).to eq Ciri::Utils.hex_to_data("870683FBC9A3CBF9")
+    end
   end
 end

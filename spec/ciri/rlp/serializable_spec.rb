@@ -111,4 +111,37 @@ RSpec.describe Ciri::RLP::Serializable do
     end
   end
 
+  context 'self consistent' do
+    let(:raw_headers) {'f90213f90210a0e48ecfcb38189b103f389a719b782325bdf0f5c005871ea91cd11a52c30ac37ea01dcc4de8dec75d7aab85b567b6ccd41ad312451b948a7413f0a142fd40d4934794829bd824b016326a401d083b33d092293333a830a07007e575a80584487653324053b8ef65cd843fd09d7805eec9d8b840ba60e202a0abf18050f443bdc29bff9a959cb48bdf060861b89662484010ecbb0fdd8d3d9da07129bfc1aefeff683decb5060a00e2d002a2e2934516092aa34d6d62bdb3406fb901000000000000000010000200000000020200002000000000000d100000000000000000000000000000000000000040000200000100000040d00000000000000400000000000802040000000008000000100000000000200000000002000000000000000004020000000000084000000800002000000080000000000114001800000000020000000000800002000000000000000000008008000002000000000100008000000000000000000000400000000000000000400000000000000000000000000002000000000000000000000000008000000012000420000000800020000100000080000000000000000000000000000000000000000000000001000000870683fbc9a3cbf9833ffa818366251183173f8284599d077c8fe4b883e5bda9e7a59ee4bb99e9b1bca0b9566fe1fe4ae4b237a54955b88cc990e64013d1bed4761b32fbd45742825d4488d50741500da57701'}
+    let(:my_header) {
+      Class.new do
+        include Ciri::RLP::Serializable
+
+        schema [
+                 :parent_hash,
+                 :ommers_hash,
+                 :beneficiary,
+                 :state_root,
+                 :transactions_root,
+                 :receipts_root,
+                 :logs_bloom,
+                 {difficulty: Integer},
+                 {number: Integer},
+                 {gas_limit: Integer},
+                 {gas_used: Integer},
+                 {timestamp: Integer},
+                 :extra_data,
+                 :mix_hash,
+                 :nonce,
+               ]
+      end
+    }
+
+    it 'decode then encode again' do
+      raw_headers_b = [raw_headers].pack("H*")
+      headers = Ciri::RLP.decode(raw_headers_b, [my_header])
+      expect(Ciri::RLP.encode(headers, [my_header]).unpack("H*")[0]).to eq raw_headers
+    end
+  end
+
 end
