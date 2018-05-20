@@ -8,4 +8,4 @@ before_install:
   - docker pull ciriethereum/base:latest
 
 script:
-  - rake docker:test
+  - docker run --rm ciriethereum/base:latest rake

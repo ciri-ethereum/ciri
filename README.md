@@ -1,5 +1,6 @@
 Ciri
 ===============
+[![Build Status](https://travis-ci.org/ruby-ethereum/ciri.svg?branch=master)](https://travis-ci.org/ruby-ethereum/ciri)
 [![Gitter](https://badges.gitter.im/join.svg)](https://gitter.im/ciri-ethereum/Lobby)
 
 Ciri project intent to implement a full feature set ethereum client.

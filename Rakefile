@@ -15,6 +15,6 @@ namespace :docker do
 
   desc 'run tests in docker'
   task :test do
-    system("docker run --rm #{base_image}:latest")
+    system("docker run --rm #{base_image}:latest rake")
   end
 end
