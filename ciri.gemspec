@@ -10,7 +10,7 @@ Gem::Specification.new do |spec|
 
   spec.summary = %q{Ciri ethereum client.}
   spec.description = %q{Ciri project intent to implement a full feature set ethereum client.}
-  spec.homepage = "https://github.com/ruby-ethereum/ethereum"
+  spec.homepage = "https://github.com/ciri-ethereum/ciri"
   spec.license = "MIT"
 
   spec.files = `git ls-files -z`.split("\x0").reject do |f|

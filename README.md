@@ -1,6 +1,6 @@
 Ciri
 ===============
-[![Build Status](https://travis-ci.org/ruby-ethereum/ciri.svg?branch=master)](https://travis-ci.org/ruby-ethereum/ciri)
+[![Build Status](https://travis-ci.org/ciri-ethereum/ciri.svg?branch=master)](https://travis-ci.org/ciri-ethereum/ciri)
 [![Gitter](https://badges.gitter.im/join.svg)](https://gitter.im/ciri-ethereum/Lobby)
 
 Ciri project intent to implement a full feature set ethereum client.
@@ -62,7 +62,7 @@ then run:
 Documentation
 ---------------
 
-[YARD documentation](https://www.rubydoc.info/github/ruby-ethereum/ciri/master)
+[YARD documentation](https://www.rubydoc.info/github/ciri-ethereum/ciri/master)
 
 Authors
 ---------------
