@@ -61,6 +61,7 @@ module Ciri
       def initialize
         @value = nil
         @done = false
+        @queue = Queue.new
       end
 
       def value=(val)
@@ -79,7 +80,7 @@ module Ciri
           elsif @error
             raise @error
           else
-            queue.pop
+            @queue.pop
           end
         end
       end
@@ -88,11 +89,6 @@ module Ciri
         error.set_backtrace(caller) if error.backtrace.nil?
         @error = error
         @queue << :error if @queue
-      end
-
-      private
-      def queue
-        @queue ||= Queue.new
       end
     end
 
