@@ -14,11 +14,16 @@ RUN ./configure --enable-module-recovery --enable-experimental --enable-module-e
 RUN make && make install
 
 # install snappy
-#WORKDIR /build
-#RUN git clone https://github.com/google/snappy.git
-#WORKDIR /build/snappy
-#RUN git checkout 1.1.7 && cmake . && make install
 RUN apt-get install -y libsnappy-dev
+
+# install RocksDB
+RUN apt-get install -y libgflags-dev zlib1g-dev libbz2-dev liblz4-dev libzstd-dev
+WORKDIR /build
+RUN git clone https://github.com/facebook/rocksdb.git
+WORKDIR /build/rocksdb
+RUN git checkout -q v5.13.1
+RUN make shared_lib
+RUN make install-shared
 
 WORKDIR /app
 COPY . /app

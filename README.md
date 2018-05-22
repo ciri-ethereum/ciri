@@ -41,16 +41,22 @@ Usage
 Develop
 ---------------
 
-Ciri depends on [secp256k1](https://github.com/bitcoin-core/secp256k1) and [snappy](https://github.com/google/snappy).
+Ciri depends on [rocksdb](https://github.com/facebook/rocksdb), [secp256k1](https://github.com/bitcoin-core/secp256k1) and [snappy](https://github.com/google/snappy).
 
-It's recommended to use docker to handle Ciri environment and dependencies:
+It's recommended to use docker to handle dependencies:
 ``` bash
+# make sure we have installed docker, ruby and rake
 docker -v
+gem install rake
 
-# prepare Ciri base image
-rake docker:base
+# pull Ciri base image
+rake docker:pull_base
 # run tests
 rake docker:test
+# open a shell for develop
+rake docker:shell
+
+# cool, type 'rake -T' see other supported tasks 
 ``` 
 Check [docker](/docker) directory for docker-files.
  

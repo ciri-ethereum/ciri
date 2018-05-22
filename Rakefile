@@ -8,9 +8,25 @@ task :default => :spec
 namespace :docker do
   base_image = 'ciriethereum/base'
 
-  desc 'build base docker image'
-  task :base do
+  desc 'pull base docker image'
+  task :pull_base do
+    system("docker pull #{base_image}:latest")
+  end
+
+  desc 'build base docker image, rerun this task after updated Gemfile or Dockerfile'
+  task :build_base do
     system("docker build . -f docker/Base -t #{base_image}:latest")
+  end
+
+  desc 'open Ciri develop container shell'
+  task :shell do
+    container_name = 'ciri-develop'
+    if system("docker inspect #{container_name} > /dev/null")
+      system("docker start -i #{container_name}")
+    else
+      puts "start a new develop container: #{container_name}"
+      system("docker run -v `pwd`:/app -it --name #{container_name} #{base_image}:latest bash")
+    end
   end
 
   desc 'run tests in docker'
