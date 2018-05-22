@@ -189,7 +189,7 @@ module Ciri
         end
         # if future not nil, set value
         future.value = val if future
-      end while true
+      end until @inbox.closed?
 
     rescue StopError
       # actor stop
@@ -199,6 +199,7 @@ module Ciri
       LOGGER.error("Actor #{self}") {"#{e}\n#{e.backtrace.join("\n")}"}
     ensure
       @running = false
+      @inbox.close
     end
 
     # allow inject callback into actor loop
