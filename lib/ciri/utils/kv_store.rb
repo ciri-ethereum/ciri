@@ -21,7 +21,7 @@
 # THE SOFTWARE.
 
 
-require 'rocksdb'
+require_relative 'rocks_db'
 require 'forwardable'
 
 module Ciri
