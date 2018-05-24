@@ -71,6 +71,7 @@ module Ciri
       end
 
       private
+
       def db
         @db || raise(InvalidError.new 'db is not open')
       end

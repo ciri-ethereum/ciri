@@ -43,9 +43,9 @@ module Ciri
         attach_function :rocksdb_writeoptions_destroy, [:pointer], :void
         attach_function :rocksdb_readoptions_destroy, [:pointer], :void
         attach_function :rocksdb_options_destroy, [:pointer], :void
-        attach_function :rocksdb_put, [:pointer, :pointer, :string, :int, :string, :int, :pointer], :void
-        attach_function :rocksdb_get, [:pointer, :pointer, :string, :int, :pointer, :pointer], :string
-        attach_function :rocksdb_delete, [:pointer, :pointer, :string, :int, :pointer], :void
+        attach_function :rocksdb_put, [:pointer, :pointer, :pointer, :int, :pointer, :int, :pointer], :void
+        attach_function :rocksdb_get, [:pointer, :pointer, :pointer, :int, :pointer, :pointer], :pointer
+        attach_function :rocksdb_delete, [:pointer, :pointer, :pointer, :int, :pointer], :void
         attach_function :rocksdb_write, [:pointer, :pointer, :pointer, :pointer], :void
         # iterator
         attach_function :rocksdb_create_iterator, [:pointer, :pointer], :pointer
@@ -62,7 +62,7 @@ module Ciri
         # batch
         attach_function :rocksdb_writebatch_create, [], :pointer
         attach_function :rocksdb_writebatch_destroy, [:pointer], :void
-        attach_function :rocksdb_writebatch_put, [:pointer, :string, :int, :string, :int], :void
+        attach_function :rocksdb_writebatch_put, [:pointer, :pointer, :int, :pointer, :int], :void
         attach_function :rocksdb_writebatch_delete, [:pointer, :string, :int], :void
         attach_function :rocksdb_writebatch_count, [:pointer], :int
 
@@ -81,7 +81,10 @@ module Ciri
 
           def put(db, write_options, key, value)
             err_ptr = FFI::MemoryPointer.new :pointer
-            rocksdb_put(db, write_options, key, key.size, value, value.size + 1, err_ptr)
+            # use pointer to aboid ffi null string issue
+            key_ptr = FFI::MemoryPointer.from_string(key)
+            value_ptr = FFI::MemoryPointer.from_string(value)
+            rocksdb_put(db, write_options, key_ptr, key.size, value_ptr, value.size + 1, err_ptr)
             raise_error_from_point(Error, err_ptr)
             nil
           end
@@ -89,14 +92,17 @@ module Ciri
           def get(db, read_options, key)
             err_ptr = FFI::MemoryPointer.new :pointer
             value_len = FFI::MemoryPointer.new :int
-            value = RocksDBLib.rocksdb_get(db, read_options, key, key.size, value_len, err_ptr)
+            value_ptr = RocksDBLib.rocksdb_get(db, read_options, key, key.size, value_len, err_ptr)
             raise_error_from_point(Error, err_ptr)
-            value
+            len = value_len.read_int - 1
+            key_exists = len > 0 && !value_ptr.null?
+            key_exists ? value_ptr.read_string(len) : nil
           end
 
           def delete(db, write_options, key)
+            key_ptr = FFI::MemoryPointer.from_string(key)
             err_ptr = FFI::MemoryPointer.new :pointer
-            RocksDBLib.rocksdb_delete(db, write_options, key, key.size, err_ptr)
+            RocksDBLib.rocksdb_delete(db, write_options, key_ptr, key.size, err_ptr)
             raise_error_from_point(Error, err_ptr)
             nil
           end
@@ -109,7 +115,9 @@ module Ciri
           end
 
           def writebatch_put(batch, key, value)
-            rocksdb_writebatch_put(batch, key, key.size, value, value.size + 1)
+            key_ptr = FFI::MemoryPointer.from_string(key)
+            value_ptr = FFI::MemoryPointer.from_string(value)
+            rocksdb_writebatch_put(batch, key_ptr, key.size, value_ptr, value.size + 1)
             nil
           end
 
@@ -119,6 +127,7 @@ module Ciri
           end
 
           private
+
           def raise_error_from_point(error_klass, err_ptr)
             err = err_ptr.get_pointer(0)
             raise error_klass.new(err.read_string_to_null) unless err.null?

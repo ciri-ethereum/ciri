@@ -86,4 +86,13 @@ RSpec.describe Ciri::Utils::KVStore do
       store["eh?"]
     end.to raise_error(Ciri::Utils::KVStore::InvalidError)
   end
+
+  it 'handle null byte string' do
+    store.put "onetwo", "1\u00002"
+    expect(store["onetwo"]).to eq "1\u00002"
+
+    store.put "1\u00002", "onetwo"
+    expect(store["1\u00002"]).to eq "onetwo"
+  end
+
 end
