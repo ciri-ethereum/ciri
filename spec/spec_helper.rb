@@ -1,5 +1,6 @@
 require "bundler/setup"
 require "ciri"
+require_relative 'ciri/helpers/fixture_helpers'
 
 RSpec.configure do |config|
   # Enable flags like --only-failures and --next-failure
@@ -11,6 +12,8 @@ RSpec.configure do |config|
   config.expect_with :rspec do |c|
     c.syntax = :expect
   end
+
+  config.include FixtureHelpers
 
   # set concurrent logger
   require 'concurrent'

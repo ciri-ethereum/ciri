@@ -21,17 +21,85 @@
 # THE SOFTWARE.
 
 require 'spec_helper'
+require 'ciri/utils/kv_store'
 require 'ciri/chain'
 require 'ciri/utils'
 
-RSpec.describe Ciri::Chain::Header do
+RSpec.describe Ciri::Chain do
+  let(:tmp_dir) {Dir.mktmpdir}
+  let(:store) {Ciri::Utils::KVStore.new(tmp_dir)}
 
-  it 'compute header hash' do
-    raw_header_rlp = 'f90218a0d33c9dde9fff0ebaa6e71e8b26d2bda15ccf111c7af1b633698ac847667f0fb4a01dcc4de8dec75d7aab85b567b6ccd41ad312451b948a7413f0a142fd40d493479452bc44d5378309ee2abf1539bf71de1b7d7be3b5a0ed98aa4b5b19c82fb35364f08508ae0a6dec665fa57663dca94c5d70554cde10a0447cbd8c48f498a6912b10831cdff59c7fbfcbbe735ca92883d4fa06dcd7ae54a07fa0f6ca2a01823208d80801edad37e3e3a003b55c89319b45eb1f97862ad229b9010000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000860b6b4beb1e8e830f423f832fefd8830386588456bfb40598d783010303844765746887676f312e342e32856c696e7578a05b10f4a08a6c209d426f6158bd24b574f4f7b7aa0099c67c14a1f693b4dd04d088f491f46b60fe04b3'
-    header_hash = Ciri::Utils.hex_to_data 'b4fbadf8ea452b139718e2700dc1135cfc81145031c84b7ab27cd710394f7b38'
-    # get binary version
-    raw_header_rlp_b = Ciri::Utils.hex_to_data raw_header_rlp
-    header = Ciri::Chain::Header.rlp_decode!(raw_header_rlp_b)
-    expect(header.hash).to eq header_hash
+  after do
+    store.close
+    FileUtils.remove_entry tmp_dir
   end
+
+  context Ciri::Chain::HeaderChain do
+    let(:header_chain) {Ciri::Chain::HeaderChain.new(store)}
+    let(:headers) do
+      # convert fixture data to header
+      fixture('blocks').map do |b|
+        data = b.map {|k, v| [Ciri::Utils.to_underscore(k).to_sym, v]}.to_h
+        # convert hex to binary
+        %i{extra_data hash logs_bloom miner mix_hash nonce parent_hash receipts_root sha3_uncles state_root transactions_root}.each do |k|
+          data[k] = Ciri::Utils.hex_to_data(data[k])[1..-1]
+        end
+        # fix key name
+        data[:ommers_hash] = data[:sha3_uncles]
+        data[:beneficiary] = data[:miner]
+        data = data.select {|k, v| Ciri::Chain::Header.schema.keys.include? k}.to_h
+        Ciri::Chain::Header.new(**data)
+      end
+    end
+
+    it 'get/set head' do
+      header_chain.head = headers[0]
+      expect(header_chain.head).to eq headers[0]
+    end
+
+    it 'write and get' do
+      header_chain.write headers[0]
+      header_chain.write headers[1]
+
+      expect(header_chain.get_header(headers[0].hash)).to eq headers[0]
+      expect(header_chain.get_header(headers[1].hash)).to eq headers[1]
+
+      # also write total difficulty
+      expect(header_chain.total_difficulty(headers[0].hash)).to eq headers[0].difficulty
+      expect(header_chain.total_difficulty(headers[1].hash)).to eq headers[0].difficulty + headers[1].difficulty
+    end
+
+    it 'write and get number' do
+      header_chain.write_header_hash_number headers[0].hash, 0
+      header_chain.write_header_hash_number headers[1].hash, 1
+
+      expect(header_chain.get_header_hash_by_number(0)).to eq headers[0].hash
+      expect(header_chain.get_header_hash_by_number(1)).to eq headers[1].hash
+    end
+
+    it 'valid?' do
+      # fail, cause no parent exist
+      expect(header_chain.valid? headers[1]).to be_falsey
+
+      # timestamp not correct
+      header = headers[1].dup
+      header.timestamp = headers[0].timestamp
+      expect(header_chain.valid? header).to be_falsey
+
+      # height not correct
+      header = headers[1].dup
+      header.number += 1
+      expect(header_chain.valid? header).to be_falsey
+
+      # gas limit not correct
+      header = headers[1].dup
+      header.gas_limit = 5001
+      expect(header_chain.valid? header).to be_falsey
+
+      # pass valid!
+      header_chain.write headers[0]
+      expect(header_chain.valid? headers[1]).to be_truthy
+    end
+  end
+
 end

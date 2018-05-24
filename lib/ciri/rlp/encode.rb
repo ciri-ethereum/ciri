@@ -81,7 +81,7 @@ module Ciri
                  elsif input.is_a?(Array)
                    encode_list(input) {|item| encode(item)}
                  else
-                   raise ArgumentError.new('input must be a String or Array')
+                   raise ArgumentError.new("input must be a String or Array, #{input.inspect}")
                  end
         result.b
       end

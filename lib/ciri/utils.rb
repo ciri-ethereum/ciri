@@ -69,7 +69,13 @@ module Ciri
           key.private_key = OpenSSL::BN.new(raw_privkey, 2) if raw_privkey
         end
       end
+
+      def to_underscore(str)
+        str.gsub(/[A-Z]/) {|a| "_" + a.downcase}
+      end
     end
+
+    BLANK_SHA3 = Utils.sha3(''.b)
 
   end
 end

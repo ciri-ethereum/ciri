@@ -132,6 +132,7 @@ module Ciri
         end
 
         private
+
         def check_key_type(type)
           return true if TYPES.key?(type)
           return true if type.is_a?(Class) && type < Serializable
@@ -165,6 +166,7 @@ module Ciri
         end
 
         private
+
         def define_attributes(schema)
           schema.keys.each do |attribute|
             module_eval <<-ATTR_METHODS
@@ -191,6 +193,11 @@ module Ciri
       def initialize(**data)
         @data = (self.class.default_data || {}).merge(data)
         self.class.schema.validate!(@data)
+      end
+
+      def initialize_copy(orig)
+        super
+        @data = orig.data.dup
       end
 
       # Encode object to rlp encoding string
