@@ -1,9 +1,16 @@
-require "bundler/gem_tasks"
-require "rspec/core/rake_task"
+begin
+  require "bundler/gem_tasks"
+rescue LoadError
+  puts "bundler not installed, use 'gem install bundler' to install"
+end
 
-RSpec::Core::RakeTask.new(:spec)
-
-task :default => :spec
+begin
+  require "rspec/core/rake_task"
+  RSpec::Core::RakeTask.new(:spec)
+  task :default => :spec
+rescue LoadError
+  nil
+end
 
 namespace :docker do
   base_image = 'ciriethereum/base'
