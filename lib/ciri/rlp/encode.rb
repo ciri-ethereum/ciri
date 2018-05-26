@@ -75,6 +75,7 @@ module Ciri
       end
 
       protected
+
       def encode_raw(input)
         result = if input.is_a?(String)
                    encode_string(input)
@@ -101,6 +102,7 @@ module Ciri
       end
 
       def encode_list(input, &encoder)
+        input ||= [] # allow nil list
         output = encoder ? input.map {|item| encoder.call(item)}.join : input.join
         length = output.length
         if length < 56
@@ -114,6 +116,7 @@ module Ciri
       end
 
       private
+
       def to_binary(n)
         Ciri::Utils.big_endian_encode(n)
       end

@@ -24,6 +24,7 @@
 require 'ciri/rlp'
 require_relative 'header'
 require_relative 'transaction'
+require 'forwardable'
 
 module Ciri
   class Chain
@@ -32,10 +33,14 @@ module Ciri
     class Block
       include RLP::Serializable
       schema [
-               header: Header,
-               transactions: [Transaction],
-               ommers: [Header], # or uncles
+               {header: Header},
+               {transactions: [Transaction]},
+               {ommers: [Header]}, # or uncles
              ]
+
+      extend Forwardable
+
+      def_delegators :header, :number, :get_hash, :parent_hash
     end
 
   end

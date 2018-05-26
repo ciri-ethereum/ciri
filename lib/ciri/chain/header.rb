@@ -45,8 +45,8 @@ module Ciri
                :mix_hash,
                :nonce,
              ]
-
-      def hash
+      
+      def get_hash
         Utils.sha3(rlp_encode!)
       end
 

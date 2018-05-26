@@ -61,20 +61,20 @@ RSpec.describe Ciri::Chain do
       header_chain.write headers[0]
       header_chain.write headers[1]
 
-      expect(header_chain.get_header(headers[0].hash)).to eq headers[0]
-      expect(header_chain.get_header(headers[1].hash)).to eq headers[1]
+      expect(header_chain.get_header(headers[0].get_hash)).to eq headers[0]
+      expect(header_chain.get_header(headers[1].get_hash)).to eq headers[1]
 
       # also write total difficulty
-      expect(header_chain.total_difficulty(headers[0].hash)).to eq headers[0].difficulty
-      expect(header_chain.total_difficulty(headers[1].hash)).to eq headers[0].difficulty + headers[1].difficulty
+      expect(header_chain.total_difficulty(headers[0].get_hash)).to eq headers[0].difficulty
+      expect(header_chain.total_difficulty(headers[1].get_hash)).to eq headers[0].difficulty + headers[1].difficulty
     end
 
     it 'write and get number' do
-      header_chain.write_header_hash_number headers[0].hash, 0
-      header_chain.write_header_hash_number headers[1].hash, 1
+      header_chain.write_header_hash_number headers[0].get_hash, 0
+      header_chain.write_header_hash_number headers[1].get_hash, 1
 
-      expect(header_chain.get_header_hash_by_number(0)).to eq headers[0].hash
-      expect(header_chain.get_header_hash_by_number(1)).to eq headers[1].hash
+      expect(header_chain.get_header_hash_by_number(0)).to eq headers[0].get_hash
+      expect(header_chain.get_header_hash_by_number(1)).to eq headers[1].get_hash
     end
 
     it 'valid?' do
@@ -99,6 +99,46 @@ RSpec.describe Ciri::Chain do
       # pass valid!
       header_chain.write headers[0]
       expect(header_chain.valid? headers[1]).to be_truthy
+    end
+  end
+
+  context Ciri::Chain do
+    let(:blocks) do
+      # convert fixture data to header
+      fixture('blocks').map do |b|
+        data = b.map {|k, v| [Ciri::Utils.to_underscore(k).to_sym, v]}.to_h
+        # convert hex to binary
+        %i{extra_data hash logs_bloom miner mix_hash nonce parent_hash receipts_root sha3_uncles state_root transactions_root}.each do |k|
+          data[k] = Ciri::Utils.hex_to_data(data[k])[1..-1]
+        end
+        # fix key name
+        data[:ommers_hash] = data[:sha3_uncles]
+        data[:beneficiary] = data[:miner]
+        transactions = data[:transactions]
+        uncles = data[:uncles]
+        data = data.select {|k, v| Ciri::Chain::Header.schema.keys.include? k}.to_h
+        header = Ciri::Chain::Header.new(**data)
+        Ciri::Chain::Block.new(header: header, transactions: transactions, ommers: uncles)
+      end
+    end
+    let(:chain) {Ciri::Chain.new(store, genesis: blocks[0], network_id: 0)}
+
+    it 'genesis is current block' do
+      expect(chain.genesis_hash).to eq chain.current_block.header.get_hash
+    end
+
+    it 'insert wrong order blocks' do
+      expect do
+        chain.insert_blocks(blocks[1..2].reverse)
+      end.to raise_error Ciri::Chain::InvalidBlockError
+    end
+
+    it 'insert blocks' do
+      chain.insert_blocks(blocks[1..2])
+
+      expect(chain.get_block_by_number(1)).to eq blocks[1]
+      expect(chain.get_block_by_number(2)).to eq blocks[2]
+      expect(chain.current_block).to eq blocks[2]
     end
   end
 

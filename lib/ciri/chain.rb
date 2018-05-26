@@ -32,12 +32,21 @@ module Ciri
   # store via rocksdb
   class Chain
 
+    class Error < StandardError
+    end
+
+    class InvalidHeaderError < Error
+    end
+
+    class InvalidBlockError < Error
+    end
+
     # HeaderChain
     # store headers
     class HeaderChain
       HEAD = 'head'
       GENESIS = 'genesis'
-      PREFIX = 'h'
+      HEADER_PREFIX = 'h'
       TD_SUFFIX = 't'
       NUM_SUFFIX = 'n'
 
@@ -57,11 +66,19 @@ module Ciri
       end
 
       def get_header(hash)
-        encoded = store[PREFIX + hash]
+        encoded = store[HEADER_PREFIX + hash]
         encoded && Header.rlp_decode!(encoded)
       end
 
+      def get_header_by_number(number)
+        hash = get_header_hash_by_number(number)
+        hash && get_header(hash)
+      end
+
       def valid?(header)
+        # ignore genesis header if there not exist one
+        return true if header.number == 0 && get_header_by_number(0).nil?
+
         parent_header = get_header(header.parent_hash)
         return false unless parent_header
 
@@ -88,52 +105,56 @@ module Ciri
       # you can find explain in Ethereum yellow paper: Block Header Validity section.
       def calculate_difficulty(header, parent_header)
         return header.difficulty if header.number == 0
+
         x = parent_header.difficulty / 2048
         y = header.ommers_hash == Utils::BLANK_SHA3 ? 1 : 2
         time_factor = [y - (header.timestamp - parent_header.timestamp) / 9, -99].max
         # difficulty bomb
         fake_height = [(header.number - 3000000), 0].max
         height_factor = 2 ** (fake_height / 100000 - 2)
-        [header.difficulty, parent_header.difficulty + x * time_factor + height_factor].max
+
+        difficulty = (parent_header.difficulty + x * time_factor + height_factor).to_i
+        [header.difficulty, difficulty].max
       end
 
       # write header
       def write(header)
-        hash = header.hash
+        hash = header.get_hash
         # get total difficulty
         td = if header.number == 0
                header.difficulty
              else
                parent_header = get_header(header.parent_hash)
                raise "can't find parent from db" unless parent_header
-               parent_td = total_difficulty(parent_header.hash)
+               parent_td = total_difficulty(parent_header.get_hash)
                parent_td + header.difficulty
              end
         # write header and td
         store.batch do |b|
-          b.put(PREFIX + hash, header.rlp_encode!)
-          b.put(PREFIX + hash + TD_SUFFIX, RLP.encode(td, Integer))
+          b.put(HEADER_PREFIX + hash, header.rlp_encode!)
+          b.put(HEADER_PREFIX + hash + TD_SUFFIX, RLP.encode(td, Integer))
         end
       end
 
       def write_header_hash_number(header_hash, number)
         enc_number = Utils.big_endian_encode number
-        store[PREFIX + enc_number + NUM_SUFFIX] = header_hash
+        store[HEADER_PREFIX + enc_number + NUM_SUFFIX] = header_hash
       end
 
       def get_header_hash_by_number(number)
         enc_number = Utils.big_endian_encode number
-        store[PREFIX + enc_number + NUM_SUFFIX]
+        store[HEADER_PREFIX + enc_number + NUM_SUFFIX]
       end
 
-      def total_difficulty(header_hash = head.hash)
-        RLP.decode(store[PREFIX + header_hash + TD_SUFFIX], Integer)
+      def total_difficulty(header_hash = head.nil? ? nil : head.get_hash)
+        return 0 if header_hash.nil?
+        RLP.decode(store[HEADER_PREFIX + header_hash + TD_SUFFIX], Integer)
       end
     end
 
     extend Forwardable
 
-    PREFIX = 'b'
+    BODY_PREFIX = 'b'
 
     def_delegators :@header_chain, :head, :total_difficulty
 
@@ -148,41 +169,78 @@ module Ciri
     end
 
     def genesis_hash
-      genesis.hash
+      genesis.header.get_hash
     end
 
     def current_block
-      store.get(PREFIX + head.hash)
+      get_block(head.get_hash)
     end
 
     def current_height
       head.number
     end
 
+    # insert blocks in order
+    # blocks must be ordered from lower height to higher height
     def insert_blocks(blocks)
-      # valid blocks
+      prev_block = blocks[0]
+      blocks[1..-1].each do |block|
+        unless block.number == prev_block.number + 1 && block.parent_hash == prev_block.get_hash
+          raise InvalidBlockError.new("blocks insert orders not correct")
+        end
+      end
+
       blocks.each do |block|
         write_block block
       end
     end
 
+    def get_block_by_number(number)
+      hash = @header_chain.get_header_hash_by_number(number)
+      hash && get_block(hash)
+    end
+
     def get_block(hash)
-      encoded = store[PREFIX + hash]
-      encoded && BLock.rlp_decode!(encoded)
+      encoded = store[BODY_PREFIX + hash]
+      encoded && Block.rlp_decode!(encoded)
     end
 
     def write_block(block)
-      #TODO save block to db
-      # valid header
-      @header_chain.write(block.header)
-      store[PREFIX + block.header.hash] = block.rlp_encode!
-      # valid chain
-      # check td
-      # update head
-      # reorg chain
+      # write header
+      header = block.header
+      raise InvalidHeaderError.new("invalid header: #{header.number}") unless @header_chain.valid?(header)
+      @header_chain.write(header)
+
+      # write body
+      store[BODY_PREFIX + header.get_hash] = block.rlp_encode!
+
+      td = total_difficulty(header.get_hash)
+
+      if td > total_difficulty
+        # new block not follow current head, need reorg chain
+        if head && ((header.number <= head.number) || (header.number == head.number + 1 && header.parent_hash != head.get_hash))
+          reorg_chain(block, current_block)
+        else
+          # otherwise, new block extend current chain, just update chain head
+          @header_chain.head = header
+          @header_chain.write_header_hash_number(header.get_hash, header.number)
+        end
+      end
     end
 
     private
+
+    # TODO reorg chain
+    def reorg_chain(new_block, old_block)
+      # find common ancestor block
+      # rewrite new chain
+    end
+
+    # rewrite block
+    # this method will treat block as canonical chain block
+    def rewrite_block(block)
+
+    end
 
     def load_or_init_store
       # write genesis block, is chain head not exists

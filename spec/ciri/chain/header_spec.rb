@@ -32,6 +32,6 @@ RSpec.describe Ciri::Chain::Header do
     # get binary version
     raw_header_rlp_b = Ciri::Utils.hex_to_data raw_header_rlp
     header = Ciri::Chain::Header.rlp_decode!(raw_header_rlp_b)
-    expect(header.hash).to eq header_hash
+    expect(header.get_hash).to eq header_hash
   end
 end
