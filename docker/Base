@@ -5,10 +5,8 @@ RUN apt-get update -y
 RUN apt-get install -y cmake
 
 # install bitcoin secp256k1
-WORKDIR /build
-RUN git clone https://github.com/bitcoin-core/secp256k1.git
+COPY ./secp256k1 /build/secp256k1
 WORKDIR /build/secp256k1
-RUN git checkout 452d8e4d2a2f9f1b5be6b02e18f1ba102e5ca0b4
 RUN ./autogen.sh
 RUN ./configure --enable-module-recovery --enable-experimental --enable-module-ecdh
 RUN make && make install
@@ -18,10 +16,8 @@ RUN apt-get install -y libsnappy-dev
 
 # install RocksDB
 RUN apt-get install -y libgflags-dev zlib1g-dev libbz2-dev liblz4-dev libzstd-dev
-WORKDIR /build
-RUN git clone https://github.com/facebook/rocksdb.git
+COPY ./rocksdb /build/rocksdb
 WORKDIR /build/rocksdb
-RUN git checkout -q v5.13.1
 RUN make shared_lib
 RUN make install-shared
 

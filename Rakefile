@@ -22,6 +22,7 @@ namespace :docker do
 
   desc 'build base docker image, rerun this task after updated Gemfile or Dockerfile'
   task :build_base do
+    system("git submodule init && git submodule update")
     system("docker build . -f docker/Base -t #{base_image}:latest")
   end
 
