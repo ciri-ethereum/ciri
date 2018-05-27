@@ -21,7 +21,7 @@ Check List
   * [ ] EVM
   * [ ] Mining
 * [ ] Consensus Algorithm
-  * [ ] POW
+  * [x] POW
   * [ ] POS
 * [ ] Web3 RPC
 * [ ] CLI
@@ -29,9 +29,7 @@ Check List
 Installation
 ---------------
 
-``` bash
-gem install ciri
-```
+See [develop](#develop) section
 
 Usage
 ---------------
@@ -41,7 +39,7 @@ Usage
 Develop
 ---------------
 
-Ciri depends on [rocksdb](https://github.com/facebook/rocksdb), [secp256k1](https://github.com/bitcoin-core/secp256k1) and [snappy](https://github.com/google/snappy).
+Ciri depends on [rocksdb](https://github.com/facebook/rocksdb), [secp256k1](https://github.com/bitcoin-core/secp256k1), [ethash](https://github.com/ethereum/ethash) and [snappy](https://github.com/google/snappy).
 
 It's recommended to use docker to handle dependencies:
 ``` bash
@@ -58,9 +56,8 @@ rake docker:shell
 
 # cool, type 'rake -T' see other supported tasks 
 ``` 
-Check [docker](/docker) directory for docker-files.
  
-Otherwise you need install these libraries first (remember check [docker](/docker) directory for hint).
+Otherwise you need install these libraries manually (remember check [docker](/docker) directory for hint).
 
 then run: 
 `bundle install && bundle exec rake`
@@ -73,4 +70,4 @@ Documentation
 Authors
 ---------------
 
-* [Jiang Jinyang](https://justjjy.com) <jjyruby@gmail.com>
+* [Jiang Jinyang](https://justjjy.com) (jjyruby@gmail.com)
