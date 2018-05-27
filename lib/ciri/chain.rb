@@ -25,6 +25,7 @@ require 'forwardable'
 require_relative 'chain/block'
 require_relative 'chain/header'
 require_relative 'chain/transaction'
+require_relative 'pow'
 
 module Ciri
 
@@ -96,7 +97,12 @@ module Ciri
         return false unless gas_limit >= 5000 && gas_limit > gas_limit_min && gas_limit < gas_limit_max
         return false unless calculate_difficulty(header, parent_header) == header.difficulty
 
-        # TODO check POW
+        # check pow
+        begin
+          POW.check_pow(header.number, header.mining_hash, header.mix_hash, header.nonce, header.difficulty)
+        rescue POW::InvalidError
+          return false
+        end
 
         true
       end
@@ -230,16 +236,35 @@ module Ciri
 
     private
 
-    # TODO reorg chain
+    # reorg chain
     def reorg_chain(new_block, old_block)
+      new_chain = []
       # find common ancestor block
-      # rewrite new chain
+      # move new_block and old_block to same height
+      while new_block.number > old_block.number
+        new_chain << new_block
+        new_block = get_block(new_block.parent_hash)
+      end
+
+      while old_block.number > new_block.number
+        old_block = get_block(old_block.parent_hash)
+      end
+
+      while old_block.get_hash != new_block.get_hash
+        new_chain << new_block
+        old_block = get_block(old_block.parent_hash)
+        new_block = get_block(new_block.parent_hash)
+      end
+
+      # rewrite chain
+      new_chain.reverse.each {|block| rewrite_block(block)}
     end
 
     # rewrite block
     # this method will treat block as canonical chain block
     def rewrite_block(block)
-
+      @header_chain.head = block.header
+      @header_chain.write_header_hash_number(block.get_hash, block.number)
     end
 
     def load_or_init_store

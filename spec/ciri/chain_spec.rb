@@ -114,6 +114,43 @@ RSpec.describe Ciri::Chain do
       expect(chain.get_block_by_number(2)).to eq blocks[2]
       expect(chain.current_block).to eq blocks[2]
     end
+
+    context 'when forked chain beyond main chain' do
+      let(:main_chain_blocks) do
+        load_blocks('chain_fork/main_chain')
+      end
+
+      let(:forked_chain_blocks) do
+        load_blocks('chain_fork/forked_chain')
+      end
+
+      let(:chain) {Ciri::Chain.new(store, genesis: main_chain_blocks[0], network_id: 0)}
+
+      it 'forked blocks should reorg current chain' do
+        # initial main chain
+        chain.insert_blocks(main_chain_blocks[1..-1])
+
+        td = chain.total_difficulty
+        current_block = chain.current_block
+
+        expect(current_block).to eq main_chain_blocks.last
+        chain.current_block.number.times do |i|
+          expect(chain.get_block_by_number(i)).to eq main_chain_blocks[i]
+        end
+
+        # receive forked chain
+        chain.insert_blocks(forked_chain_blocks[1..-1])
+
+        expect(chain.total_difficulty).to be > td
+        expect(chain.current_block).to_not eq current_block
+        expect(chain.current_block).to eq forked_chain_blocks.last
+
+        chain.current_block.number.times do |i|
+          expect(chain.get_block_by_number(i)).to eq forked_chain_blocks[i]
+        end
+      end
+
+    end
   end
 
 end

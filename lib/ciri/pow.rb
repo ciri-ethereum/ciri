@@ -59,13 +59,13 @@ module Ciri
       end
     end
 
-    def check_pow(block_number, mining_hash, mix_hash, nonce, difficulty)
+    def check_pow(block_number, mining_hash, mix_hash, nonce_bytes, difficulty)
       raise ArgumentError.new "mix_hash.length must equal to 32" if mix_hash.size != 32
       raise ArgumentError.new "mining_hash.length must equal to 32" if mining_hash.size != 32
-      raise ArgumentError.new "nonce.length must equal to 8" if nonce.size != 8
+      raise ArgumentError.new "nonce.length must equal to 8" if nonce_bytes.size != 8
 
       cache = get_cache(block_number)
-      out_mix_hash, out_result = Ethash.hashimoto_light(block_number, cache, mining_hash, Utils.big_endian_decode(nonce))
+      out_mix_hash, out_result = Ethash.hashimoto_light(block_number, cache, mining_hash, Utils.big_endian_decode(nonce_bytes))
 
       if out_mix_hash != mix_hash
         raise InvalidError.new("mix hash mismatch; #{Utils.data_to_hex(out_mix_hash)} != #{Utils.data_to_hex(mix_hash)}")
