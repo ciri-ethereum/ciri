@@ -40,7 +40,7 @@ module Ciri
 
       extend Forwardable
 
-      def_delegators :header, :number, :get_hash, :parent_hash
+      def_delegators :header, :number, :get_hash, :mining_hash, :parent_hash
     end
 
   end

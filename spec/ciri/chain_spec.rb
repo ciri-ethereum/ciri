@@ -37,19 +37,7 @@ RSpec.describe Ciri::Chain do
   context Ciri::Chain::HeaderChain do
     let(:header_chain) {Ciri::Chain::HeaderChain.new(store)}
     let(:headers) do
-      # convert fixture data to header
-      fixture('blocks').map do |b|
-        data = b.map {|k, v| [Ciri::Utils.to_underscore(k).to_sym, v]}.to_h
-        # convert hex to binary
-        %i{extra_data hash logs_bloom miner mix_hash nonce parent_hash receipts_root sha3_uncles state_root transactions_root}.each do |k|
-          data[k] = Ciri::Utils.hex_to_data(data[k])[1..-1]
-        end
-        # fix key name
-        data[:ommers_hash] = data[:sha3_uncles]
-        data[:beneficiary] = data[:miner]
-        data = data.select {|k, v| Ciri::Chain::Header.schema.keys.include? k}.to_h
-        Ciri::Chain::Header.new(**data)
-      end
+      load_blocks('blocks').map(&:header)
     end
 
     it 'get/set head' do
@@ -104,23 +92,9 @@ RSpec.describe Ciri::Chain do
 
   context Ciri::Chain do
     let(:blocks) do
-      # convert fixture data to header
-      fixture('blocks').map do |b|
-        data = b.map {|k, v| [Ciri::Utils.to_underscore(k).to_sym, v]}.to_h
-        # convert hex to binary
-        %i{extra_data hash logs_bloom miner mix_hash nonce parent_hash receipts_root sha3_uncles state_root transactions_root}.each do |k|
-          data[k] = Ciri::Utils.hex_to_data(data[k])[1..-1]
-        end
-        # fix key name
-        data[:ommers_hash] = data[:sha3_uncles]
-        data[:beneficiary] = data[:miner]
-        transactions = data[:transactions]
-        uncles = data[:uncles]
-        data = data.select {|k, v| Ciri::Chain::Header.schema.keys.include? k}.to_h
-        header = Ciri::Chain::Header.new(**data)
-        Ciri::Chain::Block.new(header: header, transactions: transactions, ommers: uncles)
-      end
+      load_blocks('blocks')
     end
+
     let(:chain) {Ciri::Chain.new(store, genesis: blocks[0], network_id: 0)}
 
     it 'genesis is current block' do

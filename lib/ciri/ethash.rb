@@ -49,12 +49,12 @@ module Ciri
       class H256 < FFI::Struct
         layout :b, [:uint8, 32]
 
-        def put_b(s)
+        def put_bytes(s)
           self[:b].to_ptr.put_array_of_uint8(0, s.each_byte.to_a)
         end
 
-        def get_b
-          self[:b].to_ptr.get_array_of_uint8(0, 32).join
+        def get_bytes
+          self[:b].to_ptr.get_array_of_uint8(0, 32).pack("c*")
         end
       end
 
@@ -97,12 +97,12 @@ module Ciri
       light[:block_number] = block_number
 
       h = Lib::H256.new
-      h.put_b(header[0..32])
+      h.put_bytes(header[0..32])
 
       value = Lib.ethash_light_compute(light, h, nonce)
       raise Error.new "compute not success, return: #{value[:success]}" unless value[:success]
 
-      result = [value[:mix_hash], value[:result]]
+      result = [value[:mix_hash].get_bytes, value[:result].get_bytes]
 
       # release memory *_*
       Utils::LibC.free cache_ptr

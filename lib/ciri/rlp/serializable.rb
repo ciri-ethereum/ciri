@@ -112,9 +112,10 @@ module Ciri
           end
         end
 
-        def rlp_encode!(data)
+        def rlp_encode!(data, skip_keys: nil)
           # pre-encode, encode data to rlp compatible format(only string or array)
-          data_list = keys.map do |key|
+          used_keys = skip_keys.nil? ? keys : keys - skip_keys
+          data_list = used_keys.map do |key|
             encode_with_type(data[key], self[key])
           end
           encode_list(data_list)
@@ -201,8 +202,8 @@ module Ciri
       end
 
       # Encode object to rlp encoding string
-      def rlp_encode!
-        self.class.schema.rlp_encode!(data)
+      def rlp_encode!(skip_keys: nil)
+        self.class.schema.rlp_encode!(data, skip_keys: skip_keys)
       end
 
       def ==(other)

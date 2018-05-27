@@ -21,6 +21,7 @@ Gem::Specification.new do |spec|
   spec.require_paths = ["lib"]
 
   spec.add_dependency 'ffi', '~> 1.9.23'
+  spec.add_dependency 'lru_redux', '~> 1.1.0'
   spec.add_dependency 'digest-sha3', '~> 1.1.0'
   spec.add_dependency 'bitcoin-secp256k1', '~> 0.4.0'
   spec.add_dependency 'concurrent-ruby', '~> 1.0.5'
