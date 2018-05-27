@@ -4,3 +4,7 @@
 [submodule "rocksdb"]
 	path = rocksdb
 	url = https://github.com/facebook/rocksdb.git
+[submodule "ethash"]
+	path = ethash
+	url = https://github.com/ciri-ethereum/ethash.git
+	branch = shared_library
