@@ -42,11 +42,14 @@ module Ciri
         @offset = offset
         @frame_io = frame_io
         @msg_queue = Queue.new
+        @mutex = Mutex.new
       end
 
       def send_data(code, data)
-        msg = RLPX::Message.new(code: code, size: data.size, payload: data)
-        write_msg(msg)
+        @mutex.synchronize do
+          msg = RLPX::Message.new(code: code, size: data.size, payload: data)
+          write_msg(msg)
+        end
       end
 
       def write_msg(msg)

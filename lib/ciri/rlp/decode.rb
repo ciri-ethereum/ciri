@@ -79,24 +79,28 @@ module Ciri
         else
           raise InvalidValueError.new "unknown type #{type}" unless TYPES.key?(type)
         end
+      rescue
+        STDERR.puts "when decoding #{s} into #{type}"
+        raise
       end
 
       protected
+
       def decode_list(s, first_char = nil, &decoder)
         s = StringIO.new(s) if s.is_a?(String)
         c = first_char || s.read(1)
         list = []
 
         sub_s = case c.ord
-                  when 0xc0..0xf7
-                    length = c.ord - 0xc0
-                    s.read(length)
-                  when 0xf8..0xff
-                    length_binary = s.read(c.ord - 0xf7)
-                    length = int_from_binary(length_binary)
-                    s.read(length)
-                  else
-                    raise InvalidValueError.new("invalid char #{c}")
+                when 0xc0..0xf7
+                  length = c.ord - 0xc0
+                  s.read(length)
+                when 0xf8..0xff
+                  length_binary = s.read(c.ord - 0xf7)
+                  length = int_from_binary(length_binary)
+                  s.read(length)
+                else
+                  raise InvalidValueError.new("invalid char #{c}")
                 end
 
         decoder.call(list, StringIO.new(sub_s))
@@ -104,24 +108,25 @@ module Ciri
       end
 
       private
+
       def decode_stream(s)
         c = s.read(1)
         case c.ord
-          when 0x00..0x7f
-            c
-          when 0x80..0xb7
-            length = c.ord - 0x80
-            s.read(length)
-          when 0xb8..0xbf
-            length_binary = s.read(c.ord - 0xb7)
-            length = int_from_binary(length_binary)
-            s.read(length)
-          else
-            decode_list(s, c) do |list, s2|
-              until s2.eof?
-                list << decode_stream(s2)
-              end
+        when 0x00..0x7f
+          c
+        when 0x80..0xb7
+          length = c.ord - 0x80
+          s.read(length)
+        when 0xb8..0xbf
+          length_binary = s.read(c.ord - 0xb7)
+          length = int_from_binary(length_binary)
+          s.read(length)
+        else
+          decode_list(s, c) do |list, s2|
+            until s2.eof?
+              list << decode_stream(s2)
             end
+          end
         end
       end
 

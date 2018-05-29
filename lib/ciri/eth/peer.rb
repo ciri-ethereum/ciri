@@ -21,25 +21,38 @@
 # THE SOFTWARE.
 
 
-require 'ciri/rlp/serializable'
+require 'ciri/chain'
+require_relative 'protocol_messages'
 
 module Ciri
-  module DevP2P
-    module RLPX
+  module Eth
 
-      # RLPX message
-      class Message
-        include Ciri::RLP::Serializable
+    # eth protocol peer
+    class Peer
+      attr_reader :io, :total_difficulty, :status
 
-        attr_accessor :received_at
-
-        schema [
-                 {code: Integer},
-                 {size: Integer},
-                 :payload
-               ]
+      def initialize(protocol_manage:, peer:, io:)
+        @protocol_manage = protocol_manage
+        @io = io
+        @total_difficulty = nil
       end
 
+      # do eth protocol handshake and return status
+      def handshake(network_id, total_difficulty, head_hash, genesis_hash)
+        status = Status.new(protocol_version: 63, network_id: network_id,
+                            total_difficulty: total_difficulty, current_block: head_hash, genesis_block: genesis_hash)
+        io.send_data(Status::CODE, status.rlp_encode!)
+        msg = io.read_msg
+        @status = Status.rlp_decode!(msg.payload)
+        @total_difficulty = @status.total_difficulty
+        @status
+      end
+
+      def send_msg(msg_class, **data)
+        msg = msg_class.new(data)
+        io.send_data(msg_class::CODE, msg.rlp_encode!)
+      end
     end
+
   end
 end

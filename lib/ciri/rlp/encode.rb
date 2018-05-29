@@ -72,6 +72,9 @@ module Ciri
           raise RLP::InvalidValueError.new "unknown type #{type}" unless TYPES.key?(type)
           item
         end
+      rescue
+        STDERR.puts "when encoding #{item} into #{type}"
+        raise
       end
 
       protected

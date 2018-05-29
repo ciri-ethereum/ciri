@@ -10,14 +10,14 @@ Check List
 
 * [ ] RLPX
   * [x] HandShake
-  * [ ] Server
+  * [x] Server
   * [ ] Node Discovery
 * [x] RLP
 * [ ] Eth Protocol
   * [x] HandShake
   * [ ] Ethereum Sub-protocol
 * [ ] Block Chain
-  * [ ] Chain Syncing
+  * [x] Chain Syncing
   * [ ] EVM
   * [ ] Mining
 * [ ] Consensus Algorithm

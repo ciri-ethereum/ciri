@@ -167,6 +167,7 @@ module Ciri
         end
 
         private
+
         def add_peer(connection, handshake)
           server.protocol_handshake_checks(handshake)
           peer = Peer.new(connection, handshake, server.protocols)

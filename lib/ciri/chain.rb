@@ -51,10 +51,12 @@ module Ciri
       TD_SUFFIX = 't'
       NUM_SUFFIX = 'n'
 
-      attr_reader :store
+      attr_reader :store, :byzantium_block, :homestead_block
 
-      def initialize(store)
+      def initialize(store, byzantium_block: nil, homestead_block: nil)
         @store = store
+        @byzantium_block = byzantium_block
+        @homestead_block = homestead_block
       end
 
       def head
@@ -82,10 +84,8 @@ module Ciri
 
         parent_header = get_header(header.parent_hash)
         return false unless parent_header
-
         # check height
         return false unless parent_header.number + 1 == header.number
-
         # check timestamp
         return false unless parent_header.timestamp < header.timestamp
 
@@ -114,10 +114,25 @@ module Ciri
 
         x = parent_header.difficulty / 2048
         y = header.ommers_hash == Utils::BLANK_SHA3 ? 1 : 2
-        time_factor = [y - (header.timestamp - parent_header.timestamp) / 9, -99].max
+
+        # handle byzantium fork
+        # https://github.com/ethereum/EIPs/blob/181867ae830df5419eb9982d2a24797b2dcad28f/EIPS/eip-609.md
+        # https://github.com/ethereum/EIPs/blob/984cf5de90bbf5fbe7e49be227b0c2f9567e661e/EIPS/eip-100.md
+        byzantium_fork = byzantium_block && header.number > byzantium_block
+        # https://github.com/ethereum/EIPs/blob/984cf5de90bbf5fbe7e49be227b0c2f9567e661e/EIPS/eip-2.md
+        homestead_fork = homestead_block && header.number > homestead_block
+
+        time_factor = if byzantium_fork
+                        [y - (header.timestamp - parent_header.timestamp) / 9, -99].max
+                      elsif homestead_fork
+                        [1 - (header.timestamp - parent_header.timestamp) / 10, -99].max
+                      else
+                        (header.timestamp - parent_header.timestamp) < 13 ? 1 : -1
+                      end
+
         # difficulty bomb
-        fake_height = [(header.number - 3000000), 0].max
-        height_factor = 2 ** (fake_height / 100000 - 2)
+        height = byzantium_fork ? [(header.number - 3000000), 0].max : header.number
+        height_factor = 2 ** (height / 100000 - 2)
 
         difficulty = (parent_header.difficulty + x * time_factor + height_factor).to_i
         [header.difficulty, difficulty].max
@@ -162,13 +177,13 @@ module Ciri
 
     BODY_PREFIX = 'b'
 
-    def_delegators :@header_chain, :head, :total_difficulty
+    def_delegators :@header_chain, :head, :total_difficulty, :get_header_by_number, :get_header
 
-    attr_reader :genesis, :network_id, :store
+    attr_reader :genesis, :network_id, :store, :header_chain
 
-    def initialize(store, genesis:, network_id:)
+    def initialize(store, genesis:, network_id:, byzantium_block: nil, homestead_block: nil)
       @store = store
-      @header_chain = HeaderChain.new(store)
+      @header_chain = HeaderChain.new(store, byzantium_block: byzantium_block, homestead_block: homestead_block)
       @genesis = genesis
       @network_id = network_id
       load_or_init_store
@@ -257,7 +272,7 @@ module Ciri
       end
 
       # rewrite chain
-      new_chain.reverse.each {|block| rewrite_block(block)}
+      new_chain.reverse_each {|block| rewrite_block(block)}
     end
 
     # rewrite block

@@ -21,25 +21,13 @@
 # THE SOFTWARE.
 
 
-require 'ciri/rlp/serializable'
+require_relative 'actor'
+require_relative 'eth/protocol_messages'
+require_relative 'eth/protocol_manage'
 
 module Ciri
-  module DevP2P
-    module RLPX
-
-      # RLPX message
-      class Message
-        include Ciri::RLP::Serializable
-
-        attr_accessor :received_at
-
-        schema [
-                 {code: Integer},
-                 {size: Integer},
-                 :payload
-               ]
-      end
-
-    end
+  # implement Ethereum Wire Protocol
+  # https://github.com/ethereum/wiki/wiki/Ethereum-Wire-Protocol
+  module Eth
   end
 end
