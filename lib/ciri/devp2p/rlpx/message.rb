@@ -21,7 +21,7 @@
 # THE SOFTWARE.
 
 
-require 'ciri/rlp/serializable'
+require 'ciri/rlp'
 
 module Ciri
   module DevP2P

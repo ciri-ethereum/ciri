@@ -15,7 +15,7 @@ RSpec.configure do |config|
 
   config.include FixtureHelpers
 
-  # set concurrent logger
-  require 'concurrent'
-  Concurrent.use_simple_logger(level = Logger::DEBUG)
+  # set logger
+  require 'ciri/utils/logger'
+  Ciri::Utils::Logger.setup(level: :debug)
 end

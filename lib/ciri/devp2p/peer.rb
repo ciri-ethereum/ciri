@@ -23,6 +23,7 @@
 
 
 require 'ciri/actor'
+require 'ciri/utils'
 require_relative 'rlpx'
 require_relative 'protocol_io'
 
@@ -47,6 +48,12 @@ module Ciri
         @protocols = protocols
         @protocol_io_hash = make_protocol_io_hash(protocols, handshake.caps, connection)
         super()
+      end
+
+      def to_s
+        @display_name ||= begin
+          Utils.data_to_hex(node_id.id)[0..8]
+        end
       end
 
       def node_id
@@ -94,6 +101,7 @@ module Ciri
       end
 
       private
+
       def find_protocol_io_by_msg_code(code)
         @protocol_io_hash.values.find do |protocol_io|
           offset = protocol_io.offset

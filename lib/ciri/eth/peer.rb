@@ -22,6 +22,7 @@
 
 
 require 'ciri/chain'
+require 'forwardable'
 require_relative 'protocol_messages'
 
 module Ciri
@@ -31,10 +32,15 @@ module Ciri
     class Peer
       attr_reader :io, :total_difficulty, :status
 
+      extend Forwardable
+
+      def_delegators :@peer, :to_s
+
       def initialize(protocol_manage:, peer:, io:)
         @protocol_manage = protocol_manage
         @io = io
         @total_difficulty = nil
+        @peer = peer
       end
 
       # do eth protocol handshake and return status

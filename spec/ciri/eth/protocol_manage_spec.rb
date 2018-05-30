@@ -28,6 +28,7 @@ require 'ciri/devp2p/protocol'
 require 'ciri/devp2p/protocol_io'
 require 'ciri/chain'
 require 'ciri/utils/kv_store'
+require 'ciri/key'
 require 'socket'
 
 RSpec.describe Ciri::Eth::ProtocolManage do
@@ -79,7 +80,8 @@ RSpec.describe Ciri::Eth::ProtocolManage do
     protocol_manage.start
 
     caps = [Ciri::DevP2P::RLPX::Cap.new(name: 'eth', version: 63)]
-    hs = Ciri::DevP2P::RLPX::ProtocolHandshake.new(version: 0, name: 'test', caps: caps, listen_port: 30303, id: "\x00".b * 32)
+    peer_id = Ciri::Key.random.raw_public_key[1..-1]
+    hs = Ciri::DevP2P::RLPX::ProtocolHandshake.new(version: 0, name: 'test', caps: caps, listen_port: 30303, id: peer_id)
     peer = Ciri::DevP2P::Peer.new(frame_io1, hs, protocol_manage.protocols)
     peer.start
 

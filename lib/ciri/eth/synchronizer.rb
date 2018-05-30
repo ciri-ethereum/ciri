@@ -22,14 +22,15 @@
 
 
 require 'lru_redux'
+require 'ciri/utils/logger'
 
 module Ciri
   module Eth
 
     # Synchronizer sync blocks with peers
-    # TODO implement synchroizer
     class Synchronizer
       include Ciri::Actor
+      include Ciri::Utils::Logger
 
       HEADER_FETCH_COUNT = 10
 
@@ -159,7 +160,7 @@ module Ciri
               raise 'peer is incorrect'
             end
 
-            puts "start syncing #{start_height} to #{end_height}"
+            info "Start syncing with Peer##{peer}, from #{start_height} to #{end_height}"
 
             (start_height..end_height).each do |height|
               header = peer_entry.fetch_peer_header height

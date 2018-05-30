@@ -25,6 +25,7 @@
 require 'concurrent'
 require 'forwardable'
 require 'ciri/actor'
+require 'ciri/utils/logger'
 require_relative 'rlpx/connection'
 require_relative 'rlpx/protocol_handshake'
 require_relative 'peer'
@@ -35,6 +36,7 @@ module Ciri
     # DevP2P Server
     # maintain connection, node discovery, rlpx handshake and protocols
     class Server
+      include Utils::Logger
       include RLPX
 
       MAX_ACTIVE_DIAL_TASKS = 16
@@ -47,7 +49,7 @@ module Ciri
       end
 
       attr_reader :handshake, :dial, :scheduler, :protocol_manage, :protocols
-      attr_accessor :logger, :bootstrap_nodes
+      attr_accessor :bootstrap_nodes
 
       def initialize(private_key:, protocol_manage:)
         @private_key = private_key
@@ -123,11 +125,12 @@ module Ciri
 
       class Scheduler
         include Actor
+        include Utils::Logger
 
         extend Forwardable
 
         attr_reader :server
-        def_delegators :server, :logger
+        def_delegators :server
 
         def initialize(server)
           @server = server
@@ -186,16 +189,16 @@ module Ciri
             # remove peer
             self << [:remove_peer, peer, exit_error]
           }
-          logger.debug("add peer: #{peer}")
+          debug("add peer: #{peer}")
         end
 
         def remove_peer(peer, *args)
           error, * = args
-          logger.debug("remove peer: #{peer}, error: #{error}")
+          debug("remove peer: #{peer}, error: #{error}")
         end
 
         def task_done(task, *args)
-          logger.debug("task done: #{task.name}")
+          debug("task done: #{task.name}")
         end
 
       end
