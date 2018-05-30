@@ -5,6 +5,11 @@ Ciri
 
 Ciri project intent to implement a full feature set ethereum client.
 
+It aims to be a feature complete, long maintained and stable ethereum client.
+As you see it'is still under development.
+
+Talk to me on [gitter](https://gitter.im/ciri-ethereum/Lobby) if you interesting in this project or want to contributing.
+ 
 Check List
 ---------------
 
