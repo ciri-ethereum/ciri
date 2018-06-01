@@ -1,6 +1,7 @@
 require "bundler/setup"
 require "ciri"
 require_relative 'ciri/helpers/fixture_helpers'
+require_relative 'ciri/helpers/ethereum_fixture_helpers'
 
 RSpec.configure do |config|
   # Enable flags like --only-failures and --next-failure
@@ -14,6 +15,7 @@ RSpec.configure do |config|
   end
 
   config.include FixtureHelpers
+  config.include EthereumFixtureHelpers
 
   # set logger
   require 'ciri/utils/logger'
