@@ -73,7 +73,7 @@ RSpec.describe Ciri::EVM do
 
         t['post'].each do |address, v|
           account = parse_account[address, v]
-          expect(account).to eq state[account.address]
+          expect(state[account.address]).to eq account
         end
       end
 
@@ -81,7 +81,9 @@ RSpec.describe Ciri::EVM do
   end
 
   path = 'fixtures/VMTests/vmArithmeticTest'
-  # adds
-  Dir.glob("#{path}/*.json").grep(/add\d/).each {|t| run_test_case[JSON.load(open t), prefix: 'vmArithmeticTest']}
+  # add
+  Dir.glob("#{path}/*.json").grep(/add\d\.json/).each {|t| run_test_case[JSON.load(open t), prefix: 'vmArithmeticTest']}
+  # addmod
+  Dir.glob("#{path}/*.json").grep(/addmod\d/).each {|t| run_test_case[JSON.load(open t), prefix: 'vmArithmeticTest']}
 
 end

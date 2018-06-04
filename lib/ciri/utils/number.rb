@@ -21,58 +21,36 @@
 # THE SOFTWARE.
 
 
-require 'digest/sha3'
-require_relative 'utils/number'
-
 module Ciri
   module Utils
-
-    class << self
-      def sha3(*data)
-        s = Digest::SHA3.new(256)
-        data.each {|i| s.update(i)}
-        s.digest
-      end
-
-      def secret_compare(s1, s2)
-        s1.size == s2.size && s1.each_byte.each_with_index.map {|b, i| b ^ s2[i].ord}.reduce(0, :+) == 0
-      end
+    module Number
+      extend self
 
       def big_endian_encode(n, zero = '')
-        Utils::Number.big_endian_encode(n, zero)
+        if n == 0
+          zero
+        else
+          big_endian_encode(n / 256) + (n % 256).chr
+        end
       end
 
       def big_endian_decode(input)
-        Utils::Number.big_endian_decode(input)
+        input.each_byte.reduce(0) {|s, i| s * 256 + i}
       end
 
-      def hex_to_data(hex)
-        [hex].pack("H*")
+      UINT_256_MAX = 2 ** 256 - 1
+      UINT_256_CEILING = 2 ** 256
+      UINT_255_MAX = 2 ** 255 - 1
+      UINT_255_CEILING = 2 ** 255
+
+      def unsigned_to_signed(n)
+        n < UINT_255_MAX ? n : n - UINT_256_CEILING
       end
 
-      def data_to_hex(data)
-        data.unpack("H*").first
+      def signed_to_unsigned(n)
+        n < 0 ? n : n + UINT_256_CEILING
       end
 
-      def create_ec_pk(raw_pubkey: nil, raw_privkey: nil)
-        public_key = raw_pubkey && begin
-          group = OpenSSL::PKey::EC::Group.new('secp256k1')
-          bn = OpenSSL::BN.new(raw_pubkey, 2)
-          OpenSSL::PKey::EC::Point.new(group, bn)
-        end
-
-        OpenSSL::PKey::EC.new('secp256k1').tap do |key|
-          key.public_key = public_key if public_key
-          key.private_key = OpenSSL::BN.new(raw_privkey, 2) if raw_privkey
-        end
-      end
-
-      def to_underscore(str)
-        str.gsub(/[A-Z]/) {|a| "_" + a.downcase}
-      end
     end
-
-    BLANK_SHA3 = Utils.sha3(''.b)
-
   end
 end

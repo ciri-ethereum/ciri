@@ -20,13 +20,17 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
+
+require 'ciri/utils'
+require 'ciri/utils/number'
+
 module Ciri
   module EVM
     module OP
 
       OPERATIONS = {}
 
-      Operation = Struct.new(:code, :inputs, :outputs, :handler, keyword_init: true) do
+      Operation = Struct.new(:name, :code, :inputs, :outputs, :handler, keyword_init: true) do
         def call(*args)
           handler.call(*args)
         end
@@ -35,8 +39,9 @@ module Ciri
       class << self
         # register op
         # handler receive machine_state and inputs, return outputs
-        def op(code, inputs, outputs, &handler)
-          OPERATIONS[code] = Operation.new(code: code, inputs: inputs, outputs: outputs, handler: handler).freeze
+        def op(name, code, inputs, outputs, &handler)
+          OPERATIONS[code] = Operation.new(name: name.to_s, code: code, inputs: inputs, outputs: outputs,
+                                           handler: handler).freeze
           code
         end
 
@@ -53,27 +58,27 @@ module Ciri
         end
       end
 
-      MAX_INT = 2 ** 256
+      MAX_INT = Utils::Number::UINT_256_CEILING
 
       # basic operations
-      STOP = op 0x00, 0, 0
-      ADD = op 0x01, 2, 1 do |m, i|
-        m.push((m.pop_int + m.pop_int) % MAX_INT)
+      STOP = op :STOP, 0x00, 0, 0
+      ADD = op :ADD, 0x01, 2, 1 do |m, i|
+        m.push((m.pop(Integer) + m.pop(Integer)) % MAX_INT)
       end
 
-      MUL = op 0x02, 2, 1 do |m, v0, v1|
+      MUL = op :MUL, 0x02, 2, 1 do |m, v0, v1|
         v0 * v1
       end
 
-      SUB = op 0x03, 2, 1 do |m, v0, v1|
-        v0 - v1
+      SUB = op :SUB, 0x03, 2, 1 do |m|
+        m.push((m.pop(Integer) - m.pop(Integer)) % MAX_INT)
       end
 
-      DIV = op 0x04, 2, 1 do |m, v0, v1|
+      DIV = op :DIV, 0x04, 2, 1 do |m, v0, v1|
         v1.zero? ? 0 : v0 / v1
       end
 
-      SDIV = op 0x05, 2, 1 do |m, v0, v1|
+      SDIV = op :SDIV, 0x05, 2, 1 do |m, v0, v1|
         if v1.zero?
           0
         elsif v0 == -2 ** 255 || v1 == -1
@@ -83,73 +88,81 @@ module Ciri
         end
       end
 
-      MOD = op 0x06, 2, 1 do |m, v0, v1|
-        v1.zero? ? 0 : v0 % v1
+      MOD = op :MOD, 0x06, 2, 1 do |vm|
+        a, b = vm.pop_list(2, Integer)
+        vm.push(b.zero? ? 0 : a % b)
       end
 
-      SMOD = op 0x07, 2, 1 do |m, v0, v1|
-        v1.zero? ? 0 : v0 % v1
+      SMOD = op :SMOD, 0x07, 2, 1 do |vm|
+        a, b = vm.pop_list(2, Integer).map {|n| Utils::Number.unsigned_to_signed n}
+        value = b.zero? ? 0 : a.abs % b.abs
+        pos = a > 0 ? 1 : -1
+        vm.push(Utils::Number.signed_to_unsigned(value * pos))
       end
 
-      ADDMOD = op 0x08, 3, 1 do |m, v0, v1, v2|
-        v2.zero? ? 0 : (v0 + v1) % v2
+      ADDMOD = op :ADDMOD, 0x08, 3, 1 do |m|
+        a, b, c = m.pop_list(3, Integer)
+        value = c.zero? ? 0 : (a + b) % c
+        m.push(value % MAX_INT)
       end
 
-      MULMOD = op 0x09, 3, 1 do |m, v0, v1, v2|
+      MULMOD = op :MULMOD, 0x09, 3, 1 do |m, v0, v1, v2|
         v2.zero? ? 0 : (v0 * v1) % v2
       end
 
-      EXP = op 0x0a, 2, 1 do |m, v0, v1|
+      EXP = op :EXP, 0x0a, 2, 1 do |m, v0, v1|
         v0 ** v1
       end
 
-      SIGNEXTEND = op 0x0b, 2, 1 do |m, v0, v1|
+      SIGNEXTEND = op :SIGNEXTEND, 0x0b, 2, 1 do |m, v0, v1|
         256.times.map do |i|
           t = 256 - 8 * (v0[0] + 1)
           i <= t ? v1[t] : v1[i]
         end
       end
 
-      LT = op 0x10, 2, 1 do |m, v0, v1|
+      LT = op :LT, 0x10, 2, 1 do |m, v0, v1|
         v0 < v1 ? 1 : 0
       end
 
-      GT = op 0x11, 2, 1 do |m, v0, v1|
+      GT = op :GT, 0x11, 2, 1 do |m, v0, v1|
         v0 > v1 ? 1 : 0
       end
 
-      SLT = op 0x12, 2, 1 do |m, v0, v1|
+      SLT = op :SLT, 0x12, 2, 1 do |m, v0, v1|
         v0 < v1 ? 1 : 0
       end
 
-      SGT = op 0x13, 2, 1 do |m, v0, v1|
+      SGT = op :SGT, 0x13, 2, 1 do |m, v0, v1|
         v0 > v1 ? 1 : 0
       end
 
-      EQ = op 0x14, 2, 1 do |m, v0, v1|
-        v0 == v1 ? 1 : 0
+      EQ = op :EQ, 0x14, 2, 1 do |vm|
+        a, b = vm.pop_list(2, Integer)
+        vm.push(a == b ? 1 : 0)
       end
 
-      ISZERO = op 0x15, 1, 1 do |m, v0|
+      ISZERO = op :ISZERO, 0x15, 1, 1 do |m, v0|
         v0.zero? ? 1 : 0
       end
 
-      AND = op 0x16, 2, 1 do |m, v0, v1|
+      AND = op :AND, 0x16, 2, 1 do |m, v0, v1|
         v0 & v1
       end
 
-      OR = op 0x17, 2, 1 do |m, v0, v1|
+      OR = op :OR, 0x17, 2, 1 do |m, v0, v1|
         v0 | v1
       end
 
-      XOR = op 0x18, 2, 1 do |m, v0, v1|
+      XOR = op :XOR, 0x18, 2, 1 do |m, v0, v1|
         v0 ^ v1
       end
 
-      NOT = op 0x19, 1, 1 do |m, v0|
+      NOT = op :NOT, 0x19, 1, 1 do |m, v0|
         ~v0
       end
-      BYTE = op 0x1a, 2, 1 do |m, v0, v1|
+
+      BYTE = op :BYTE, 0x1a, 2, 1 do |m, v0, v1|
         if v0 > 32
           0
         else
@@ -160,7 +173,7 @@ module Ciri
       end
 
       # 20s: sha3
-      SHA3 = op 0x20, 2, 1 do |m, v0, v1|
+      SHA3 = op :SHA3, 0x20, 2, 1 do |m, v0, v1|
         ret = Ciri::Utils.sha3 m.memory[v0..(v0 + v1 - 1)]
         # m.active_member = m(v0, v1)
         ret
@@ -196,7 +209,7 @@ module Ciri
       MSTORE8 = 0x53
       SLOAD = 0x54
 
-      SSTORE = op 0x55, 2, 0 do |vm|
+      SSTORE = op :SSTORE, 0x55, 2, 0 do |vm|
         key = vm.pop
         value = vm.pop
         vm.store_data(vm.instruction.address, key, value) unless value.zero? && key == "\x00".b
@@ -211,7 +224,8 @@ module Ciri
       # 60s & 70s: Push Operations
       # PUSH1 - PUSH32
       (1..32).each do |i|
-        const_set("PUSH#{i}", op(0x60 + i - 1, 0, 1, &proc {|byte_size|
+        name = "PUSH#{i}"
+        const_set(name, op(name, 0x60 + i - 1, 0, 1, &proc {|byte_size|
           proc do |vm|
             vm.push vm.get_code(vm.pc + 1, byte_size)
           end

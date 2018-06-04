@@ -46,6 +46,7 @@ module Ciri
     #
     class VM
       extend Forwardable
+      include Utils::Logger
 
       def_delegators :@machine_state, :stack, :pc
 
@@ -59,18 +60,26 @@ module Ciri
         @output = nil
       end
 
-      def pop
-        stack.pop
+      def pop_list(count, type)
+        count.times.map do
+          pop(type)
+        end
       end
 
-      def pop_int
-        i = pop
-        i = Utils.big_endian_decode(i) unless i.is_a?(Integer)
-        i
+      def pop(type = nil)
+        item = stack.pop
+        item = if type == Integer
+                 item.is_a?(Integer) ? item : Utils.big_endian_decode(item)
+               else
+                 item
+               end
+        debug("pop item #{item.inspect}")
+        item
       end
 
       # push into stack
       def push(item)
+        debug("push item #{item.inspect}")
         stack.push(item)
       end
 
@@ -122,6 +131,7 @@ module Ciri
         w = get_op(ms.pc)
         operation = OP.get(w)
         raise "can't find operation #{w}, pc #{ms.pc}" unless operation
+        debug("#{ms.pc} #{operation.name}")
         operation.call(self, instruction)
         ms.pc = case
                 when w == OP::JUMP
