@@ -24,8 +24,13 @@
 module Ciri
   module EVM
     # defined in yellow paper
-    Instruction = Struct.new(:address, :origin, :price, :data, :sender, :value, :bytes_code, :header, :execute_depth, :w,
-                             keyword_init: true)
+    Instruction = Struct.new(:address, :origin, :price, :data, :sender, :value, :bytes_code, :header, :execute_depth,
+                             keyword_init: true) do
+      def get_op(pos)
+        return 0 if pos >= bytes_code.size
+        bytes_code[pos].ord
+      end
+    end
     SubState = Struct.new(:suicide_accounts, :log_series, :touched_accounts, :refunds, keyword_init: true)
     MachineState = Struct.new(:gas_remain, :pc, :memory, :active_number, :stack, :output, keyword_init: true)
 
@@ -67,7 +72,7 @@ module Ciri
       end
 
       def pop(type = nil)
-        item = stack.pop
+        item = stack.shift
         item = if type == Integer
                  item.is_a?(Integer) ? item : Utils.big_endian_decode(item)
                else
@@ -80,7 +85,7 @@ module Ciri
       # push into stack
       def push(item)
         debug("push item #{item.inspect}")
-        stack.push(item)
+        stack.unshift(item)
       end
 
       # get data from instruction
@@ -101,7 +106,7 @@ module Ciri
       end
 
       def run
-        @state, @machine_state, @instruction, @sub_state, @output = execute(@state, @machine_state, @instruction, @sub_state)
+        @state, @machine_state, @sub_state, @instruction, @output = execute(@state, @machine_state, @sub_state, @instruction)
       end
 
       # Ξ(σ,g,I,T) ≡ (σ′,μ′ ,A,o)
@@ -112,9 +117,8 @@ module Ciri
           elsif get_op(machine_state.pc) == OP::REVERT
             o = halt(machine_state, instruction)
             gas_cost = Cost.cost(state, EMPTY_SUBSTATE, instruction)
-            ms1 = machine_state.dup
-            ms1.gas_remain - gas_cost
-            return [EMPTY_SET, ms1, sub_state, instruction, o]
+            machine_state.gas_remain -= gas_cost
+            return [EMPTY_SET, machine_state, sub_state, instruction, o]
           elsif (o = halt(machine_state, instruction)) != EMPTY_SET
             # STOP
             return [state, machine_state, sub_state, instruction, o]
@@ -127,11 +131,12 @@ module Ciri
 
       # O(σ, μ, A, I) ≡ (σ′, μ′, A′, I)
       def operate(state, ms, sub_state, instruction)
-        ms.gas_remain - Cost.cost(state, sub_state, instruction)
+        gas_cost = Cost.cost(state, ms, instruction)
+        ms.gas_remain -= gas_cost
         w = get_op(ms.pc)
         operation = OP.get(w)
         raise "can't find operation #{w}, pc #{ms.pc}" unless operation
-        debug("#{ms.pc} #{operation.name}")
+        debug("#{ms.pc} #{operation.name} gas: #{gas_cost}")
         operation.call(self, instruction)
         ms.pc = case
                 when w == OP::JUMP
@@ -147,8 +152,7 @@ module Ciri
 
       # get operation code
       def get_op(pos)
-        return 0 if pos >= @instruction.bytes_code.size
-        @instruction.bytes_code[pos].ord
+        @instruction.get_op(pos)
       end
 
       # determinate halt or not halt

@@ -234,17 +234,20 @@ module Ciri
       # 80s: Duplication Operations
       # DUP1 - DUP16
       (1..16).each do |i|
-        const_set("DUP#{i}", 0x80 + i - 1)
+        name = "DUP#{i}"
+        const_set(name, op(name, 0x80 + i - 1, i, i + 1))
       end
       # 90s: Exchange Operations
       # SWAP1 - SWAP16
       (1..16).each do |i|
-        const_set("SWAP#{i}", 0x90 + i - 1)
+        name = "SWAP#{i}"
+        const_set(name, op(name, 0x90 + i - 1, i + 1, i + 1))
       end
       # a0s: Logging Operations
       # LOG0 - LOG4
       (0..4).each do |i|
-        const_set("LOG#{i}", 0xa0 + i)
+        name = "LOG#{i}"
+        const_set(name, op(name, 0xa0 + i, i + 2, 0))
       end
       # f0s: System operations
       CREATE = 0xf0

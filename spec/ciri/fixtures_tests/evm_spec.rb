@@ -69,7 +69,10 @@ RSpec.describe Ciri::EVM do
         vm.run
         # post
         output = t['out'].yield_self {|out| out && Ciri::Utils.hex_to_data(out)[1..-1]}
-        expect(output).to eq (vm.output || '')
+        expect(vm.output || '').to eq output
+
+        gas_remain = t['gas'].yield_self {|gas_remain| gas_remain && Ciri::Utils.big_endian_decode(Ciri::Utils.hex_to_data(gas_remain))}
+        expect(vm.machine_state.gas_remain).to eq gas_remain
 
         t['post'].each do |address, v|
           account = parse_account[address, v]

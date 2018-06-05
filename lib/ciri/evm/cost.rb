@@ -21,6 +21,8 @@
 # THE SOFTWARE.
 
 
+require_relative 'op'
+
 module Ciri
   module EVM
     module Cost
@@ -62,11 +64,98 @@ module Ciri
       G_BLOCKHASH = 20
       G_QUADDIVISOR = 100
 
+      # operation code by group, for later calculation
+      W_ZERO = [OP::STOP, OP::RETURN, OP::REVERT]
+      W_BASE = [OP::ADDRESS, OP::ORIGIN, OP::CALLER, OP::CALLVALUE, OP::CALLDATASIZE, OP::CODESIZE, OP::GASPRICE,
+                OP::COINBASE, OP::TIMESTAMP, OP::NUMBER, OP::DIFFICULTY, OP::GASLIMIT, OP::RETURNDATASIZE,
+                OP::POP, OP::PC, OP::MSIZE, OP::GAS]
+      W_VERYLOW = [OP::ADD, OP::SUB, OP::NOT, OP::LT, OP::GT, OP::SLT, OP::SGT, OP::EQ, OP::ISZERO, OP::AND, OP::OR,
+                   OP::XOR, OP::BYTE, OP::CALLDATALOAD, OP::MLOAD, OP::MSTORE, OP::MSTORE8,
+                   *(1..32).map {|i| OP.get(OP::PUSH1 + i - 1).code}, # push1 - push32
+                   *(1..16).map {|i| OP.get(OP::DUP1 + i - 1).code}, # dup1 - dup16
+                   *(1..16).map {|i| OP.get(OP::SWAP1 + i - 1).code}] # swap1 - swap16
+      W_LOW = [OP::MUL, OP::DIV, OP::SDIV, OP::MOD, OP::SMOD, OP::SIGNEXTEND]
+      W_MID = [OP::ADDMOD, OP::MULMOD, OP::JUMP]
+      W_HIGH = [OP::JUMPI]
+      W_EXTCODE = [OP::EXTCODESIZE]
+
 
       class << self
+        def cost(state, ms, instruction)
+          cost_of_operation(state, ms, instruction)
+        end
+
         # C(σ,μ,I)
-        def cost(state, sub_state, instruction)
-          0
+        # calculate cost of current operation
+        def cost_of_operation(state, ms, instruction)
+          w = instruction.get_op(ms.pc)
+          if w == OP::SSTORE
+            cost_of_sstore(state, ms, instruction)
+          elsif w == OP::EXP && ms.stack[1] == 0
+            G_EXP
+          elsif w == OP::EXP && ms.stack[1] > 0
+            G_EXP + G_EXPBYTE * (1 + log256(ms.stack[1]))
+          elsif w == OP::CALLDATACOPY || w == OP::CODECOPY || w == OP::RETURNDATACOPY
+            G_VERYLOW + G_COPY * (ms.stack[2] / 32)
+          elsif w == OP::EXTCODECOPY
+            G_EXTCODE + G_COPY * (ms.stack[3] / 32)
+          elsif (OP::LOG0..OP::LOG4).include? w
+            G_LOG + G_LOGDATA * ms.stack[1] + (w - OP::LOG0) * G_TOPIC
+          elsif w == OP::CALL || w == OP::CALLCODE || w == OP::DELEGATECALL
+            cost_of_call(state, ms)
+          elsif w == OP::SELFDESTRUCT
+            cost_of_self_destruct(state, ms)
+          elsif w == OP::CREATE
+            G_CREATE
+          elsif w == OP::SHA3
+            G_SHA3 + G_SHA3WORD * (ms.stack[1] / 32)
+          elsif w == OP::JUMPDEST
+            G_JUMPDEST
+          elsif w == OP::SLOAD
+            G_SLOAD
+          elsif W_ZERO.include? w
+            G_ZERO
+          elsif W_BASE.include? w
+            G_BASE
+          elsif W_VERYLOW.include? w
+            G_VERYLOW
+          elsif W_LOW.include? w
+            G_LOW
+          elsif W_MID.include? w
+            G_MID
+          elsif W_HIGH.include? w
+            G_HIGH
+          elsif W_EXTCODE.include? w
+            G_EXTCODE
+          elsif w == OP::BALANCE
+            G_BALANCE
+          elsif w == OP::BLOCKHASH
+            G_BLOCKHASH
+          else
+            raise "can't compute cost for unknown op #{w}"
+          end
+        end
+
+        def cost_of_memory(i)
+          G_MEMORY * i + (i ** 2) / 512
+        end
+
+        private
+
+        def cost_of_self_destruct(state, ms)
+
+        end
+
+        def cost_of_call
+
+        end
+
+        def cost_of_sstore(state, ms, instruction)
+          if ms.stack[1] != 0 && state[instruction.address].storage[ms.stack[0]].nil?
+            G_SSET
+          else
+            G_RESET
+          end
         end
       end
     end
