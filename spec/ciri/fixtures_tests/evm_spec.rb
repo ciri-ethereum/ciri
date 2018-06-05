@@ -62,7 +62,7 @@ RSpec.describe Ciri::EVM do
         value = Ciri::Utils.hex_to_data(t['exec']['value'])[1..-1]
         data = Ciri::Utils.hex_to_data(t['exec']['data'])[1..-1]
 
-        ms = Ciri::EVM::MachineState.new(gas_remain: gas, pc: 0, stack: [])
+        ms = Ciri::EVM::MachineState.new(gas_remain: gas, pc: 0, stack: [], memory: "\x00".b * 256, memory_item: 0)
         instruction = Ciri::EVM::Instruction.new(address: address, origin: origin, price: gas_price, sender: caller,
                                                  bytes_code: code, value: value, data: data)
         vm = Ciri::EVM::VM.new(state: state, machine_state: ms, instruction: instruction)
@@ -88,5 +88,7 @@ RSpec.describe Ciri::EVM do
   Dir.glob("#{path}/*.json").grep(/add\d\.json/).each {|t| run_test_case[JSON.load(open t), prefix: 'vmArithmeticTest']}
   # addmod
   Dir.glob("#{path}/*.json").grep(/addmod\d/).each {|t| run_test_case[JSON.load(open t), prefix: 'vmArithmeticTest']}
+
+  # Dir.glob("#{path}/*.json").grep(/arith1\.json/).each {|t| run_test_case[JSON.load(open t), prefix: 'vmArithmeticTest']}
 
 end

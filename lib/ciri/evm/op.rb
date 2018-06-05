@@ -62,30 +62,31 @@ module Ciri
 
       # basic operations
       STOP = op :STOP, 0x00, 0, 0
-      ADD = op :ADD, 0x01, 2, 1 do |m, i|
-        m.push((m.pop(Integer) + m.pop(Integer)) % MAX_INT)
+      ADD = op :ADD, 0x01, 2, 1 do |vm|
+        a, b = vm.pop_list(2, Integer)
+        vm.push((a + b) % MAX_INT)
       end
 
-      MUL = op :MUL, 0x02, 2, 1 do |m, v0, v1|
-        v0 * v1
+      MUL = op :MUL, 0x02, 2, 1 do |vm|
+        a, b = vm.pop_list(2, Integer)
+        vm.push((a * b) % MAX_INT)
       end
 
-      SUB = op :SUB, 0x03, 2, 1 do |m|
-        m.push((m.pop(Integer) - m.pop(Integer)) % MAX_INT)
+      SUB = op :SUB, 0x03, 2, 1 do |vm|
+        a, b = vm.pop_list(2, Integer)
+        vm.push((a - b) % MAX_INT)
       end
 
-      DIV = op :DIV, 0x04, 2, 1 do |m, v0, v1|
-        v1.zero? ? 0 : v0 / v1
+      DIV = op :DIV, 0x04, 2, 1 do |vm|
+        a, b = vm.pop_list(2, Integer)
+        b.zero? ? 0 : a / b
       end
 
-      SDIV = op :SDIV, 0x05, 2, 1 do |m, v0, v1|
-        if v1.zero?
-          0
-        elsif v0 == -2 ** 255 || v1 == -1
-          -2 ** 255
-        else
-          v0 / v1
-        end
+      SDIV = op :SDIV, 0x05, 2, 1 do |vm|
+        a, b = vm.pop_list(2, Integer).map {|n| Utils::Number.unsigned_to_signed n}
+        value = b.zero? ? 0 : a.abs / b.abs
+        pos = a > 0 ? 1 : -1
+        vm.push(Utils::Number.signed_to_unsigned(value * pos))
       end
 
       MOD = op :MOD, 0x06, 2, 1 do |vm|
@@ -110,8 +111,9 @@ module Ciri
         v2.zero? ? 0 : (v0 * v1) % v2
       end
 
-      EXP = op :EXP, 0x0a, 2, 1 do |m, v0, v1|
-        v0 ** v1
+      EXP = op :EXP, 0x0a, 2, 1 do |vm|
+        base, x = vm.pop_list(2, Integer)
+        vm.push((base ** x) % MAX_INT)
       end
 
       SIGNEXTEND = op :SIGNEXTEND, 0x0b, 2, 1 do |m, v0, v1|
@@ -205,8 +207,18 @@ module Ciri
       # 50s: Stack, Memory, Storage and Flow Operations
       POP = 0x50
       MLOAD = 0x51
-      MSTORE = 0x52
-      MSTORE8 = 0x53
+
+      MSTORE = op :MSTORE, 0x52, 2, 0 do |vm|
+        index = vm.pop(Integer)
+        data = vm.pop
+        vm.memory_store(index, 32, data)
+        vm.memory_item = [vm.memory_item, (index + 32) / 32].max
+      end
+
+      MSTORE8 = op :MSTORE8, 0x53, 2, 0 do |vm|
+
+      end
+
       SLOAD = 0x54
 
       SSTORE = op :SSTORE, 0x55, 2, 0 do |vm|
@@ -225,11 +237,11 @@ module Ciri
       # PUSH1 - PUSH32
       (1..32).each do |i|
         name = "PUSH#{i}"
-        const_set(name, op(name, 0x60 + i - 1, 0, 1, &proc {|byte_size|
+        const_set(name, op(name, 0x60 + i - 1, 0, 1, &proc do |byte_size|
           proc do |vm|
             vm.push vm.get_code(vm.pc + 1, byte_size)
           end
-        }.call(i)))
+        end.call(i)))
       end
       # 80s: Duplication Operations
       # DUP1 - DUP16
@@ -241,7 +253,11 @@ module Ciri
       # SWAP1 - SWAP16
       (1..16).each do |i|
         name = "SWAP#{i}"
-        const_set(name, op(name, 0x90 + i - 1, i + 1, i + 1))
+        const_set(name, op(name, 0x90 + i - 1, i + 1, i + 1, &proc do |i|
+          proc do |vm|
+            vm.stack[0], vm.stack[i] = vm.stack[i], vm.stack[0]
+          end
+        end.call(i)))
       end
       # a0s: Logging Operations
       # LOG0 - LOG4
@@ -253,7 +269,15 @@ module Ciri
       CREATE = 0xf0
       CALL = 0xf1
       CALLCODE = 0xf2
-      RETURN = 0xf3
+
+      RETURN = op :RETURN, 0xf3, 2, 0 do |vm|
+        index, size = vm.pop_list(2, Integer)
+        vm.output = vm.fetch_memory_data(index, size)
+        if size != 0 && (i = (index + size - 1) / 32) > vm.memory_item
+          vm.memory_item = i
+        end
+      end
+
       DELEGATECALL = 0xf4
       STATICCALL = 0xfa
       REVERT = 0xfd

@@ -32,7 +32,37 @@ module Ciri
       end
     end
     SubState = Struct.new(:suicide_accounts, :log_series, :touched_accounts, :refunds, keyword_init: true)
-    MachineState = Struct.new(:gas_remain, :pc, :memory, :active_number, :stack, :output, keyword_init: true)
+    MachineState = Struct.new(:gas_remain, :pc, :memory, :memory_item, :stack, :output, keyword_init: true) do
+      def pop_list(count, type)
+        count.times.map do
+          pop(type)
+        end
+      end
+
+      def pop(type = nil)
+        item = stack.shift
+        item = if type == Integer
+                 item.is_a?(Integer) ? item : Utils.big_endian_decode(item)
+               else
+                 item
+               end
+        item
+      end
+
+      def get_stack_item(index, type = nil)
+        item = stack[index]
+        if type == Integer
+          item.is_a?(Integer) ? item : Utils.big_endian_decode(item)
+        else
+          item
+        end
+      end
+
+      # push into stack
+      def push(item)
+        stack.unshift(item)
+      end
+    end
 
     # represent empty set, distinguished with nil
     EMPTY_SET = [].freeze
@@ -53,9 +83,10 @@ module Ciri
       extend Forwardable
       include Utils::Logger
 
-      def_delegators :@machine_state, :stack, :pc
+      def_delegators :@machine_state, :stack, :pc, :pop, :push, :pop_list, :get_stack_item, :memory_item, :memory_item=
 
-      attr_reader :state, :machine_state, :instruction, :sub_state, :output
+      attr_reader :state, :machine_state, :instruction, :sub_state
+      attr_accessor :output
 
       def initialize(state:, machine_state:, sub_state: EMPTY_SUBSTATE, instruction:)
         @state = state
@@ -63,29 +94,6 @@ module Ciri
         @instruction = instruction
         @sub_state = sub_state
         @output = nil
-      end
-
-      def pop_list(count, type)
-        count.times.map do
-          pop(type)
-        end
-      end
-
-      def pop(type = nil)
-        item = stack.shift
-        item = if type == Integer
-                 item.is_a?(Integer) ? item : Utils.big_endian_decode(item)
-               else
-                 item
-               end
-        debug("pop item #{item.inspect}")
-        item
-      end
-
-      # push into stack
-      def push(item)
-        debug("push item #{item.inspect}")
-        stack.unshift(item)
       end
 
       # get data from instruction
@@ -105,14 +113,23 @@ module Ciri
         state[address].storage[key]
       end
 
+      def memory_store(start, size, data)
+        machine_state.memory[start..(start + size - 1)] = serialize(data).rjust(size, "\x00".b)
+      end
+
+      def fetch_memory_data(start, size)
+        machine_state.memory[start..(start + size - 1)]
+      end
+
       def run
-        @state, @machine_state, @sub_state, @instruction, @output = execute(@state, @machine_state, @sub_state, @instruction)
+        # @state, @machine_state, @sub_state, @instruction, @output = execute(@state, @machine_state, @sub_state, @instruction)
+        execute(@state, @machine_state, @sub_state, @instruction)
       end
 
       # Ξ(σ,g,I,T) ≡ (σ′,μ′ ,A,o)
       def execute(state, machine_state, sub_state, instruction)
         loop do
-          if false && exception?(state, machine_state, instruction)
+          if exception?(state, machine_state, instruction)
             return [EMPTY_SET, machine_state, EMPTY_SUBSTATE, instruction, EMPTY_SET]
           elsif get_op(machine_state.pc) == OP::REVERT
             o = halt(machine_state, instruction)
@@ -131,13 +148,21 @@ module Ciri
 
       # O(σ, μ, A, I) ≡ (σ′, μ′, A′, I)
       def operate(state, ms, sub_state, instruction)
-        gas_cost = Cost.cost(state, ms, instruction)
-        ms.gas_remain -= gas_cost
         w = get_op(ms.pc)
         operation = OP.get(w)
+
         raise "can't find operation #{w}, pc #{ms.pc}" unless operation
-        debug("#{ms.pc} #{operation.name} gas: #{gas_cost}")
+
+        op_cost = Cost.cost(state, ms, instruction)
+        memory_cost = Cost.cost_of_memory(ms.memory_item)
+        # call operation
         operation.call(self, instruction)
+        # calculate gas_cost
+        new_memory_cost = Cost.cost_of_memory(ms.memory_item)
+        gas_cost = new_memory_cost - memory_cost + op_cost
+        ms.gas_remain -= gas_cost
+
+        debug("#{ms.pc} #{operation.name} gas: #{gas_cost}")
         ms.pc = case
                 when w == OP::JUMP
                   # jump
@@ -146,6 +171,15 @@ module Ciri
                 else
                   next_valid_instruction_pos(ms.pc, w)
                 end
+      end
+
+      def serialize(item)
+        case item
+        when Integer
+          Utils.big_endian_encode(item)
+        else
+          item
+        end
       end
 
       private
@@ -159,8 +193,8 @@ module Ciri
       def halt(machine_state, instruction)
         w = get_op(machine_state.pc)
         if w == OP::RETURN || w == OP::REVERT
-          #TODO actually return? should update machine_state?
-          [OP::RETURN, machine_state]
+          operate(state, machine_state, sub_state, instruction)
+          output
         elsif w == OP::STOP || w == OP::SELFDESTRUCT
           # return empty sequence: nil
           nil
@@ -171,7 +205,7 @@ module Ciri
 
       # check status
       def exception?(state, ms, instruction)
-        w = instruction.op(ms.pc)
+        w = instruction.get_op(ms.pc)
         case
         when ms.gas_remain < Cost.cost(state, ms, instruction)
           true
@@ -185,7 +219,7 @@ module Ciri
           true
         when w == OP::RETURNDATACOPY && ms.stack[1] + ms.stack[2] > ms.output.size
           true
-        when instruction.stack.size - OP.input_count(w) + OP.output_count(w) > 1024
+        when stack.size - OP.input_count(w) + OP.output_count(w) > 1024
           true
           # A condition in yellow paper but I can't understand..: (¬Iw ∧W(w,μ))
         else
@@ -212,16 +246,6 @@ module Ciri
           i + w - OP::PUSH1 + 2
         else
           i + 1
-        end
-      end
-
-
-      def serialize(item)
-        case item
-        when Integer
-          Utils.big_endian_encode(item)
-        else
-          item
         end
       end
 
