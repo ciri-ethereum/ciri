@@ -38,7 +38,9 @@ RSpec.describe Ciri::EVM do
     address = Ciri::Utils.hex_to_data(address)
     balance = Ciri::Utils.big_endian_decode Ciri::Utils.hex_to_data(v["balance"])
     nonce = Ciri::Utils.big_endian_decode Ciri::Utils.hex_to_data(v["nonce"])
-    storage = v["storage"].map {|k, v| [Ciri::Utils.hex_to_data(k), Ciri::Utils.hex_to_data(v)]}.to_h
+    storage = v["storage"].map do |k, v|
+      [Ciri::Utils.hex_to_data(k), Ciri::Utils.hex_to_data(v).rjust(32, "\x00".b)]
+    end.to_h
     Ciri::EVM::Account.new(address: address, balance: balance, nonce: nonce, storage: storage)
   end
 
@@ -69,16 +71,21 @@ RSpec.describe Ciri::EVM do
         fork_config = Ciri::EVM::Forks::Frontier.new_fork_config
         vm = Ciri::EVM::VM.new(state: state, machine_state: ms, instruction: instruction, fork_config: fork_config)
         vm.run
+        next unless t['post']
         # post
         output = t['out'].yield_self {|out| out && Ciri::Utils.hex_to_data(out)}
         expect(vm.output || '').to eq output if output
 
         gas_remain = t['gas'].yield_self {|gas_remain| gas_remain && Ciri::Utils.big_endian_decode(Ciri::Utils.hex_to_data(gas_remain))}
-        expect(vm.machine_state.gas_remain).to eq gas_remain
+        expect(vm.machine_state.gas_remain).to eq gas_remain if gas_remain
 
         t['post'].each do |address, v|
           account = parse_account[address, v]
-          expect(state[account.address]).to eq account
+          vm_account = state[account.address]
+          storage = account.storage.map {|k, v| [Ciri::Utils.data_to_hex(k), Ciri::Utils.data_to_hex(v)]}.to_h
+          vm_storage = vm_account.storage.map {|k, v| [Ciri::Utils.data_to_hex(k), Ciri::Utils.data_to_hex(v)]}.to_h
+          expect(vm_storage).to eq storage
+          expect(vm_account).to eq account
         end
       end
 
@@ -86,17 +93,6 @@ RSpec.describe Ciri::EVM do
   end
 
   path = 'fixtures/VMTests/vmArithmeticTest'
-  arith_tests = Dir.glob("#{path}/*.json")
-  # add
-  arith_tests.grep(/add\d\.json/).each {|t| run_test_case[JSON.load(open t), prefix: 'vmArithmeticTest']}
-  # addmod
-  arith_tests.grep(/addmod\d/).each {|t| run_test_case[JSON.load(open t), prefix: 'vmArithmeticTest']}
-  # arith1
-  arith_tests.grep(/arith1\.json/).each {|t| run_test_case[JSON.load(open t), prefix: 'vmArithmeticTest']}
-  # div*
-  arith_tests.grep(/\/div/).each {|t| run_test_case[JSON.load(open t), prefix: 'vmArithmeticTest']}
-  # exp*
-  arith_tests.grep(/\/exp\d/).each {|t| run_test_case[JSON.load(open t), prefix: 'vmArithmeticTest']}
-  # expPowerOf
-  # arith_tests.grep(/\/expPowerOf2_/).each {|t| run_test_case[JSON.load(open t), prefix: 'vmArithmeticTest']}
+  # vmArithmeticTest
+  Dir.glob("#{path}/*.json").each {|t| run_test_case[JSON.load(open t), prefix: 'vmArithmeticTest']}
 end

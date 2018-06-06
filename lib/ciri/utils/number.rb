@@ -44,11 +44,11 @@ module Ciri
       UINT_255_CEILING = 2 ** 255
 
       def unsigned_to_signed(n)
-        n < UINT_255_MAX ? n : n - UINT_256_CEILING
+        n <= UINT_255_MAX ? n : n - UINT_256_CEILING
       end
 
       def signed_to_unsigned(n)
-        n > 0 ? n : n + UINT_256_CEILING
+        n >= 0 ? n : n + UINT_256_CEILING
       end
 
     end

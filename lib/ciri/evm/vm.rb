@@ -73,7 +73,7 @@ module Ciri
     # represent current vm status, include stack, memory..
     MachineState = Struct.new(:gas_remain, :pc, :memory, :memory_item, :stack, :output, keyword_init: true) do
 
-      def pop_list(count, type)
+      def pop_list(count, type = nil)
         count.times.map {pop(type)}
       end
 
@@ -104,7 +104,7 @@ module Ciri
       end
 
       # fetch data from memory
-      def fetch_memory_data(start, size)
+      def fetch_memory(start, size)
         memory[start..(start + size - 1)]
       end
     end
@@ -132,8 +132,8 @@ module Ciri
       include Utils::Logger
 
       def_delegators :@machine_state, :stack, :pc, :pop, :push, :pop_list, :get_stack_item,
-                     :memory_item, :memory_item=, :memory_store, :fetch_memory_data
-      def_delegators :@instruction, :get_op, :get_code, :next_valid_instruction_pos
+                     :memory_item, :memory_item=, :memory_store, :fetch_memory
+      def_delegators :@instruction, :get_op, :get_code, :next_valid_instruction_pos, :data
 
       attr_reader :state, :machine_state, :instruction, :sub_state, :fork_config
       attr_accessor :output
@@ -151,11 +151,12 @@ module Ciri
       def store_data(address, key, data)
         # debug "address #{address} store data #{serialize data} on key #{key}"
         account = state[address] || Account.new(address: address, balance: 0, storage: {}, nonce: 0)
-        account.storage[key] = Utils.serialize data
+        return unless data && data != 0
+        account.storage[key] = Utils.serialize(data).rjust(32, "\x00".b)
         state[address] = account
       end
 
-      def fetch_data(address, key, data)
+      def fetch_data(address, key)
         # debug "address #{address} fetch data #{data} on key #{key}"
         state[address].storage[key]
       end
@@ -177,6 +178,7 @@ module Ciri
             return [EMPTY_SET, machine_state, sub_state, instruction, o]
           elsif (o = halt(machine_state, instruction)) != EMPTY_SET
             # STOP
+            debug("#{pc} STOP gas: 0 stack: #{stack.size}")
             return [state, machine_state, sub_state, instruction, o]
           else
             operate(state, machine_state, sub_state, instruction)
@@ -195,7 +197,7 @@ module Ciri
         op_cost = fork_config.cost_of_operation[state, ms, instruction]
         memory_cost = fork_config.cost_of_memory[ms.memory_item]
         # call operation
-        operation.call(self, instruction)
+        operation.call(self)
         # calculate gas_cost
         new_memory_cost = fork_config.cost_of_memory[ms.memory_item]
         gas_cost = new_memory_cost - memory_cost + op_cost
@@ -204,12 +206,17 @@ module Ciri
         debug("#{ms.pc} #{operation.name} gas: #{gas_cost} stack: #{stack.size}")
         ms.pc = case
                 when w == OP::JUMP
-                  # jump
+                  @jump_to
                 when w == OP::JUMPI
-                  #JUMPI
+                  @jump_to
                 else
                   next_valid_instruction_pos(ms.pc, w)
                 end
+      end
+
+      # only valid if current op code is allowed to modify pc
+      def jump_to(pc)
+        @jump_to = pc
       end
 
       private

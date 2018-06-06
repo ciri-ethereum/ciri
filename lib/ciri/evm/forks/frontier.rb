@@ -49,7 +49,7 @@ module Ciri
           G_HIGH = 10
           G_EXTCODE = 700
           G_BALANCE = 400
-          G_SLOAD = 200
+          G_SLOAD = 50
           G_JUMPDEST = 1
           G_SSET = 20000
           G_RESET = 5000
@@ -161,13 +161,20 @@ module Ciri
             end
 
             def cost_of_sstore(state, ms, instruction)
+              key = ms.stack[0]
+              value = ms.stack[1]
               account = state[instruction.address]
-              if ms.stack[1] != 0 && (account.nil? || account.storage[ms.stack[0]].nil?)
+
+              value_exists = !Ciri::Utils.blank_binary?(value)
+              has_key = account && account.storage[key]
+
+              if value_exists && !has_key
                 G_SSET
               else
                 G_RESET
               end
             end
+
           end
         end
 

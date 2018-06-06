@@ -84,6 +84,26 @@ module Ciri
         end
       end
 
+      def blank_binary?(item)
+        item == "\x00".b || blank?(item)
+      end
+
+      def blank?(item)
+        if item.nil?
+          true
+        elsif item.is_a? Integer
+          item.zero?
+        elsif item.is_a? String
+          item.empty?
+        else
+          false
+        end
+      end
+
+      def present?(item)
+        !blank?(item)
+      end
+
     end
 
     BLANK_SHA3 = Utils.sha3(''.b)

@@ -34,7 +34,7 @@ module Ciri
 
       Operation = Struct.new(:name, :code, :inputs, :outputs, :handler, keyword_init: true) do
         def call(*args)
-          handler.call(*args)
+          handler.call(*args) if handler
         end
       end
 
@@ -87,7 +87,7 @@ module Ciri
       SDIV = op :SDIV, 0x05, 2, 1 do |vm|
         a, b = vm.pop_list(2, Integer).map {|n| Utils::Number.unsigned_to_signed n}
         value = b.zero? ? 0 : a.abs / b.abs
-        pos = a > 0 ? 1 : -1
+        pos = (a > 0) ^ (b > 0) ? -1 : 1
         vm.push(Utils::Number.signed_to_unsigned(value * pos) % MAX_INT)
       end
 
@@ -119,19 +119,34 @@ module Ciri
         vm.push(base.pow(x, MAX_INT))
       end
 
-      SIGNEXTEND = op :SIGNEXTEND, 0x0b, 2, 1 do |m, v0, v1|
-        256.times.map do |i|
-          t = 256 - 8 * (v0[0] + 1)
-          i <= t ? v1[t] : v1[i]
+      # not sure how to handle signextend, copy algorithm from py-evm
+      SIGNEXTEND = op :SIGNEXTEND, 0x0b, 2, 1 do |vm|
+        bits, value = vm.pop_list(2, Integer)
+
+        if bits <= 31
+          testbit = bits * 8 + 7
+          sign_bit = (1 << testbit)
+
+          if value & sign_bit > 0
+            result = value | (MAX_INT - sign_bit)
+          else
+            result = value & (sign_bit - 1)
+          end
+
+        else
+          result = value
         end
+
+        vm.push(result % MAX_INT)
       end
 
       LT = op :LT, 0x10, 2, 1 do |m, v0, v1|
         v0 < v1 ? 1 : 0
       end
 
-      GT = op :GT, 0x11, 2, 1 do |m, v0, v1|
-        v0 > v1 ? 1 : 0
+      GT = op :GT, 0x11, 2, 1 do |vm|
+        a, b = vm.pop_list(2, Integer)
+        vm.push a > b ? 1 : 0
       end
 
       SLT = op :SLT, 0x12, 2, 1 do |m, v0, v1|
@@ -163,8 +178,9 @@ module Ciri
         v0 ^ v1
       end
 
-      NOT = op :NOT, 0x19, 1, 1 do |m, v0|
-        ~v0
+      NOT = op :NOT, 0x19, 1, 1 do |vm|
+        signed_number = Utils::Number.unsigned_to_signed vm.pop(Integer)
+        vm.push Utils::Number.signed_to_unsigned(~signed_number)
       end
 
       BYTE = op :BYTE, 0x1a, 2, 1 do |m, v0, v1|
@@ -190,7 +206,13 @@ module Ciri
       ORIGIN = 0x32
       CALLER = 0x33
       CALLVALUE = 0x34
-      CALLDATALOAD = 0x35
+
+      CALLDATALOAD = op :CALLDATALOAD, 0x35, 1, 1 do |vm|
+        start = vm.pop(Integer)
+        value = vm.data[start..(start + 31)].ljust(32, "\x00".b)
+        vm.push(value)
+      end
+
       CALLDATASIZE = 0x36
       CALLDATACOPY = 0x37
       CODESIZE = 0x38
@@ -209,7 +231,12 @@ module Ciri
       GASLIMIT = 0x45
       # 50s: Stack, Memory, Storage and Flow Operations
       POP = 0x50
-      MLOAD = 0x51
+
+      MLOAD = op :MLOAD, 0x51, 1, 1 do |vm|
+        index = vm.pop(Integer)
+        vm.push vm.fetch_memory(index, 32)
+        vm.memory_item = [vm.memory_item, (index + 32) / 32].max
+      end
 
       MSTORE = op :MSTORE, 0x52, 2, 0 do |vm|
         index = vm.pop(Integer)
@@ -219,23 +246,45 @@ module Ciri
       end
 
       MSTORE8 = op :MSTORE8, 0x53, 2, 0 do |vm|
-
+        index = vm.pop(Integer)
+        data = vm.pop(Integer)
+        vm.memory_store(index, 1, data % 256)
+        vm.memory_item = [vm.memory_item, (index + 32) / 32].max
       end
 
-      SLOAD = 0x54
+      SLOAD = op :SLOAD, 0x54, 1, 1 do |vm|
+        key = vm.pop
+        vm.push vm.fetch_data(vm.instruction.address, key)
+      end
 
       SSTORE = op :SSTORE, 0x55, 2, 0 do |vm|
         key = vm.pop
         value = vm.pop
-        vm.store_data(vm.instruction.address, key, value) unless value.zero? && key == "\x00".b
+
+        value_is_blank = Ciri::Utils.blank_binary?(value)
+        key_is_blank = Ciri::Utils.blank_binary?(key)
+
+        vm.store_data(vm.instruction.address, key, value) unless value_is_blank && key_is_blank
       end
 
-      JUMP = 0x56
-      JUMPI = 0x57
+      JUMP = op :JUMP, 0x56, 1, 0 do |vm|
+        pc = vm.pop(Integer)
+        vm.jump_to(pc)
+      end
+
+      JUMPI = op :JUMPI, 0x57, 2, 0 do |vm|
+        dest, cond = vm.pop_list(2, Integer)
+        if cond != 0
+          vm.jump_to(dest)
+        else
+          vm.jump_to(vm.pc + 1)
+        end
+      end
+
       PC = 0x58
       MSIZE = 0x59
       GAS = 0x5a
-      JUMPDEST = 0x5b
+      JUMPDEST = op :JUMPDEST, 0x5b, 0, 0
       # 60s & 70s: Push Operations
       # PUSH1 - PUSH32
       (1..32).each do |i|
@@ -250,7 +299,11 @@ module Ciri
       # DUP1 - DUP16
       (1..16).each do |i|
         name = "DUP#{i}"
-        const_set(name, op(name, 0x80 + i - 1, i, i + 1))
+        const_set(name, op(name, 0x80 + i - 1, i, i + 1, &proc do |i|
+          proc do |vm|
+            vm.push vm.stack[i - 1].dup
+          end
+        end.call(i)))
       end
       # 90s: Exchange Operations
       # SWAP1 - SWAP16
@@ -275,7 +328,7 @@ module Ciri
 
       RETURN = op :RETURN, 0xf3, 2, 0 do |vm|
         index, size = vm.pop_list(2, Integer)
-        vm.output = vm.fetch_memory_data(index, size)
+        vm.output = vm.fetch_memory(index, size)
         if size != 0 && (i = (index + size - 1) / 32) > vm.memory_item
           vm.memory_item = i
         end
