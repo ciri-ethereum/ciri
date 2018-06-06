@@ -81,14 +81,14 @@ module Ciri
 
       DIV = op :DIV, 0x04, 2, 1 do |vm|
         a, b = vm.pop_list(2, Integer)
-        vm.push(b.zero? ? 0 : a / b)
+        vm.push((b.zero? ? 0 : a / b) % MAX_INT)
       end
 
       SDIV = op :SDIV, 0x05, 2, 1 do |vm|
         a, b = vm.pop_list(2, Integer).map {|n| Utils::Number.unsigned_to_signed n}
         value = b.zero? ? 0 : a.abs / b.abs
         pos = a > 0 ? 1 : -1
-        vm.push(Utils::Number.signed_to_unsigned(value * pos))
+        vm.push(Utils::Number.signed_to_unsigned(value * pos) % MAX_INT)
       end
 
       MOD = op :MOD, 0x06, 2, 1 do |vm|
@@ -103,19 +103,20 @@ module Ciri
         vm.push(Utils::Number.signed_to_unsigned(value * pos))
       end
 
-      ADDMOD = op :ADDMOD, 0x08, 3, 1 do |m|
-        a, b, c = m.pop_list(3, Integer)
+      ADDMOD = op :ADDMOD, 0x08, 3, 1 do |vm|
+        a, b, c = vm.pop_list(3, Integer)
         value = c.zero? ? 0 : (a + b) % c
-        m.push(value % MAX_INT)
+        vm.push(value % MAX_INT)
       end
 
-      MULMOD = op :MULMOD, 0x09, 3, 1 do |m, v0, v1, v2|
-        v2.zero? ? 0 : (v0 * v1) % v2
+      MULMOD = op :MULMOD, 0x09, 3, 1 do |vm|
+        a, b, c = vm.pop_list(3, Integer)
+        vm.push(c.zero? ? 0 : (a * b) % c)
       end
 
       EXP = op :EXP, 0x0a, 2, 1 do |vm|
         base, x = vm.pop_list(2, Integer)
-        vm.push((base ** x) % MAX_INT)
+        vm.push(base.pow(x, MAX_INT))
       end
 
       SIGNEXTEND = op :SIGNEXTEND, 0x0b, 2, 1 do |m, v0, v1|

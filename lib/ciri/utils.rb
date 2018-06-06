@@ -47,7 +47,9 @@ module Ciri
       end
 
       def hex_to_data(hex)
-        [hex].pack("H*")
+        data = [hex].pack("H*")
+        data = data[1..-1] if data[0].ord == 1
+        data
       end
 
       def data_to_hex(data)

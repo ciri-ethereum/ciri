@@ -150,7 +150,9 @@ module Ciri
 
       def store_data(address, key, data)
         # debug "address #{address} store data #{serialize data} on key #{key}"
-        state[address].storage[key] = Utils.serialize data
+        account = state[address] || Account.new(address: address, balance: 0, storage: {}, nonce: 0)
+        account.storage[key] = Utils.serialize data
+        state[address] = account
       end
 
       def fetch_data(address, key, data)

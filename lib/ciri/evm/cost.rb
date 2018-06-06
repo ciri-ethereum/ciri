@@ -94,7 +94,7 @@ module Ciri
           elsif w == OP::EXP && ms.get_stack_item(1, Integer) == 0
             G_EXP
           elsif w == OP::EXP && (x = ms.get_stack_item(1, Integer)) > 0
-            G_EXP + G_EXPBYTE * (1 + Math.log(x, 256).to_i)
+            G_EXP + G_EXPBYTE * ((x.bit_length - 1) / 8 + 1)
           elsif w == OP::CALLDATACOPY || w == OP::CODECOPY || w == OP::RETURNDATACOPY
             G_VERYLOW + G_COPY * (ms.stack[2] / 32)
           elsif w == OP::EXTCODECOPY

@@ -48,7 +48,7 @@ module Ciri
       end
 
       def signed_to_unsigned(n)
-        n < 0 ? n : n + UINT_256_CEILING
+        n > 0 ? n : n + UINT_256_CEILING
       end
 
     end
