@@ -24,6 +24,7 @@
 require 'spec_helper'
 require 'ciri/evm'
 require 'ciri/evm/account'
+require 'ciri/evm/forks/frontier'
 require 'ciri/utils'
 require 'ciri/utils/memory_kv_store'
 
@@ -65,7 +66,8 @@ RSpec.describe Ciri::EVM do
         ms = Ciri::EVM::MachineState.new(gas_remain: gas, pc: 0, stack: [], memory: "\x00".b * 256, memory_item: 0)
         instruction = Ciri::EVM::Instruction.new(address: address, origin: origin, price: gas_price, sender: caller,
                                                  bytes_code: code, value: value, data: data)
-        vm = Ciri::EVM::VM.new(state: state, machine_state: ms, instruction: instruction)
+        fork_config = Ciri::EVM::Forks::Frontier.new_fork_config
+        vm = Ciri::EVM::VM.new(state: state, machine_state: ms, instruction: instruction, fork_config: fork_config)
         vm.run
         # post
         output = t['out'].yield_self {|out| out && Ciri::Utils.hex_to_data(out)[1..-1]}
@@ -88,7 +90,7 @@ RSpec.describe Ciri::EVM do
   Dir.glob("#{path}/*.json").grep(/add\d\.json/).each {|t| run_test_case[JSON.load(open t), prefix: 'vmArithmeticTest']}
   # addmod
   Dir.glob("#{path}/*.json").grep(/addmod\d/).each {|t| run_test_case[JSON.load(open t), prefix: 'vmArithmeticTest']}
-
-  # Dir.glob("#{path}/*.json").grep(/arith1\.json/).each {|t| run_test_case[JSON.load(open t), prefix: 'vmArithmeticTest']}
+  # arith1
+  Dir.glob("#{path}/*.json").grep(/arith1\.json/).each {|t| run_test_case[JSON.load(open t), prefix: 'vmArithmeticTest']}
 
 end

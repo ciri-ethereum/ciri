@@ -23,46 +23,94 @@
 
 module Ciri
   module EVM
-    # defined in yellow paper
+
+    #### VM States, defined in yellow paper
+    # represent instruction
     Instruction = Struct.new(:address, :origin, :price, :data, :sender, :value, :bytes_code, :header, :execute_depth,
                              keyword_init: true) do
+
       def get_op(pos)
         return 0 if pos >= bytes_code.size
         bytes_code[pos].ord
       end
-    end
-    SubState = Struct.new(:suicide_accounts, :log_series, :touched_accounts, :refunds, keyword_init: true)
-    MachineState = Struct.new(:gas_remain, :pc, :memory, :memory_item, :stack, :output, keyword_init: true) do
-      def pop_list(count, type)
-        count.times.map do
-          pop(type)
+
+      # get data from instruction
+      def get_code(pos, size = 1)
+        return 0 if pos >= bytes_code.size || pos + size - 1 >= bytes_code.size
+        bytes_code[pos..(pos + size - 1)]
+      end
+
+      # valid destinations of bytes_code
+      def destinations
+        @destinations ||= destinations_by_index(bytes_code, 0)
+      end
+
+      def next_valid_instruction_pos(pos, op_code)
+        if (OP::PUSH1..OP::PUSH32).include?(op_code)
+          pos + op_code - OP::PUSH1 + 2
+        else
+          pos + 1
         end
+      end
+
+      private
+
+      def destinations_by_index(bytes_code, i)
+        if i > bytes_code.size
+          []
+        elsif bytes_code[i] == OP::JUMPDEST
+          [i] + destinations_by_index(bytes_code, next_valid_instruction_pos(i, bytes_code[i]))
+        else
+          destinations_by_index(bytes_code, next_valid_instruction_pos(i, bytes_code[i]))
+        end
+      end
+
+    end
+
+    # sub state contained changed accounts and log_series
+    SubState = Struct.new(:suicide_accounts, :log_series, :touched_accounts, :refunds, keyword_init: true)
+
+    # represent current vm status, include stack, memory..
+    MachineState = Struct.new(:gas_remain, :pc, :memory, :memory_item, :stack, :output, keyword_init: true) do
+
+      def pop_list(count, type)
+        count.times.map {pop(type)}
       end
 
       def pop(type = nil)
         item = stack.shift
-        item = if type == Integer
-                 item.is_a?(Integer) ? item : Utils.big_endian_decode(item)
-               else
-                 item
-               end
+        if type == Integer && !item.is_a?(Integer)
+          item = Utils.big_endian_decode(item)
+        end
         item
       end
 
       def get_stack_item(index, type = nil)
         item = stack[index]
-        if type == Integer
-          item.is_a?(Integer) ? item : Utils.big_endian_decode(item)
-        else
-          item
+        if type == Integer && !item.is_a?(Integer)
+          item = Utils.big_endian_decode(item)
         end
+        item
       end
 
       # push into stack
       def push(item)
         stack.unshift(item)
       end
+
+      # store data to memory
+      def memory_store(start, size, data)
+        memory[start..(start + size - 1)] = Utils.serialize(data).rjust(size, "\x00".b)
+      end
+
+      # fetch data from memory
+      def fetch_memory_data(start, size)
+        memory[start..(start + size - 1)]
+      end
     end
+
+    # Fork configure
+    ForkConfig = Struct.new(:cost_of_operation, :cost_of_memory, keyword_init: true)
 
     # represent empty set, distinguished with nil
     EMPTY_SET = [].freeze
@@ -83,42 +131,31 @@ module Ciri
       extend Forwardable
       include Utils::Logger
 
-      def_delegators :@machine_state, :stack, :pc, :pop, :push, :pop_list, :get_stack_item, :memory_item, :memory_item=
+      def_delegators :@machine_state, :stack, :pc, :pop, :push, :pop_list, :get_stack_item,
+                     :memory_item, :memory_item=, :memory_store, :fetch_memory_data
+      def_delegators :@instruction, :get_op, :get_code, :next_valid_instruction_pos
 
-      attr_reader :state, :machine_state, :instruction, :sub_state
+      attr_reader :state, :machine_state, :instruction, :sub_state, :fork_config
       attr_accessor :output
 
-      def initialize(state:, machine_state:, sub_state: EMPTY_SUBSTATE, instruction:)
+      def initialize(state:, machine_state:, sub_state: EMPTY_SUBSTATE, instruction:, fork_config:)
         @state = state
         @machine_state = machine_state
         @instruction = instruction
         @sub_state = sub_state
         @output = nil
-      end
-
-      # get data from instruction
-      def get_code(pos, size = 1)
-        return 0 if pos >= @instruction.bytes_code.size || pos + size - 1 >= @instruction.bytes_code.size
-        @instruction.bytes_code[pos..(pos + size - 1)]
+        @fork_config = fork_config
       end
 
 
       def store_data(address, key, data)
-        p "address #{address} store data #{serialize data} on key #{key}"
-        state[address].storage[key] = serialize data
+        # debug "address #{address} store data #{serialize data} on key #{key}"
+        state[address].storage[key] = Utils.serialize data
       end
 
       def fetch_data(address, key, data)
-        p "address #{address} fetch data #{data} on key #{key}"
+        # debug "address #{address} fetch data #{data} on key #{key}"
         state[address].storage[key]
-      end
-
-      def memory_store(start, size, data)
-        machine_state.memory[start..(start + size - 1)] = serialize(data).rjust(size, "\x00".b)
-      end
-
-      def fetch_memory_data(start, size)
-        machine_state.memory[start..(start + size - 1)]
       end
 
       def run
@@ -133,7 +170,7 @@ module Ciri
             return [EMPTY_SET, machine_state, EMPTY_SUBSTATE, instruction, EMPTY_SET]
           elsif get_op(machine_state.pc) == OP::REVERT
             o = halt(machine_state, instruction)
-            gas_cost = Cost.cost(state, EMPTY_SUBSTATE, instruction)
+            gas_cost = fork_config.cost_of_operation[state, EMPTY_SUBSTATE, instruction]
             machine_state.gas_remain -= gas_cost
             return [EMPTY_SET, machine_state, sub_state, instruction, o]
           elsif (o = halt(machine_state, instruction)) != EMPTY_SET
@@ -153,16 +190,16 @@ module Ciri
 
         raise "can't find operation #{w}, pc #{ms.pc}" unless operation
 
-        op_cost = Cost.cost(state, ms, instruction)
-        memory_cost = Cost.cost_of_memory(ms.memory_item)
+        op_cost = fork_config.cost_of_operation[state, ms, instruction]
+        memory_cost = fork_config.cost_of_memory[ms.memory_item]
         # call operation
         operation.call(self, instruction)
         # calculate gas_cost
-        new_memory_cost = Cost.cost_of_memory(ms.memory_item)
+        new_memory_cost = fork_config.cost_of_memory[ms.memory_item]
         gas_cost = new_memory_cost - memory_cost + op_cost
         ms.gas_remain -= gas_cost
 
-        debug("#{ms.pc} #{operation.name} gas: #{gas_cost}")
+        debug("#{ms.pc} #{operation.name} gas: #{gas_cost} stack: #{stack.size}")
         ms.pc = case
                 when w == OP::JUMP
                   # jump
@@ -173,21 +210,7 @@ module Ciri
                 end
       end
 
-      def serialize(item)
-        case item
-        when Integer
-          Utils.big_endian_encode(item)
-        else
-          item
-        end
-      end
-
       private
-
-      # get operation code
-      def get_op(pos)
-        @instruction.get_op(pos)
-      end
 
       # determinate halt or not halt
       def halt(machine_state, instruction)
@@ -207,15 +230,15 @@ module Ciri
       def exception?(state, ms, instruction)
         w = instruction.get_op(ms.pc)
         case
-        when ms.gas_remain < Cost.cost(state, ms, instruction)
+        when ms.gas_remain < fork_config.cost_of_operation[state, ms, instruction]
           true
         when OP.input_count(w).nil?
           true
         when ms.stack.size < OP.input_count(w)
           true
-        when w == OP::JUMP && destinations(instruction.bytes_code).include?(ms.stack[0])
+        when w == OP::JUMP && instruction.destinations.include?(ms.stack[0])
           true
-        when w == OP::JUMPI && ms.stack[1] != 0 && destinations(instruction.bytes_code).include?(ms.stack[0])
+        when w == OP::JUMPI && ms.stack[1] != 0 && instruction.destinations.include?(ms.stack[0])
           true
         when w == OP::RETURNDATACOPY && ms.stack[1] + ms.stack[2] > ms.output.size
           true
@@ -224,28 +247,6 @@ module Ciri
           # A condition in yellow paper but I can't understand..: (¬Iw ∧W(w,μ))
         else
           false
-        end
-      end
-
-      def destinations(bytes_code)
-        destinations_by_index(bytes_code, 0)
-      end
-
-      def destinations_by_index(bytes_code, i)
-        if i > bytes_code.size
-          []
-        elsif bytes_code[i] == OP::JUMPDEST
-          [i] + destinations_by_index(bytes_code, next_valid_instruction_pos(i, bytes_code[i]))
-        else
-          destinations_by_index(bytes_code, next_valid_instruction_pos(i, bytes_code[i]))
-        end
-      end
-
-      def next_valid_instruction_pos(i, w)
-        if (OP::PUSH1..OP::PUSH32).include?(w)
-          i + w - OP::PUSH1 + 2
-        else
-          i + 1
         end
       end
 

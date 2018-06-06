@@ -26,6 +26,8 @@ require 'ciri/utils/number'
 
 module Ciri
   module EVM
+
+    # OP module include all EVM operations
     module OP
 
       OPERATIONS = {}
@@ -79,7 +81,7 @@ module Ciri
 
       DIV = op :DIV, 0x04, 2, 1 do |vm|
         a, b = vm.pop_list(2, Integer)
-        b.zero? ? 0 : a / b
+        vm.push(b.zero? ? 0 : a / b)
       end
 
       SDIV = op :SDIV, 0x05, 2, 1 do |vm|

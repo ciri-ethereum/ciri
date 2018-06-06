@@ -51,7 +51,9 @@ module Ciri
       end
 
       def data_to_hex(data)
-        data.unpack("H*").first
+        hex = data.unpack("H*").first
+        hex[0..1] = '0x' if hex.start_with?('01')
+        hex
       end
 
       def create_ec_pk(raw_pubkey: nil, raw_privkey: nil)
@@ -70,6 +72,16 @@ module Ciri
       def to_underscore(str)
         str.gsub(/[A-Z]/) {|a| "_" + a.downcase}
       end
+
+      def serialize(item)
+        case item
+        when Integer
+          Utils.big_endian_encode(item)
+        else
+          item
+        end
+      end
+
     end
 
     BLANK_SHA3 = Utils.sha3(''.b)
