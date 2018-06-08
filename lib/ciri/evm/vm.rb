@@ -109,6 +109,9 @@ module Ciri
       end
     end
 
+    # Block Info
+    BlockInfo = Struct.new(:coinbase, :difficulty, :gas_limit, :number, :timestamp, keyword_init: true)
+
     # Fork configure
     ForkConfig = Struct.new(:cost_of_operation, :cost_of_memory, keyword_init: true)
 
@@ -135,15 +138,16 @@ module Ciri
                      :memory_item, :memory_item=, :memory_store, :fetch_memory
       def_delegators :@instruction, :get_op, :get_code, :next_valid_instruction_pos, :data
 
-      attr_reader :state, :machine_state, :instruction, :sub_state, :fork_config
+      attr_reader :state, :machine_state, :instruction, :sub_state, :block_info, :fork_config
       attr_accessor :output
 
-      def initialize(state:, machine_state:, sub_state: EMPTY_SUBSTATE, instruction:, fork_config:)
+      def initialize(state:, machine_state:, sub_state: EMPTY_SUBSTATE, instruction:, block_info:, fork_config:)
         @state = state
         @machine_state = machine_state
         @instruction = instruction
         @sub_state = sub_state
         @output = nil
+        @block_info = block_info
         @fork_config = fork_config
       end
 

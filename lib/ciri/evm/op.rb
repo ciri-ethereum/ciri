@@ -233,11 +233,26 @@ module Ciri
 
       # 40s: block information
       BLOCKHASH = 0x40
-      COINBASE = 0x41
-      TIMESTAMP = 0x42
-      NUMBER = 0x43
-      DIFFICULTY = 0x44
-      GASLIMIT = 0x45
+
+      def_op :COINBASE, 0x41, 0, 1 do |vm|
+        vm.push vm.block_info.coinbase
+      end
+
+      def_op :TIMESTAMP, 0x42, 0, 1 do |vm|
+        vm.push vm.block_info.timestamp
+      end
+
+      def_op :NUMBER, 0x43, 0, 1 do |vm|
+        vm.push vm.block_info.number
+      end
+
+      def_op :DIFFICULTY, 0x44, 0, 1 do |vm|
+        vm.push vm.block_info.difficulty
+      end
+
+      def_op :GASLIMIT, 0x45, 0, 1 do |vm|
+        vm.push vm.block_info.gas_limit
+      end
 
       # 50s: Stack, Memory, Storage and Flow Operations
       POP = 0x50

@@ -64,12 +64,21 @@ RSpec.describe Ciri::EVM do
         code = Ciri::Utils.hex_to_data(t['exec']['code'])
         value = Ciri::Utils.hex_to_data(t['exec']['value'])
         data = Ciri::Utils.hex_to_data(t['exec']['data'])
+        env = t['env'] && t['env'].map {|k, v| [k, Ciri::Utils.hex_to_data(v)]}.to_h
 
         ms = Ciri::EVM::MachineState.new(gas_remain: gas, pc: 0, stack: [], memory: "\x00".b * 256, memory_item: 0)
         instruction = Ciri::EVM::Instruction.new(address: address, origin: origin, price: gas_price, sender: caller,
                                                  bytes_code: code, value: value, data: data)
+        block_info = env && Ciri::EVM::BlockInfo.new(
+          coinbase: env['currentCoinbase'],
+          difficulty: env['currentDifficulty'],
+          gas_limit: env['currentGasLimit'],
+          number: env['currentNumber'],
+          timestamp: env['currentTimestamp'],
+        )
+
         fork_config = Ciri::EVM::Forks::Frontier.new_fork_config
-        vm = Ciri::EVM::VM.new(state: state, machine_state: ms, instruction: instruction, fork_config: fork_config)
+        vm = Ciri::EVM::VM.new(state: state, machine_state: ms, instruction: instruction, block_info: block_info, fork_config: fork_config)
         vm.run
         next unless t['post']
         # post
@@ -95,5 +104,7 @@ RSpec.describe Ciri::EVM do
   # vmArithmeticTest
   Dir.glob("fixtures/VMTests/vmArithmeticTest/*.json").each {|t| run_test_case[JSON.load(open t), prefix: 'vmArithmeticTest']}
   # vmBitwiseLogicOperation
-  Dir.glob("fixtures/VMTests/vmBitwiseLogicOperation/*.json").each {|t| run_test_case[JSON.load(open t), prefix: 'vmArithmeticTest']}
+  Dir.glob("fixtures/VMTests/vmBitwiseLogicOperation/*.json").each {|t| run_test_case[JSON.load(open t), prefix: 'vmBitwiseLogicOperation']}
+  # vmBlockInfoTest
+  Dir.glob("fixtures/VMTests/vmBlockInfoTest/*.json").each {|t| run_test_case[JSON.load(open t), prefix: 'vmBlockInfoTest']}
 end
