@@ -104,13 +104,13 @@ module Ciri
               elsif w == OP::EXP && ms.get_stack_item(1, Integer) == 0
                 G_EXP
               elsif w == OP::EXP && (x = ms.get_stack_item(1, Integer)) > 0
-                G_EXP + G_EXPBYTE * ((x.bit_length - 1) / 8 + 1)
+                G_EXP + G_EXPBYTE * Utils.ceil_div(x.bit_length, 8)
               elsif w == OP::CALLDATACOPY || w == OP::CODECOPY || w == OP::RETURNDATACOPY
-                G_VERYLOW + G_COPY * (ms.stack[2] / 32)
+                G_VERYLOW + G_COPY * Utils.ceil_div(ms.get_stack_item(2, Integer), 32)
               elsif w == OP::EXTCODECOPY
-                G_EXTCODE + G_COPY * (ms.stack[3] / 32)
+                G_EXTCODE + G_COPY * Utils.ceil_div(ms.get_stack_item(3, Integer), 32)
               elsif (OP::LOG0..OP::LOG4).include? w
-                G_LOG + G_LOGDATA * ms.stack[1] + (w - OP::LOG0) * G_TOPIC
+                G_LOG + G_LOGDATA * ms.get_stack_item(1, Integer) + (w - OP::LOG0) * G_TOPIC
               elsif w == OP::CALL || w == OP::CALLCODE || w == OP::DELEGATECALL
                 cost_of_call(state, ms)
               elsif w == OP::SELFDESTRUCT
@@ -118,7 +118,7 @@ module Ciri
               elsif w == OP::CREATE
                 G_CREATE
               elsif w == OP::SHA3
-                G_SHA3 + G_SHA3WORD * (ms.stack[1] / 32)
+                G_SHA3 + G_SHA3WORD * Utils.ceil_div(ms.get_stack_item(1, Integer), 32)
               elsif w == OP::JUMPDEST
                 G_JUMPDEST
               elsif w == OP::SLOAD

@@ -51,6 +51,11 @@ module Ciri
         n >= 0 ? n : n + UINT_256_CEILING
       end
 
+      def ceil_div(n, ceil)
+        size, m = n.divmod ceil
+        m.zero? ? size : size + 1
+      end
+
     end
   end
 end

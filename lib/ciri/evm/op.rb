@@ -204,28 +204,59 @@ module Ciri
       # 20s: sha3
       def_op :SHA3, 0x20, 2, 1 do |vm|
         start, size = vm.pop_list(2, Integer)
-        hashed = Ciri::Utils.sha3 vm.fetch_memory(start, size)
+        hashed = Ciri::Utils.sha3 vm.memory_fetch(start, size)
         vm.push hashed
       end
 
       # 30s: environment operations
-      ADDRESS = 0x30
+      def_op :ADDRESS, 0x30, 0, 1 do |vm|
+        vm.push(vm.instruction.address)
+      end
+
       BALANCE = 0x31
-      ORIGIN = 0x32
-      CALLER = 0x33
-      CALLVALUE = 0x34
+
+      def_op :ORIGIN, 0x32, 0, 1 do |vm|
+        vm.push vm.instruction.origin
+      end
+
+      def_op :CALLER, 0x33, 0, 1 do |vm|
+        vm.push vm.instruction.sender
+      end
+
+      def_op :CALLVALUE, 0x34, 0, 1 do |vm|
+        vm.push vm.instruction.value
+      end
 
       def_op :CALLDATALOAD, 0x35, 1, 1 do |vm|
         start = vm.pop(Integer)
-        value = vm.data[start..(start + 31)].ljust(32, "\x00".b)
-        vm.push(value)
+        vm.push(vm.get_data(start, 32))
       end
 
-      CALLDATASIZE = 0x36
-      CALLDATACOPY = 0x37
-      CODESIZE = 0x38
-      CODECOPY = 0x39
-      GASPRICE = 0x3a
+      def_op :CALLDATASIZE, 0x36, 0, 1 do |vm|
+        vm.push vm.instruction.data.size
+      end
+
+      def_op :CALLDATACOPY, 0x37, 3, 0 do |vm|
+        mem_pos, data_pos, size = vm.pop_list(3, Integer)
+        data = vm.get_data(data_pos, size)
+        vm.memory_store(mem_pos, size, data)
+        vm.extend_memory(mem_pos, size)
+      end
+
+      def_op :CODESIZE, 0x38, 0, 1 do |vm|
+        vm.push vm.instruction.bytes_code.size
+      end
+
+      def_op :CODECOPY, 0x39, 3, 0 do |vm|
+        mem_pos, code_pos, size = vm.pop_list(3, Integer)
+        data = vm.get_code(code_pos, size)
+        vm.memory_store(mem_pos, size, data)
+      end
+
+      def_op :GASPRICE, 0x3a, 0, 1 do |vm|
+        vm.push vm.instruction.price
+      end
+
       EXTCODESIZE = 0x3b
       EXTCODECOPY = 0x3c
       RETURNDATASIZE = 0x3d
@@ -259,7 +290,7 @@ module Ciri
 
       def_op :MLOAD, 0x51, 1, 1 do |vm|
         index = vm.pop(Integer)
-        vm.push vm.fetch_memory(index, 32)
+        vm.push vm.memory_fetch(index, 32)
         vm.memory_item = [vm.memory_item, (index + 32) / 32].max
       end
 
@@ -279,7 +310,7 @@ module Ciri
 
       def_op :SLOAD, 0x54, 1, 1 do |vm|
         key = vm.pop
-        vm.push vm.fetch_data(vm.instruction.address, key)
+        vm.push vm.fetch(vm.instruction.address, key)
       end
 
       def_op :SSTORE, 0x55, 2, 0 do |vm|
@@ -289,7 +320,7 @@ module Ciri
         value_is_blank = Ciri::Utils.blank_binary?(value)
         key_is_blank = Ciri::Utils.blank_binary?(key)
 
-        vm.store_data(vm.instruction.address, key, value) unless value_is_blank && key_is_blank
+        vm.store(vm.instruction.address, key, value) unless value_is_blank && key_is_blank
       end
 
       def_op :JUMP, 0x56, 1, 0 do |vm|
@@ -307,7 +338,11 @@ module Ciri
       end
 
       PC = 0x58
-      MSIZE = 0x59
+
+      def_op :MSIZE, 0x59, 0, 1 do |vm|
+        vm.push 32 * vm.memory_item
+      end
+
       GAS = 0x5a
       def_op :JUMPDEST, 0x5b, 0, 0
 
@@ -358,10 +393,8 @@ module Ciri
 
       def_op :RETURN, 0xf3, 2, 0 do |vm|
         index, size = vm.pop_list(2, Integer)
-        vm.output = vm.fetch_memory(index, size)
-        if size != 0 && (i = (index + size - 1) / 32) > vm.memory_item
-          vm.memory_item = i
-        end
+        vm.output = vm.memory_fetch(index, size)
+        vm.extend_memory(index, size)
       end
 
       DELEGATECALL = 0xf4

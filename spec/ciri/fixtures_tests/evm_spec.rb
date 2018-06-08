@@ -83,7 +83,11 @@ RSpec.describe Ciri::EVM do
         next unless t['post']
         # post
         output = t['out'].yield_self {|out| out && Ciri::Utils.hex_to_data(out)}
-        expect(vm.output || '').to eq output if output
+        if output
+          # padding vm output, cause testcases return length is uncertain
+          vm_output = (vm.output || '').rjust(output.size, "\x00".b)
+          expect(vm_output).to eq output
+        end
 
         gas_remain = t['gas'].yield_self {|gas_remain| gas_remain && Ciri::Utils.big_endian_decode(Ciri::Utils.hex_to_data(gas_remain))}
         expect(vm.machine_state.gas_remain).to eq gas_remain if gas_remain
@@ -101,10 +105,12 @@ RSpec.describe Ciri::EVM do
     end
   end
 
-  # vmArithmeticTest
+  # # vmArithmeticTest
   Dir.glob("fixtures/VMTests/vmArithmeticTest/*.json").each {|t| run_test_case[JSON.load(open t), prefix: 'vmArithmeticTest']}
   # vmBitwiseLogicOperation
   Dir.glob("fixtures/VMTests/vmBitwiseLogicOperation/*.json").each {|t| run_test_case[JSON.load(open t), prefix: 'vmBitwiseLogicOperation']}
   # vmBlockInfoTest
   Dir.glob("fixtures/VMTests/vmBlockInfoTest/*.json").each {|t| run_test_case[JSON.load(open t), prefix: 'vmBlockInfoTest']}
+  # vmEnvironmentalInfo
+  Dir.glob("fixtures/VMTests/vmEnvironmentalInfo/*.json").each {|t| run_test_case[JSON.load(open t), prefix: 'vmEnvironmentalInfo']}
 end

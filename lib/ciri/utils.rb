@@ -28,6 +28,9 @@ module Ciri
   module Utils
 
     class << self
+      include Utils::Number
+
+
       def sha3(*data)
         s = Digest::SHA3.new(256)
         data.each {|i| s.update(i)}
@@ -36,14 +39,6 @@ module Ciri
 
       def secret_compare(s1, s2)
         s1.size == s2.size && s1.each_byte.each_with_index.map {|b, i| b ^ s2[i].ord}.reduce(0, :+) == 0
-      end
-
-      def big_endian_encode(n, zero = '')
-        Utils::Number.big_endian_encode(n, zero)
-      end
-
-      def big_endian_decode(input)
-        Utils::Number.big_endian_decode(input)
       end
 
       def hex_to_data(hex)
@@ -84,8 +79,17 @@ module Ciri
         end
       end
 
+      def deserialize(type, item)
+        if type == Integer && !item.is_a?(Integer)
+          Utils.big_endian_decode(item)
+        else
+          item
+        end
+      end
+
       def blank_binary?(item)
-        item == "\x00".b || blank?(item)
+        return true if item.is_a?(String) && item.each_byte.all?(&:zero?)
+        blank?(item)
       end
 
       def blank?(item)

@@ -36,8 +36,19 @@ module Ciri
 
       # get data from instruction
       def get_code(pos, size = 1)
-        return 0 if pos >= bytes_code.size || pos + size - 1 >= bytes_code.size
-        bytes_code[pos..(pos + size - 1)]
+        if size > 0 && pos < bytes_code.size && pos + size - 1 < bytes_code.size
+          bytes_code[pos..(pos + size - 1)]
+        else
+          "\x00".b * size
+        end
+      end
+
+      def get_data(pos, size)
+        if pos < data.size && size > 0
+          data[pos..(pos + size - 1)].ljust(size, "\x00".b)
+        else
+          "\x00".b * size
+        end
       end
 
       # valid destinations of bytes_code
@@ -79,18 +90,12 @@ module Ciri
 
       def pop(type = nil)
         item = stack.shift
-        if type == Integer && !item.is_a?(Integer)
-          item = Utils.big_endian_decode(item)
-        end
-        item
+        Utils.deserialize(type, item)
       end
 
       def get_stack_item(index, type = nil)
         item = stack[index]
-        if type == Integer && !item.is_a?(Integer)
-          item = Utils.big_endian_decode(item)
-        end
-        item
+        Utils.deserialize(type, item)
       end
 
       # push into stack
@@ -104,9 +109,16 @@ module Ciri
       end
 
       # fetch data from memory
-      def fetch_memory(start, size)
+      def memory_fetch(start, size)
         memory[start..(start + size - 1)]
       end
+
+      def extend_memory(pos, size)
+        if size != 0 && (i = Utils.ceil_div(pos + size, 32)) > memory_item
+          self.memory_item = i
+        end
+      end
+
     end
 
     # Block Info
@@ -135,8 +147,8 @@ module Ciri
       include Utils::Logger
 
       def_delegators :@machine_state, :stack, :pc, :pop, :push, :pop_list, :get_stack_item,
-                     :memory_item, :memory_item=, :memory_store, :fetch_memory
-      def_delegators :@instruction, :get_op, :get_code, :next_valid_instruction_pos, :data
+                     :memory_item, :memory_item=, :memory_store, :memory_fetch, :extend_memory
+      def_delegators :@instruction, :get_op, :get_code, :next_valid_instruction_pos, :get_data, :data
 
       attr_reader :state, :machine_state, :instruction, :sub_state, :block_info, :fork_config
       attr_accessor :output
@@ -152,7 +164,7 @@ module Ciri
       end
 
 
-      def store_data(address, key, data)
+      def store(address, key, data)
         # debug "address #{address} store data #{serialize data} on key #{key}"
         account = state[address] || Account.new(address: address, balance: 0, storage: {}, nonce: 0)
         return unless data && data != 0
@@ -160,7 +172,7 @@ module Ciri
         state[address] = account
       end
 
-      def fetch_data(address, key)
+      def fetch(address, key)
         # debug "address #{address} fetch data #{data} on key #{key}"
         state[address].storage[key]
       end
@@ -243,11 +255,11 @@ module Ciri
       def exception?(state, ms, instruction)
         w = instruction.get_op(ms.pc)
         case
-        when ms.gas_remain < fork_config.cost_of_operation[state, ms, instruction]
-          true
         when OP.input_count(w).nil?
           true
         when ms.stack.size < OP.input_count(w)
+          true
+        when ms.gas_remain < fork_config.cost_of_operation[state, ms, instruction]
           true
         when w == OP::JUMP && instruction.destinations.include?(ms.stack[0])
           true
