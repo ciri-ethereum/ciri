@@ -141,8 +141,9 @@ module Ciri
         vm.push(result % MAX_INT)
       end
 
-      def_op :LT, 0x10, 2, 1 do |m, v0, v1|
-        v0 < v1 ? 1 : 0
+      def_op :LT, 0x10, 2, 1 do |vm|
+        a, b = vm.pop_list(2, Integer)
+        vm.push a < b ? 1 : 0
       end
 
       def_op :GT, 0x11, 2, 1 do |vm|
@@ -150,33 +151,39 @@ module Ciri
         vm.push a > b ? 1 : 0
       end
 
-      def_op :SLT, 0x12, 2, 1 do |m, v0, v1|
-        v0 < v1 ? 1 : 0
+      def_op :SLT, 0x12, 2, 1 do |vm|
+        a, b = vm.pop_list(2, Integer).map {|i| Utils::Number.unsigned_to_signed i}
+        vm.push a < b ? 1 : 0
       end
 
-      def_op :SGT, 0x13, 2, 1 do |m, v0, v1|
-        v0 > v1 ? 1 : 0
+      def_op :SGT, 0x13, 2, 1 do |vm|
+        a, b = vm.pop_list(2, Integer).map {|i| Utils::Number.unsigned_to_signed i}
+        vm.push a > b ? 1 : 0
       end
 
       def_op :EQ, 0x14, 2, 1 do |vm|
         a, b = vm.pop_list(2, Integer)
-        vm.push(a == b ? 1 : 0)
+        vm.push a == b ? 1 : 0
       end
 
-      def_op :ISZERO, 0x15, 1, 1 do |m, v0|
-        v0.zero? ? 1 : 0
+      def_op :ISZERO, 0x15, 1, 1 do |vm|
+        a = vm.pop(Integer)
+        vm.push a.zero? ? 1 : 0
       end
 
-      def_op :AND, 0x16, 2, 1 do |m, v0, v1|
-        v0 & v1
+      def_op :AND, 0x16, 2, 1 do |vm|
+        a, b = vm.pop_list(2, Integer)
+        vm.push a & b
       end
 
-      def_op :OR, 0x17, 2, 1 do |m, v0, v1|
-        v0 | v1
+      def_op :OR, 0x17, 2, 1 do |vm|
+        a, b = vm.pop_list(2, Integer)
+        vm.push a | b
       end
 
-      def_op :XOR, 0x18, 2, 1 do |m, v0, v1|
-        v0 ^ v1
+      def_op :XOR, 0x18, 2, 1 do |vm|
+        a, b = vm.pop_list(2, Integer)
+        vm.push a ^ b
       end
 
       def_op :NOT, 0x19, 1, 1 do |vm|
@@ -184,21 +191,21 @@ module Ciri
         vm.push Utils::Number.signed_to_unsigned(~signed_number)
       end
 
-      def_op :BYTE, 0x1a, 2, 1 do |m, v0, v1|
-        if v0 > 32
-          0
+      def_op :BYTE, 0x1a, 2, 1 do |vm|
+        pos, value = vm.pop_list(2, Integer)
+        if pos >= 32
+          result = 0
         else
-          (0...8).each do |i|
-            v1[i + 8 * v0[0]]
-          end
+          result = (value / 256.pow(31 - pos)) % 256
         end
+        vm.push result
       end
 
       # 20s: sha3
-      def_op :SHA3, 0x20, 2, 1 do |m, v0, v1|
-        ret = Ciri::Utils.sha3 m.memory[v0..(v0 + v1 - 1)]
-        # m.active_member = m(v0, v1)
-        ret
+      def_op :SHA3, 0x20, 2, 1 do |vm|
+        start, size = vm.pop_list(2, Integer)
+        hashed = Ciri::Utils.sha3 vm.fetch_memory(start, size)
+        vm.push hashed
       end
 
       # 30s: environment operations

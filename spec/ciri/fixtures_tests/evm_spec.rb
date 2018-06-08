@@ -92,7 +92,8 @@ RSpec.describe Ciri::EVM do
     end
   end
 
-  path = 'fixtures/VMTests/vmArithmeticTest'
   # vmArithmeticTest
-  Dir.glob("#{path}/*.json").each {|t| run_test_case[JSON.load(open t), prefix: 'vmArithmeticTest']}
+  Dir.glob("fixtures/VMTests/vmArithmeticTest/*.json").each {|t| run_test_case[JSON.load(open t), prefix: 'vmArithmeticTest']}
+  # vmBitwiseLogicOperation
+  Dir.glob("fixtures/VMTests/vmBitwiseLogicOperation/*.json").each {|t| run_test_case[JSON.load(open t), prefix: 'vmArithmeticTest']}
 end
