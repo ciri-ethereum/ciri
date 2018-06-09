@@ -77,6 +77,12 @@ RSpec.describe Ciri::EVM do
           timestamp: env['currentTimestamp'],
         )
 
+        # prepare state
+        t['pre'].each do |address, v|
+          account = parse_account[address, v]
+          state[account.address] = account
+        end
+
         fork_config = Ciri::EVM::Forks::Frontier.new_fork_config
         vm = Ciri::EVM::VM.new(state: state, machine_state: ms, instruction: instruction, block_info: block_info, fork_config: fork_config)
         vm.run
@@ -96,7 +102,11 @@ RSpec.describe Ciri::EVM do
           account = parse_account[address, v]
           vm_account = state[account.address]
           storage = account.storage.map {|k, v| [Ciri::Utils.data_to_hex(k), Ciri::Utils.data_to_hex(v)]}.to_h
-          vm_storage = vm_account.storage.map {|k, v| [Ciri::Utils.data_to_hex(k), Ciri::Utils.data_to_hex(v)]}.to_h
+          vm_storage = if vm_account
+                         vm_account.storage.map {|k, v| [Ciri::Utils.data_to_hex(k), Ciri::Utils.data_to_hex(v)]}.to_h
+                       else
+                         {}
+                       end
           expect(vm_storage).to eq storage
           expect(vm_account).to eq account
         end
@@ -107,7 +117,9 @@ RSpec.describe Ciri::EVM do
 
   skip_tests = %w{fixtures/VMTests/vmIOandFlowOperations/mloadError1.json}.map {|f| [f, true]}.to_h
 
-  %w{vmArithmeticTest vmBitwiseLogicOperation vmBlockInfoTest vmEnvironmentalInfo vmIOandFlowOperations}.each do |topic|
+  %w{vmArithmeticTest vmBitwiseLogicOperation vmBlockInfoTest
+    vmEnvironmentalInfo vmIOandFlowOperations vmLogTest
+    vmPushDupSwapTest}.each do |topic|
     Dir.glob("fixtures/VMTests/#{topic}/*.json").each do |t|
       if skip_tests.include?(t)
         skip t

@@ -79,7 +79,16 @@ module Ciri
     end
 
     # sub state contained changed accounts and log_series
-    SubState = Struct.new(:suicide_accounts, :log_series, :touched_accounts, :refunds, keyword_init: true)
+    class SubState
+      attr_reader :suicide_accounts, :log_series, :touched_accounts, :refunds
+
+      def initialize(suicide_accounts: [], log_series: [], touched_accounts: [], refunds: [])
+        @suicide_accounts = suicide_accounts
+        @log_series = log_series
+        @touched_accounts = touched_accounts
+        @refunds = refunds
+      end
+    end
 
     # represent current vm status, include stack, memory..
     MachineState = Struct.new(:gas_remain, :pc, :memory, :memory_item, :stack, :output, keyword_init: true) do
@@ -160,14 +169,14 @@ module Ciri
                      :memory_item, :memory_item=, :memory_store, :memory_fetch, :extend_memory
       def_delegators :@instruction, :get_op, :get_code, :next_valid_instruction_pos, :get_data, :data
 
-      attr_reader :state, :machine_state, :instruction, :sub_state, :block_info, :fork_config
+      attr_reader :machine_state, :instruction, :sub_state, :block_info, :fork_config
       attr_accessor :output
 
-      def initialize(state:, machine_state:, sub_state: EMPTY_SUBSTATE, instruction:, block_info:, fork_config:)
+      def initialize(state:, machine_state:, sub_state: nil, instruction:, block_info:, fork_config:)
         @state = state
         @machine_state = machine_state
         @instruction = instruction
-        @sub_state = sub_state
+        @sub_state = sub_state || SubState.new
         @output = nil
         @block_info = block_info
         @fork_config = fork_config
@@ -176,23 +185,23 @@ module Ciri
       # store data to address
       def store(address, key, data)
         # debug "address #{address} store data #{serialize data} on key #{key}"
-        account = state[address] || Account.new(address: address, balance: 0, storage: {}, nonce: 0)
+        account = @state[address] || Account.new(address: address, balance: 0, storage: {}, nonce: 0)
         return unless data && data != 0
         # remove unnecessary null byte from key
         key = key.gsub(/\A\0+(?=.)/, ''.b)
         account.storage[key] = Utils.serialize(data).rjust(32, "\x00".b)
-        state[address] = account
+        @state[address] = account
       end
 
       # fetch data from address
       def fetch(address, key)
         # debug "address #{address} fetch data #{data} on key #{key}"
-        state[address].storage[key]
+        @state[address].storage[key]
       end
 
       # run vm
       def run
-        execute(@state, @machine_state, @sub_state, @instruction)
+        execute
       end
 
       # jump to pc
@@ -201,39 +210,51 @@ module Ciri
         @jump_to = pc
       end
 
+      def account_dead?(address)
+        account = @state[address]
+        account.nil? || account.empty?
+      end
+
+      def find_account(address)
+        @state[address] || Account.new_empty(address)
+      end
+
+      def update_account(address, account)
+        @state[address] = account unless account.empty?
+      end
+
       private
 
       # Execute instruction with states
       # Ξ(σ,g,I,T) ≡ (σ′,μ′ ,A,o)
-      def execute(state, machine_state, sub_state, instruction)
+      def execute
         loop do
-          if (err = check_exception(state, machine_state, instruction))
+          if (err = check_exception(@state, machine_state, instruction))
             debug("exception: #{err}")
             return [EMPTY_SET, machine_state, EMPTY_SUBSTATE, instruction, EMPTY_SET]
           elsif get_op(machine_state.pc) == OP::REVERT
-            o = halt(machine_state, instruction)
-            gas_cost = fork_config.cost_of_operation[state, EMPTY_SUBSTATE, instruction]
+            o = halt
+            gas_cost = fork_config.cost_of_operation[self]
             machine_state.gas_remain -= gas_cost
             return [EMPTY_SET, machine_state, sub_state, instruction, o]
-          elsif (o = halt(machine_state, instruction)) != EMPTY_SET
-            # STOP
-            debug("#{pc} STOP gas: 0 stack: #{stack.size}")
-            return [state, machine_state, sub_state, instruction, o]
+          elsif (o = halt) != EMPTY_SET
+            return [@state, machine_state, sub_state, instruction, o]
           else
-            operate(state, machine_state, sub_state, instruction)
+            operate
             next
           end
         end
       end
 
       # O(σ, μ, A, I) ≡ (σ′, μ′, A′, I)
-      def operate(state, ms, sub_state, instruction)
+      def operate
+        ms = machine_state
         w = get_op(ms.pc)
         operation = OP.get(w)
 
         raise "can't find operation #{w}, pc #{ms.pc}" unless operation
 
-        op_cost = fork_config.cost_of_operation[state, ms, instruction]
+        op_cost = fork_config.cost_of_operation[self]
         old_memory_cost = fork_config.cost_of_memory[ms.memory_item]
         ms.gas_remain -= op_cost
         # call operation
@@ -255,13 +276,15 @@ module Ciri
       end
 
       # determinate halt or not halt
-      def halt(machine_state, instruction)
+      def halt
         w = get_op(machine_state.pc)
         if w == OP::RETURN || w == OP::REVERT
-          operate(state, machine_state, sub_state, instruction)
+          operate
           output
         elsif w == OP::STOP || w == OP::SELFDESTRUCT
+          operate
           # return empty sequence: nil
+          # debug("#{pc} #{OP.get(w).name} gas: 0 stack: #{stack.size}")
           nil
         else
           EMPTY_SET
@@ -276,7 +299,7 @@ module Ciri
           "can't find op code #{w}"
         when ms.stack.size < (consume = OP.input_count(w))
           "stack not enough: stack:#{ms.stack.size} next consume: #{consume}"
-        when ms.gas_remain < (gas_cost = fork_config.cost_of_operation[state, ms, instruction])
+        when ms.gas_remain < (gas_cost = fork_config.cost_of_operation[self])
           "gas not enough: gas remain:#{ms.gas_remain} gas cost: #{gas_cost}"
         when w == OP::JUMP && instruction.destinations.include?(ms.get_stack(0, Integer))
           "invalid jump dest #{ms.get_stack(0, Integer)}"

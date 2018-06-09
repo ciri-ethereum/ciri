@@ -21,8 +21,21 @@
 # THE SOFTWARE.
 
 
+require 'ciri/utils'
+
 module Ciri
   module EVM
-    Account = Struct.new(:address, :balance, :code, :nonce, :storage, keyword_init: true)
+
+    Account = Struct.new(:address, :balance, :code, :nonce, :storage, keyword_init: true) do
+      # EMPTY(σ,a) ≡ σ[a]c =KEC􏰁()􏰂∧σ[a]n =0∧σ[a]b =0
+      def empty?
+        code == Utils::BLANK_SHA3 && nonce == 0 && balance == 0
+      end
+
+      def self.new_empty(address)
+        Account.new(address: address, balance: 0, nonce: 0, storage: {})
+      end
+    end
+
   end
 end

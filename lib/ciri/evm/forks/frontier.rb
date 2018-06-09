@@ -31,8 +31,7 @@ module Ciri
         class << self
           def new_fork_config
             ForkConfig.new(
-              cost_of_operation: proc {|state, machine_state, instruction|
-                Cost.cost_of_operation state, machine_state, instruction},
+              cost_of_operation: proc {|vm| Cost.cost_of_operation vm},
               cost_of_memory: proc {|i| Cost.cost_of_memory i},
             )
           end
@@ -55,7 +54,7 @@ module Ciri
           G_RESET = 5000
           R_SCLEAR = 15000
           R_SELFDESTRUCT = 24000
-          G_SELFDESTRUCT = 5000
+          G_SELFDESTRUCT = 0
           G_CREATE = 32000
           G_CODEDEPOSIT = 200
           G_CALL = 700
@@ -97,10 +96,12 @@ module Ciri
           class << self
             # C(σ,μ,I)
             # calculate cost of current operation
-            def cost_of_operation(state, ms, instruction)
+            def cost_of_operation(vm)
+              ms = vm.machine_state
+              instruction = vm.instruction
               w = instruction.get_op(ms.pc)
               if w == OP::SSTORE
-                cost_of_sstore(state, ms, instruction)
+                cost_of_sstore(vm)
               elsif w == OP::EXP && ms.get_stack(1, Integer) == 0
                 G_EXP
               elsif w == OP::EXP && (x = ms.get_stack(1, Integer)) > 0
@@ -114,7 +115,7 @@ module Ciri
               elsif w == OP::CALL || w == OP::CALLCODE || w == OP::DELEGATECALL
                 cost_of_call(state, ms)
               elsif w == OP::SELFDESTRUCT
-                cost_of_self_destruct(state, ms)
+                cost_of_self_destruct(vm)
               elsif w == OP::CREATE
                 G_CREATE
               elsif w == OP::SHA3
@@ -152,18 +153,21 @@ module Ciri
 
             private
 
-            def cost_of_self_destruct(state, ms)
-
+            def cost_of_self_destruct(vm)
+              G_SELFDESTRUCT
             end
 
             def cost_of_call
 
             end
 
-            def cost_of_sstore(state, ms, instruction)
+            def cost_of_sstore(vm)
+              ms = vm.machine_state
+              instruction = vm.instruction
+
               key = ms.stack[0]
               value = ms.stack[1]
-              account = state[instruction.address]
+              account = vm.find_account instruction.address
 
               value_exists = !Ciri::Utils.blank_binary?(value)
               has_key = account && account.storage[key]

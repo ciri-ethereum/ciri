@@ -390,7 +390,15 @@ module Ciri
       # LOG0 - LOG4
       (0..4).each do |i|
         name = "LOG#{i}"
-        def_op(name, 0xa0 + i, i + 2, 0)
+        def_op name, 0xa0 + i, i + 2, 0, &(proc do |i|
+          proc do |vm|
+            pos, size = vm.pop_list(2, Integer)
+            log_data = vm.memory_fetch(pos, size)
+            vm.extend_memory(pos, size)
+            topics = vm.pop_list(i, Integer)
+            vm.sub_state.log_series << [vm.instruction.address, topics, log_data]
+          end
+        end.call(i))
       end
 
       # f0s: System operations
@@ -407,7 +415,23 @@ module Ciri
       DELEGATECALL = 0xf4
       STATICCALL = 0xfa
       REVERT = 0xfd
-      SELFDESTRUCT = 0xff
+
+      def_op :SELFDESTRUCT, 0xff, 1, 0 do |vm|
+        refund_address = vm.pop[-20..-1]
+        refund_account = vm.find_account(refund_address)
+
+        vm.sub_state.suicide_accounts << vm.instruction.address
+        contract_account = vm.find_account vm.instruction.address
+
+        if refund_address != vm.instruction.address
+          refund_account.balance += contract_account.balance
+        end
+
+        contract_account.balance = 0
+
+        vm.update_account(refund_address, refund_account)
+        vm.update_account(vm.instruction.address, contract_account)
+      end
 
     end
   end
