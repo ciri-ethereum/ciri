@@ -9,27 +9,8 @@ It aims to be a feature complete, long maintained and stable ethereum client.
 As you see it'is still under development.
 
 Talk to me on [gitter](https://gitter.im/ciri-ethereum/Lobby) if you interesting in this project or want to contributing.
- 
-Check List
----------------
 
-* [ ] RLPX
-  * [x] HandShake
-  * [x] Server
-  * [ ] Node Discovery
-* [x] RLP
-* [ ] Eth Protocol
-  * [x] HandShake
-  * [ ] Ethereum Sub-protocol
-* [ ] Block Chain
-  * [x] Chain Syncing
-  * [ ] EVM
-  * [ ] Mining
-* [ ] Consensus Algorithm
-  * [x] POW
-  * [ ] POS
-* [ ] Web3 RPC
-* [ ] CLI
+See [projects boards](https://github.com/ciri-ethereum/ciri/projects) and [milestones](https://github.com/ciri-ethereum/ciri/milestones) to learn current development status.
 
 Installation
 ---------------
