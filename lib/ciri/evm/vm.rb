@@ -184,18 +184,20 @@ module Ciri
 
       # store data to address
       def store(address, key, data)
-        # debug "address #{address} store data #{serialize data} on key #{key}"
-        account = @state[address] || Account.new(address: address, balance: 0, storage: {}, nonce: 0)
-        return unless data && data != 0
+        data_is_blank = Ciri::Utils.blank_binary?(data)
+        # key_is_blank = Ciri::Utils.blank_binary?(key)
+
+        return unless data && !data_is_blank
+
         # remove unnecessary null byte from key
         key = key.gsub(/\A\0+(?=.)/, ''.b)
+        account = @state[address] || Account.new(address: address, balance: 0, storage: {}, nonce: 0)
         account.storage[key] = Utils.serialize(data).rjust(32, "\x00".b)
         @state[address] = account
       end
 
       # fetch data from address
       def fetch(address, key)
-        # debug "address #{address} fetch data #{data} on key #{key}"
         @state[address].storage[key] || ''.b
       end
 

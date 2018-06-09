@@ -10,7 +10,7 @@ As you see it'is still under development.
 
 Talk to me on [gitter](https://gitter.im/ciri-ethereum/Lobby) if you interesting in this project or want to contributing.
 
-See [projects boards](https://github.com/ciri-ethereum/ciri/projects) and [milestones](https://github.com/ciri-ethereum/ciri/milestones) to learn current development status.
+See [projects](https://github.com/ciri-ethereum/ciri/projects) and [milestones](https://github.com/ciri-ethereum/ciri/milestones) for current development status.
 
 Installation
 ---------------

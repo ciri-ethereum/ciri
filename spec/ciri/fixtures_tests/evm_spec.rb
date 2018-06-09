@@ -110,10 +110,6 @@ RSpec.describe Ciri::EVM do
   end
 
   skip_topics = %w{fixtures/VMTests/vmPerformance}.map {|f| [f, true]}.to_h
-  skip_tests = %w{
-    fixtures/VMTests/vmIOandFlowOperations/mloadError1.json
-    fixtures/VMTests/vmIOandFlowOperations/sstore_load_1.json
-  }.map {|f| [f, true]}.to_h
 
   Dir.glob("fixtures/VMTests/*").each do |topic|
     # skip topics
@@ -123,12 +119,6 @@ RSpec.describe Ciri::EVM do
     end
 
     Dir.glob("#{topic}/*.json").each do |t|
-      # skip tests
-      if skip_tests.include?(t)
-        skip t
-        next
-      end
-
       run_test_case[JSON.load(open t), prefix: topic]
     end
   end

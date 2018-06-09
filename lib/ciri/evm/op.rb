@@ -320,10 +320,7 @@ module Ciri
         key = vm.pop
         value = vm.pop
 
-        value_is_blank = Ciri::Utils.blank_binary?(value)
-        key_is_blank = Ciri::Utils.blank_binary?(key)
-
-        vm.store(vm.instruction.address, key, value) unless value_is_blank && key_is_blank
+        vm.store(vm.instruction.address, key, value)
       end
 
       def_op :JUMP, 0x56, 1, 0 do |vm|
