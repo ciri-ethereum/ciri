@@ -168,7 +168,7 @@ module Ciri
 
       def_op :ISZERO, 0x15, 1, 1 do |vm|
         a = vm.pop(Integer)
-        vm.push a.zero? ? 1 : 0
+        vm.push a == 0 ? 1 : 0
       end
 
       def_op :AND, 0x16, 2, 1 do |vm|
@@ -203,8 +203,9 @@ module Ciri
 
       # 20s: sha3
       def_op :SHA3, 0x20, 2, 1 do |vm|
-        start, size = vm.pop_list(2, Integer)
-        hashed = Ciri::Utils.sha3 vm.memory_fetch(start, size)
+        pos, size = vm.pop_list(2, Integer)
+        hashed = Ciri::Utils.sha3 vm.memory_fetch(pos, size)
+        vm.extend_memory(pos, size)
         vm.push hashed
       end
 

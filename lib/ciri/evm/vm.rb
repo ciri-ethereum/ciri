@@ -124,7 +124,7 @@ module Ciri
 
       # fetch data from memory
       def memory_fetch(start, size)
-        if start < memory.size && start + size - 1 < memory.size
+        if size > 0 && start < memory.size && start + size - 1 < memory.size
           memory[start..(start + size - 1)]
         else
           "\x00".b * size
@@ -196,7 +196,7 @@ module Ciri
       # fetch data from address
       def fetch(address, key)
         # debug "address #{address} fetch data #{data} on key #{key}"
-        @state[address].storage[key]
+        @state[address].storage[key] || ''.b
       end
 
       # run vm

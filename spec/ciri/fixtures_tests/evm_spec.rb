@@ -77,12 +77,6 @@ RSpec.describe Ciri::EVM do
           timestamp: env['currentTimestamp'],
         )
 
-        # prepare state
-        t['pre'].each do |address, v|
-          account = parse_account[address, v]
-          state[account.address] = account
-        end
-
         fork_config = Ciri::EVM::Forks::Frontier.new_fork_config
         vm = Ciri::EVM::VM.new(state: state, machine_state: ms, instruction: instruction, block_info: block_info, fork_config: fork_config)
         vm.run
@@ -115,16 +109,26 @@ RSpec.describe Ciri::EVM do
     end
   end
 
-  skip_tests = %w{fixtures/VMTests/vmIOandFlowOperations/mloadError1.json}.map {|f| [f, true]}.to_h
+  skip_topics = %w{fixtures/VMTests/vmPerformance}.map {|f| [f, true]}.to_h
+  skip_tests = %w{
+    fixtures/VMTests/vmIOandFlowOperations/mloadError1.json
+    fixtures/VMTests/vmIOandFlowOperations/sstore_load_1.json
+  }.map {|f| [f, true]}.to_h
 
-  %w{vmArithmeticTest vmBitwiseLogicOperation vmBlockInfoTest
-    vmEnvironmentalInfo vmIOandFlowOperations vmLogTest
-    vmPushDupSwapTest}.each do |topic|
-    Dir.glob("fixtures/VMTests/#{topic}/*.json").each do |t|
+  Dir.glob("fixtures/VMTests/*").each do |topic|
+    # skip topics
+    if skip_topics.include? topic
+      skip topic
+      next
+    end
+
+    Dir.glob("#{topic}/*.json").each do |t|
+      # skip tests
       if skip_tests.include?(t)
         skip t
         next
       end
+
       run_test_case[JSON.load(open t), prefix: topic]
     end
   end
