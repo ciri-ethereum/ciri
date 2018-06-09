@@ -286,26 +286,28 @@ module Ciri
       end
 
       # 50s: Stack, Memory, Storage and Flow Operations
-      POP = 0x50
+      def_op :POP, 0x50, 1, 0 do |vm|
+        vm.pop
+      end
 
       def_op :MLOAD, 0x51, 1, 1 do |vm|
         index = vm.pop(Integer)
         vm.push vm.memory_fetch(index, 32)
-        vm.memory_item = [vm.memory_item, (index + 32) / 32].max
+        vm.extend_memory(index, 32)
       end
 
       def_op :MSTORE, 0x52, 2, 0 do |vm|
         index = vm.pop(Integer)
         data = vm.pop
         vm.memory_store(index, 32, data)
-        vm.memory_item = [vm.memory_item, (index + 32) / 32].max
+        vm.extend_memory(index, 32)
       end
 
       def_op :MSTORE8, 0x53, 2, 0 do |vm|
         index = vm.pop(Integer)
         data = vm.pop(Integer)
         vm.memory_store(index, 1, data % 256)
-        vm.memory_item = [vm.memory_item, (index + 32) / 32].max
+        vm.extend_memory(index, 8)
       end
 
       def_op :SLOAD, 0x54, 1, 1 do |vm|
@@ -337,13 +339,18 @@ module Ciri
         end
       end
 
-      PC = 0x58
+      def_op :PC, 0x58, 0, 1 do |vm|
+        vm.push vm.pc
+      end
 
       def_op :MSIZE, 0x59, 0, 1 do |vm|
         vm.push 32 * vm.memory_item
       end
 
-      GAS = 0x5a
+      def_op :GAS, 0x5a, 0, 1 do |vm|
+        vm.push vm.machine_state.gas_remain
+      end
+
       def_op :JUMPDEST, 0x5b, 0, 0
 
       # 60s & 70s: Push Operations

@@ -105,12 +105,16 @@ RSpec.describe Ciri::EVM do
     end
   end
 
-  # # vmArithmeticTest
-  Dir.glob("fixtures/VMTests/vmArithmeticTest/*.json").each {|t| run_test_case[JSON.load(open t), prefix: 'vmArithmeticTest']}
-  # vmBitwiseLogicOperation
-  Dir.glob("fixtures/VMTests/vmBitwiseLogicOperation/*.json").each {|t| run_test_case[JSON.load(open t), prefix: 'vmBitwiseLogicOperation']}
-  # vmBlockInfoTest
-  Dir.glob("fixtures/VMTests/vmBlockInfoTest/*.json").each {|t| run_test_case[JSON.load(open t), prefix: 'vmBlockInfoTest']}
-  # vmEnvironmentalInfo
-  Dir.glob("fixtures/VMTests/vmEnvironmentalInfo/*.json").each {|t| run_test_case[JSON.load(open t), prefix: 'vmEnvironmentalInfo']}
+  skip_tests = %w{fixtures/VMTests/vmIOandFlowOperations/mloadError1.json}.map {|f| [f, true]}.to_h
+
+  %w{vmArithmeticTest vmBitwiseLogicOperation vmBlockInfoTest vmEnvironmentalInfo vmIOandFlowOperations}.each do |topic|
+    Dir.glob("fixtures/VMTests/#{topic}/*.json").each do |t|
+      if skip_tests.include?(t)
+        skip t
+        next
+      end
+      run_test_case[JSON.load(open t), prefix: topic]
+    end
+  end
+
 end

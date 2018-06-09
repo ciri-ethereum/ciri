@@ -84,18 +84,21 @@ module Ciri
     # represent current vm status, include stack, memory..
     MachineState = Struct.new(:gas_remain, :pc, :memory, :memory_item, :stack, :output, keyword_init: true) do
 
+      # fetch a list of items from stack
       def pop_list(count, type = nil)
         count.times.map {pop(type)}
       end
 
+      # pop a item from stack
       def pop(type = nil)
         item = stack.shift
-        Utils.deserialize(type, item)
+        item && Utils.deserialize(type, item)
       end
 
-      def get_stack_item(index, type = nil)
+      # get item from stack
+      def get_stack(index, type = nil)
         item = stack[index]
-        Utils.deserialize(type, item)
+        item && Utils.deserialize(type, item)
       end
 
       # push into stack
@@ -105,14 +108,21 @@ module Ciri
 
       # store data to memory
       def memory_store(start, size, data)
-        memory[start..(start + size - 1)] = Utils.serialize(data).rjust(size, "\x00".b)
+        if start < memory.size && start + size - 1 < memory.size
+          memory[start..(start + size - 1)] = Utils.serialize(data).rjust(size, "\x00".b)
+        end
       end
 
       # fetch data from memory
       def memory_fetch(start, size)
-        memory[start..(start + size - 1)]
+        if start < memory.size && start + size - 1 < memory.size
+          memory[start..(start + size - 1)]
+        else
+          "\x00".b * size
+        end
       end
 
+      # extend vm memory, used for memory_gas calculation
       def extend_memory(pos, size)
         if size != 0 && (i = Utils.ceil_div(pos + size, 32)) > memory_item
           self.memory_item = i
@@ -146,7 +156,7 @@ module Ciri
       extend Forwardable
       include Utils::Logger
 
-      def_delegators :@machine_state, :stack, :pc, :pop, :push, :pop_list, :get_stack_item,
+      def_delegators :@machine_state, :stack, :pc, :pop, :push, :pop_list, :get_stack,
                      :memory_item, :memory_item=, :memory_store, :memory_fetch, :extend_memory
       def_delegators :@instruction, :get_op, :get_code, :next_valid_instruction_pos, :get_data, :data
 
@@ -163,29 +173,42 @@ module Ciri
         @fork_config = fork_config
       end
 
-
+      # store data to address
       def store(address, key, data)
         # debug "address #{address} store data #{serialize data} on key #{key}"
         account = state[address] || Account.new(address: address, balance: 0, storage: {}, nonce: 0)
         return unless data && data != 0
+        # remove unnecessary null byte from key
+        key = key.gsub(/\A\0+(?=.)/, ''.b)
         account.storage[key] = Utils.serialize(data).rjust(32, "\x00".b)
         state[address] = account
       end
 
+      # fetch data from address
       def fetch(address, key)
         # debug "address #{address} fetch data #{data} on key #{key}"
         state[address].storage[key]
       end
 
+      # run vm
       def run
-        # @state, @machine_state, @sub_state, @instruction, @output = execute(@state, @machine_state, @sub_state, @instruction)
         execute(@state, @machine_state, @sub_state, @instruction)
       end
 
+      # jump to pc
+      # only valid if current op code is allowed to modify pc
+      def jump_to(pc)
+        @jump_to = pc
+      end
+
+      private
+
+      # Execute instruction with states
       # Ξ(σ,g,I,T) ≡ (σ′,μ′ ,A,o)
       def execute(state, machine_state, sub_state, instruction)
         loop do
-          if exception?(state, machine_state, instruction)
+          if (err = check_exception(state, machine_state, instruction))
+            debug("exception: #{err}")
             return [EMPTY_SET, machine_state, EMPTY_SUBSTATE, instruction, EMPTY_SET]
           elsif get_op(machine_state.pc) == OP::REVERT
             o = halt(machine_state, instruction)
@@ -211,15 +234,16 @@ module Ciri
         raise "can't find operation #{w}, pc #{ms.pc}" unless operation
 
         op_cost = fork_config.cost_of_operation[state, ms, instruction]
-        memory_cost = fork_config.cost_of_memory[ms.memory_item]
+        old_memory_cost = fork_config.cost_of_memory[ms.memory_item]
+        ms.gas_remain -= op_cost
         # call operation
         operation.call(self)
         # calculate gas_cost
         new_memory_cost = fork_config.cost_of_memory[ms.memory_item]
-        gas_cost = new_memory_cost - memory_cost + op_cost
-        ms.gas_remain -= gas_cost
+        memory_gas_cost = new_memory_cost - old_memory_cost
+        ms.gas_remain -= memory_gas_cost
 
-        debug("#{ms.pc} #{operation.name} gas: #{gas_cost} stack: #{stack.size}")
+        debug("#{ms.pc} #{operation.name} gas: #{op_cost + memory_gas_cost} stack: #{stack.size}")
         ms.pc = case
                 when w == OP::JUMP
                   @jump_to
@@ -229,13 +253,6 @@ module Ciri
                   next_valid_instruction_pos(ms.pc, w)
                 end
       end
-
-      # only valid if current op code is allowed to modify pc
-      def jump_to(pc)
-        @jump_to = pc
-      end
-
-      private
 
       # determinate halt or not halt
       def halt(machine_state, instruction)
@@ -252,26 +269,26 @@ module Ciri
       end
 
       # check status
-      def exception?(state, ms, instruction)
+      def check_exception(state, ms, instruction)
         w = instruction.get_op(ms.pc)
         case
         when OP.input_count(w).nil?
-          true
-        when ms.stack.size < OP.input_count(w)
-          true
-        when ms.gas_remain < fork_config.cost_of_operation[state, ms, instruction]
-          true
-        when w == OP::JUMP && instruction.destinations.include?(ms.stack[0])
-          true
-        when w == OP::JUMPI && ms.stack[1] != 0 && instruction.destinations.include?(ms.stack[0])
-          true
-        when w == OP::RETURNDATACOPY && ms.stack[1] + ms.stack[2] > ms.output.size
-          true
+          "can't find op code #{w}"
+        when ms.stack.size < (consume = OP.input_count(w))
+          "stack not enough: stack:#{ms.stack.size} next consume: #{consume}"
+        when ms.gas_remain < (gas_cost = fork_config.cost_of_operation[state, ms, instruction])
+          "gas not enough: gas remain:#{ms.gas_remain} gas cost: #{gas_cost}"
+        when w == OP::JUMP && instruction.destinations.include?(ms.get_stack(0, Integer))
+          "invalid jump dest #{ms.get_stack(0, Integer)}"
+        when w == OP::JUMPI && ms.get_stack(1, Integer) != 0 && instruction.destinations.include?(ms.get_stack(0, Integer))
+          "invalid condition jump dest #{ms.get_stack(0, Integer)}"
+        when w == OP::RETURNDATACOPY && ms.get_stack(1, Integer) + ms.get_stack(2, Integer) > ms.output.size
+          "return data copy error"
         when stack.size - OP.input_count(w) + OP.output_count(w) > 1024
-          true
+          "stack size reach 1024 limit"
           # A condition in yellow paper but I can't understand..: (¬Iw ∧W(w,μ))
         else
-          false
+          nil
         end
       end
 
