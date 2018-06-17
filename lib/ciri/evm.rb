@@ -24,7 +24,7 @@
 require_relative 'evm/op'
 require_relative 'evm/cost'
 require_relative 'evm/vm'
-require_relative 'evm/forks'
+require 'ciri/forks'
 
 module Ciri
   module EVM

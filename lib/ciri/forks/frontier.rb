@@ -21,14 +21,20 @@
 # THE SOFTWARE.
 
 
-require_relative 'forks/frontier'
+require 'ciri/evm/forks/frontier'
 
 module Ciri
-  module EVM
-    module Forks
+  module Forks
+    module Frontier
 
-      def self.detect_fork(header)
-        Frontier.fork_config
+      class << self
+        def fork_config
+          ForkConfig.new(
+            cost_of_operation: proc {|vm| EVM::Forks::Frontier::Cost.cost_of_operation vm},
+            cost_of_memory: proc {|i| EVM::Forks::Frontier::Cost.cost_of_memory i},
+            # transaction_klass: nil
+          )
+        end
       end
 
     end

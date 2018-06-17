@@ -20,17 +20,18 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
-require 'spec_helper'
-require 'ciri/chain/transaction'
-require 'ciri/key'
 
-RSpec.describe Ciri::Chain::Transaction do
+require_relative 'forks/frontier'
 
-  it 'sign' do
-    t = Ciri::Chain::Transaction.new(nonce: 1, gas_price: 1, gas_limit: 5, to: 0x00, value: 0)
-    key = Ciri::Key.random
-    t.sign_with_key! key
-    expect(t.sender).to eq Ciri::Utils.sha3(key.raw_public_key)[-65..-1]
+module Ciri
+  module Forks
+
+    # Fork configure
+    ForkConfig = Struct.new(:cost_of_operation, :cost_of_memory, keyword_init: true)
+
+    def self.detect_fork(header)
+      Frontier.fork_config
+    end
+
   end
-
 end

@@ -28,15 +28,6 @@ module Ciri
     module Forks
       module Frontier
 
-        class << self
-          def fork_config
-            ForkConfig.new(
-              cost_of_operation: proc {|vm| Cost.cost_of_operation vm},
-              cost_of_memory: proc {|i| Cost.cost_of_memory i},
-            )
-          end
-        end
-
         module Cost
           include Ciri::EVM
           #   fee schedule, start with G

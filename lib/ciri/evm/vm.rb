@@ -143,9 +143,6 @@ module Ciri
     # Block Info
     BlockInfo = Struct.new(:coinbase, :difficulty, :gas_limit, :number, :timestamp, keyword_init: true)
 
-    # Fork configure
-    ForkConfig = Struct.new(:cost_of_operation, :cost_of_memory, keyword_init: true)
-
     # represent empty set, distinguished with nil
     EMPTY_SET = [].freeze
     EMPTY_SUBSTATE = SubState.new.freeze

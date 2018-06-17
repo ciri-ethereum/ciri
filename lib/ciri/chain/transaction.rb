@@ -50,13 +50,13 @@ module Ciri
       def sender
         @sender ||= begin
           signature = Crypto::Signature.new(vrs: [v, r, s])
-          Utils.sha3(Crypto.ecdsa_recover(get_hash, signature))[96..255]
+          Utils.sha3(Crypto.ecdsa_recover(partial_hash, signature))[96..255]
         end
       end
 
       # @param key Key
       def sign_with_key!(key)
-        signature = key.ecdsa_signature(get_hash)
+        signature = key.ecdsa_signature(partial_hash)
         self.v = signature.v
         self.r = signature.r
         self.s = signature.s
@@ -67,14 +67,13 @@ module Ciri
         to.nil? || to == "\x00".b
       end
 
-      def get_hash(chain_id: nil)
-        param = contract_creation? ? init : data
-        s = if true #[27, 28].include? v
-              [nonce, gas_price, gas_limit, to, value, param]
-            else
-              [nonce, gas_price, gas_limit, to, value, param, chain_id, [], []]
-            end
-        Utils.sha3(RLP.encode_simple s)
+      def partial_hash
+        param = (contract_creation? ? init : data) || ''.b
+        Utils.sha3(RLP.encode_simple [nonce, gas_price, gas_limit, to, value, param])
+      end
+
+      def get_hash
+        Utils.sha3 rlp_encode!
       end
 
     end
