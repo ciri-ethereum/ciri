@@ -34,7 +34,7 @@ module Ciri
       #
       #   Ciri::RLP.encode("hello world")
       #
-      def encode(input, type = nil)
+      def encode(input, type = Raw)
         encode_with_type(input, type)
       end
 
@@ -66,14 +66,13 @@ module Ciri
           else # unknown
             raise RLP::InvalidValueError.new "type size should be 1, got #{type}"
           end
-        elsif type.nil?
+        elsif type == Raw
           encode_raw(item)
         else
-          raise RLP::InvalidValueError.new "unknown type #{type}" unless TYPES.key?(type)
-          item
+          raise RLP::InvalidValueError.new "unknown type #{type}"
         end
       rescue
-        STDERR.puts "when encoding #{item} into #{type}"
+        STDERR.puts "when encoding #{Utils.data_to_hex item.to_s} into #{type}"
         raise
       end
 

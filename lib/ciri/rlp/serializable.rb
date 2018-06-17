@@ -32,6 +32,10 @@ module Ciri
       ENCODED_FALSE = Ciri::Utils.big_endian_encode(0x80)
     end
 
+    # represent RLP raw types, binary or array
+    class Raw
+    end
+
     # Serializable module allow ruby objects serialize/deserialize to or from RLP encoding.
     # See Ciri::RLP::Serializable::TYPES for supported type.
     #
@@ -71,7 +75,7 @@ module Ciri
     #
     module Serializable
       # nil represent RLP raw value(string or array of string)
-      TYPES = [nil, Integer, Bool].map {|key| [key, true]}.to_h.freeze
+      TYPES = [Raw, Integer, Bool].map {|key| [key, true]}.to_h.freeze
 
       # Schema specific columns types of classes, normally you should not use Serializable::Schema directly
       #
@@ -85,15 +89,24 @@ module Ciri
         # keys return data columns array
         attr_reader :keys
 
+        KeySchema = Struct.new(:type, :options, keyword_init: true)
+
         def initialize(schema)
           keys = []
           @_schema = {}
 
           schema.each do |key|
-            key, type = key.is_a?(Hash) ? key.to_a[0] : [key, nil]
+            if key.is_a?(Hash)
+              options = [:optional].map {|o| [o, key.delete(o)]}.to_h
+              raise InvalidSchemaError.new("include unknown options #{key}") unless key.size == 1
+              key, type = key.to_a[0]
+            else
+              options = {}
+              type = Raw
+            end
             raise InvalidSchemaError.new("missing type #{type} for key #{key}") unless check_key_type(type)
             keys << key
-            @_schema[key] = type
+            @_schema[key] = KeySchema.new(type: type, options: options)
           end
 
           @_schema.freeze
@@ -115,8 +128,11 @@ module Ciri
         def rlp_encode!(data, skip_keys: nil)
           # pre-encode, encode data to rlp compatible format(only string or array)
           used_keys = skip_keys.nil? ? keys : keys - skip_keys
-          data_list = used_keys.map do |key|
-            encode_with_type(data[key], self[key])
+          data_list = []
+          used_keys.each do |key|
+            value = data[key]
+            next if value.nil? && self[key].options[:optional]
+            data_list << encode_with_type(value, self[key].type)
           end
           encode_list(data_list)
         end
@@ -125,7 +141,8 @@ module Ciri
           values = decode_list(input) do |list, stream|
             keys.each do |key|
               # decode data by type
-              list << decode_with_type(stream, self[key])
+              next if stream.eof? && self[key].options[:optional]
+              list << decode_with_type(stream, self[key].type)
             end
           end
           # convert to key value hash
@@ -148,7 +165,7 @@ module Ciri
 
       module ClassMethods
         # Decode object from input
-        def rlp_decode(input, raw: true)
+        def rlp_decode(input)
           data = schema.rlp_decode!(input)
           self.new(data)
         end

@@ -33,7 +33,7 @@ module Ciri
       #
       #   Ciri::RLP.decode(input)
       #
-      def decode(input, type = nil)
+      def decode(input, type = Raw)
         decode_with_type(input, type)
       end
 
@@ -74,10 +74,10 @@ module Ciri
               list << decode_with_type(s2, type[0])
             end
           end
-        elsif type.nil?
+        elsif type == Raw
           decode_stream(s)
         else
-          raise InvalidValueError.new "unknown type #{type}" unless TYPES.key?(type)
+          raise RLP::InvalidValueError.new "unknown type #{type}"
         end
       rescue
         STDERR.puts "when decoding #{s} into #{type}"
