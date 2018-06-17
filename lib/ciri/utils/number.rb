@@ -29,9 +29,15 @@ module Ciri
       def big_endian_encode(n, zero = '')
         if n == 0
           zero
-        else
+        elsif n > 0
           big_endian_encode(n / 256) + (n % 256).chr
+        else
+          raise ArgumentError.new("can't encode negative number #{n}")
         end
+      end
+
+      def big_endian_encode_to_size(n, zero = '', size:)
+        big_endian_encode(n, zero).rjust(size, "\x00".b)
       end
 
       def big_endian_decode(input)

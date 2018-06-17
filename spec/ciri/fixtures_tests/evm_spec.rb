@@ -24,7 +24,7 @@
 require 'spec_helper'
 require 'ciri/evm'
 require 'ciri/evm/account'
-require 'ciri/evm/forks/frontier'
+require 'ciri/forks/frontier'
 require 'ciri/utils'
 require 'ciri/db/backend/memory'
 
@@ -77,7 +77,7 @@ RSpec.describe Ciri::EVM do
           timestamp: env['currentTimestamp'],
         )
 
-        fork_config = Ciri::EVM::Forks::Frontier.fork_config
+        fork_config = Ciri::Forks::Frontier.fork_config
         vm = Ciri::EVM::VM.new(state: state, machine_state: ms, instruction: instruction, block_info: block_info, fork_config: fork_config)
         vm.run
         next unless t['post']

@@ -20,17 +20,17 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
-require 'spec_helper'
-require 'ciri/chain/transaction'
-require 'ciri/key'
 
-RSpec.describe Ciri::Chain::Transaction do
+module Ciri
+  module Types
+    module Errors
 
-  it 'sign' do
-    t = Ciri::Chain::Transaction.new(nonce: 1, gas_price: 1, gas_limit: 5, to: 0x00, value: 0)
-    key = Ciri::Key.random
-    t.sign_with_key! key
-    expect(t.sender).to eq Ciri::Utils.sha3(key.raw_public_key[1..-1])[-20..-1]
+      class Error < StandardError
+      end
+
+      class InvalidError < Error
+      end
+
+    end
   end
-
 end

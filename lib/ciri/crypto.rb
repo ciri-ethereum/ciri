@@ -67,12 +67,18 @@ module Ciri
       end
 
       def signature
-        @signature ||= Utils.big_endian_encode(@r, "\x00".b) +
-          Utils.big_endian_encode(@s, "\x00".b) +
+        @signature ||= Utils.big_endian_encode_to_size(@r, "\x00".b, size: 32) +
+          Utils.big_endian_encode_to_size(@s, "\x00".b, size: 32) +
           Utils.big_endian_encode(@v, "\x00".b)
       end
 
       alias to_s signature
+
+      def valid?
+        v <= 1 &&
+          r < SECP256K1N && r >= 1 &&
+          s < SECP256K1N && s >= 1
+      end
     end
 
     def ecdsa_signature(key, data)

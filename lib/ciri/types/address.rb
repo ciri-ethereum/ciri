@@ -20,17 +20,41 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
-require 'spec_helper'
-require 'ciri/chain/transaction'
-require 'ciri/key'
 
-RSpec.describe Ciri::Chain::Transaction do
+require_relative 'errors'
+require 'ciri/rlp'
 
-  it 'sign' do
-    t = Ciri::Chain::Transaction.new(nonce: 1, gas_price: 1, gas_limit: 5, to: 0x00, value: 0)
-    key = Ciri::Key.random
-    t.sign_with_key! key
-    expect(t.sender).to eq Ciri::Utils.sha3(key.raw_public_key[1..-1])[-20..-1]
+module Ciri
+  module Types
+    class Address
+
+      include RLP::Serializable
+      include Errors
+
+      def initialize(address)
+        @address = address.to_s
+      end
+
+      def rlp_encode!
+        RLP.encode(@address)
+      end
+
+      def self.rlp_decode!(data)
+        address = self.new(RLP.decode(data))
+        address.validate
+        address
+      end
+
+      def to_s
+        @address
+      end
+
+      alias to_str to_s
+
+      def validate
+        raise InvalidError.new("address must be 20 size, got #{@address.size}") unless @address.size == 20
+      end
+
+    end
   end
-
 end

@@ -43,6 +43,8 @@ module Ciri
           encode_list(input) {|i| encode_simple(i)}
         elsif input.is_a?(Integer)
           encode(input, Integer)
+        elsif input.is_a?(Serializable)
+          input.rlp_encode!
         else
           encode(input)
         end
