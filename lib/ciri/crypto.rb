@@ -31,22 +31,61 @@ module Ciri
   module Crypto
     extend self
 
-    class ECIESDecryptionError < StandardError
+    ECIES_CIPHER_NAME = 'aes-128-ctr'
+    SECP256K1N = 115792089237316195423570985008687907852837564279074904382605163141518161494337
+
+    class Error < StandardError
+    end
+    class ECIESDecryptionError < Error
+    end
+    class ECDSASignatureError < Error
     end
 
-    ECIES_CIPHER_NAME = 'aes-128-ctr'
+    class Signature
+      attr_reader :r, :s, :v
+
+      def initialize(signature: nil, vrs: nil)
+        if !!signature == !!vrs
+          raise ArgumentError.new("should pass signature_bytes or vrs, but can't provide both together")
+        end
+
+        if signature
+          unless signature.size == 65
+            raise ECDSASignatureError.new("signature size should be 65, got: #{signature.size}")
+          end
+
+          @r = Utils.big_endian_decode(signature[0...32])
+          @s = Utils.big_endian_decode(signature[32...64])
+          @v = Utils.big_endian_decode(signature[64])
+        else
+          @v, @r, @s = vrs
+
+          unless self.signature.size == 65
+            raise ECDSASignatureError.new("vrs is incorrect")
+          end
+        end
+      end
+
+      def signature
+        @signature ||= Utils.big_endian_encode(@r, "\x00".b) +
+          Utils.big_endian_encode(@s, "\x00".b) +
+          Utils.big_endian_encode(@v, "\x00".b)
+      end
+
+      alias to_s signature
+    end
 
     def ecdsa_signature(key, data)
       secp256k1_key = ensure_secp256k1_key(privkey: key)
       signature, recid = secp256k1_key.ecdsa_recoverable_serialize(secp256k1_key.ecdsa_sign_recoverable(data, raw: true))
-      signature + Ciri::Utils.big_endian_encode(recid, "\x00")
+      Signature.new(signature: signature + Ciri::Utils.big_endian_encode(recid, "\x00".b))
     end
 
     def ecdsa_recover(msg, signature, return_raw_key: true)
       pk = Secp256k1::PrivateKey.new(flags: Secp256k1::ALL_FLAGS)
       sig, recid = signature[0..-2], Ciri::Utils.big_endian_decode(signature[-1])
 
-      recsig = pk.ecdsa_recoverable_deserialize(sig, recid)
+      recsig = pk.ecdsa_recoverable_deserialize(sig, recid % 4)
       pubkey = pk.ecdsa_recover(msg, recsig, raw: true)
 
       key = Secp256k1::PublicKey.new(pubkey: pubkey)
@@ -114,6 +153,7 @@ module Ciri
     end
 
     private
+
     def ecies_kdf(key_material, key_len)
       s1 = ''.b
       key = ''.b

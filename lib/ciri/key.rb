@@ -37,7 +37,7 @@ module Ciri
 
     class << self
       def ecdsa_recover(msg, signature)
-        raw_public_key = Crypto.ecdsa_recover(msg, signature, return_raw_key: true)
+        raw_public_key = Crypto.ecdsa_recover(msg, signature.to_s, return_raw_key: true)
         Ciri::Key.new(raw_public_key: raw_public_key)
       end
 
@@ -74,6 +74,7 @@ module Ciri
     end
 
     private
+
     def secp256k1_key
       @secp256k1_key ||= Crypto.ensure_secp256k1_key(privkey: ec_key.private_key.to_s(2))
     end

@@ -110,7 +110,7 @@ module Ciri
 
     end
 
-    BLANK_SHA3 = Utils.sha3(''.b)
+    BLANK_SHA3 = Utils.sha3(''.b).freeze
 
   end
 end
