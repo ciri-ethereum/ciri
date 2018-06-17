@@ -25,42 +25,44 @@ require_relative 'rocks_db'
 require 'forwardable'
 
 module Ciri
-  module Utils
+  module DB
+    module Backend
 
-    # implement kvstore
-    class MemoryKVStore
+      # implement kvstore
+      class Memory
 
-      class InvalidError < StandardError
+        class InvalidError < StandardError
+        end
+
+        extend Forwardable
+
+        def initialize
+          @db = {}
+        end
+
+        def_delegators :@db, :[], :[]=
+
+        def get(key)
+          @db[key]
+        end
+
+        def put(key, value)
+          @db[key] = value
+        end
+
+        def each(&blk)
+          keys.each(&blk)
+        end
+
+        def close
+          @db = nil
+        end
+
+        def closed?
+          @db.nil?
+        end
+
       end
-
-      extend Forwardable
-
-      def initialize
-        @db = {}
-      end
-
-      def_delegators :@db, :[], :[]=
-
-      def get(key)
-        @db[key]
-      end
-
-      def put(key, value)
-        @db[key] = value
-      end
-
-      def each(&blk)
-        keys.each(&blk)
-      end
-
-      def close
-        @db = nil
-      end
-
-      def closed?
-        @db.nil?
-      end
-
     end
   end
 end

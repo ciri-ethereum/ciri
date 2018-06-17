@@ -23,12 +23,12 @@
 
 require 'spec_helper'
 require 'fileutils'
-require 'ciri/utils/kv_store'
+require 'ciri/db/backend/rocks'
 
-RSpec.describe Ciri::Utils::KVStore do
+RSpec.describe Ciri::DB::Backend::Rocks do
 
   let(:tmp_dir) {Dir.mktmpdir}
-  let(:store) {Ciri::Utils::KVStore.new(tmp_dir)}
+  let(:store) {Ciri::DB::Backend::Rocks.new(tmp_dir)}
 
   after do
     store.close
@@ -84,7 +84,7 @@ RSpec.describe Ciri::Utils::KVStore do
     expect(store.closed?).to be_truthy
     expect do
       store["eh?"]
-    end.to raise_error(Ciri::Utils::KVStore::InvalidError)
+    end.to raise_error(Ciri::DB::Backend::Rocks::InvalidError)
   end
 
   it 'handle null byte string' do

@@ -26,7 +26,7 @@ require 'ciri/evm'
 require 'ciri/evm/account'
 require 'ciri/evm/forks/frontier'
 require 'ciri/utils'
-require 'ciri/utils/memory_kv_store'
+require 'ciri/db/backend/memory'
 
 RSpec.describe Ciri::EVM do
 
@@ -48,7 +48,7 @@ RSpec.describe Ciri::EVM do
     test_case.each do |name, t|
 
       it "#{prefix} #{name}" do
-        state = Ciri::Utils::MemoryKVStore.new
+        state = Ciri::DB::Backend::Memory.new
         # pre
         t['pre'].each do |address, v|
           account = parse_account[address, v]

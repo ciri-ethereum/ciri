@@ -21,13 +21,13 @@
 # THE SOFTWARE.
 
 require 'spec_helper'
-require 'ciri/utils/kv_store'
+require 'ciri/db/backend/rocks'
 require 'ciri/chain'
 require 'ciri/utils'
 
 RSpec.describe Ciri::Chain do
   let(:tmp_dir) {Dir.mktmpdir}
-  let(:store) {Ciri::Utils::KVStore.new(tmp_dir)}
+  let(:store) {Ciri::DB::Backend::Rocks.new tmp_dir}
 
   after do
     store.close

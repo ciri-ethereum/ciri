@@ -27,7 +27,7 @@ require 'ciri/devp2p/peer'
 require 'ciri/devp2p/protocol'
 require 'ciri/devp2p/protocol_io'
 require 'ciri/chain'
-require 'ciri/utils/kv_store'
+require 'ciri/db/backend/rocks'
 require 'ciri/key'
 require 'socket'
 
@@ -37,7 +37,7 @@ RSpec.describe Ciri::Eth::ProtocolManage do
     load_blocks('blocks')
   end
   let(:tmp_dir) {Dir.mktmpdir}
-  let(:store) {Ciri::Utils::KVStore.new(tmp_dir)}
+  let(:store) {Ciri::DB::Backend::Rocks.new tmp_dir}
   let(:chain) {Ciri::Chain.new(store, genesis: blocks[0], network_id: 0)}
 
   before {Ciri::Actor.default_executor = Concurrent::CachedThreadPool.new}
