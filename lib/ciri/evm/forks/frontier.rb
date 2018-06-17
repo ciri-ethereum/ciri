@@ -29,7 +29,7 @@ module Ciri
       module Frontier
 
         class << self
-          def new_fork_config
+          def fork_config
             ForkConfig.new(
               cost_of_operation: proc {|vm| Cost.cost_of_operation vm},
               cost_of_memory: proc {|i| Cost.cost_of_memory i},

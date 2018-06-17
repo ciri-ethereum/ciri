@@ -125,9 +125,15 @@ module Ciri
           end
         end
 
-        def rlp_encode!(data, skip_keys: nil)
+        def rlp_encode!(data, skip_keys: nil, white_list_keys: nil)
           # pre-encode, encode data to rlp compatible format(only string or array)
-          used_keys = skip_keys.nil? ? keys : keys - skip_keys
+          used_keys = if white_list_keys
+                        white_list_keys
+                      elsif skip_keys
+                        keys - skip_keys
+                      else
+                        keys
+                      end
           data_list = []
           used_keys.each do |key|
             value = data[key]
@@ -189,11 +195,11 @@ module Ciri
           schema.keys.each do |attribute|
             module_eval <<-ATTR_METHODS
             def #{attribute}
-              data[:"#{attribute}"]
+              serializable_attributes[:"#{attribute}"]
             end
 
             def #{attribute}=(value)
-              data[:"#{attribute}"] = value 
+              serializable_attributes[:"#{attribute}"] = value 
             end
             ATTR_METHODS
           end
@@ -206,25 +212,25 @@ module Ciri
         end
       end
 
-      attr_reader :data
+      attr_reader :serializable_attributes
 
       def initialize(**data)
-        @data = (self.class.default_data || {}).merge(data)
-        self.class.schema.validate!(@data)
+        @serializable_attributes = (self.class.default_data || {}).merge(data)
+        self.class.schema.validate!(@serializable_attributes)
       end
 
       def initialize_copy(orig)
         super
-        @data = orig.data.dup
+        @serializable_attributes = orig.serializable_attributes.dup
       end
 
       # Encode object to rlp encoding string
-      def rlp_encode!(skip_keys: nil)
-        self.class.schema.rlp_encode!(data, skip_keys: skip_keys)
+      def rlp_encode!(skip_keys: nil, white_list_keys: nil)
+        self.class.schema.rlp_encode!(serializable_attributes, skip_keys: skip_keys, white_list_keys: white_list_keys)
       end
 
       def ==(other)
-        self.class == other.class && data == other.data
+        self.class == other.class && serializable_attributes == other.serializable_attributes
       end
 
     end

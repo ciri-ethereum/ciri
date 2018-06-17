@@ -22,6 +22,7 @@
 
 
 require 'ciri/rlp'
+require 'ciri/crypto'
 
 module Ciri
   class Chain
@@ -38,9 +39,44 @@ module Ciri
                :v,
                :r,
                :s,
-               # :init,
-               # :data
+               {init: RLP::Raw, optional: true},
+               {data: RLP::Raw, optional: true}
              ]
+
+      default_data v: 0, r: 0, s: 0, init: "\x00".b, data: "\x00".b
+
+      # sender address
+      # @return address String
+      def sender
+        @sender ||= begin
+          signature = Crypto::Signature.new(vrs: [v, r, s])
+          Utils.sha3(Crypto.ecdsa_recover(get_hash, signature))[96..255]
+        end
+      end
+
+      # @param key Key
+      def sign_with_key!(key)
+        signature = key.ecdsa_signature(get_hash)
+        self.v = signature.v
+        self.r = signature.r
+        self.s = signature.s
+        nil
+      end
+
+      def contract_creation?
+        to.nil? || to == "\x00".b
+      end
+
+      def get_hash(chain_id: nil)
+        param = contract_creation? ? init : data
+        s = if true #[27, 28].include? v
+              [nonce, gas_price, gas_limit, to, value, param]
+            else
+              [nonce, gas_price, gas_limit, to, value, param, chain_id, [], []]
+            end
+        Utils.sha3(RLP.encode_simple s)
+      end
+
     end
 
   end

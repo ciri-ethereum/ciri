@@ -162,12 +162,40 @@ module Ciri
     # 2. mostly methods should not cause side effect, using dup instead directly update object
     #
     class VM
+
+      class << self
+        # this method provide a simpler interface to create VM and execute code
+        # VM.spawn(...) == VM.new(...)
+        # @return VM
+        def spawn(state:, gas_limit:, header:, instruction:, fork_config:)
+          ms = MachineState.new(gas_remain: gas_limit, pc: 0, stack: [], memory: "\x00".b * 256, memory_item: 0)
+
+          block_info = BlockInfo.new(
+            coinbase: header.beneficiary,
+            difficulty: header.difficulty,
+            gas_limit: header.gas_limit,
+            number: header.number,
+            timestamp: header.timestamp
+          )
+
+          vm = VM.new(
+            state: state,
+            machine_state: ms,
+            block_info: block_info,
+            instruction: instruction,
+            fork_config: fork_config
+          )
+          yield vm if block_given?
+          vm
+        end
+      end
+
       extend Forwardable
       include Utils::Logger
 
       def_delegators :@machine_state, :stack, :pc, :pop, :push, :pop_list, :get_stack,
                      :memory_item, :memory_item=, :memory_store, :memory_fetch, :extend_memory
-      def_delegators :@instruction, :get_op, :get_code, :next_valid_instruction_pos, :get_data, :data
+      def_delegators :@instruction, :get_op, :get_code, :next_valid_instruction_pos, :get_data, :data, :sender
 
       attr_reader :machine_state, :instruction, :sub_state, :block_info, :fork_config
       attr_accessor :output
@@ -203,6 +231,27 @@ module Ciri
 
       # run vm
       def run
+        execute
+      end
+
+      # create_contract
+      def create_contract
+        # generate contract_address
+        contract_address = Utils.sha3(RLP.encode([sender, find_account(sender).nonce - 1]))[96..255]
+
+        # initialize contract account
+        contract_account = find_account(contract_address)
+        contract_account.nonce = 1
+        contract_account.balance += instruction.value
+        contract_account.code = Utils::BLANK_SHA3
+        update_account(contract_address, contract_account)
+
+        # update sender account
+        sender_account = find_account(sender)
+        sender_account.balance -= instruction.value
+        update_account(sender, sender_account)
+
+        # execute initialize code
         execute
       end
 

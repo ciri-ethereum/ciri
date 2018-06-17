@@ -38,6 +38,16 @@ module Ciri
         encode_with_type(input, type)
       end
 
+      def encode_simple(input)
+        if input.is_a?(Array)
+          encode_list(input) {|i| encode_simple(i)}
+        elsif input.is_a?(Integer)
+          encode(input, Integer)
+        else
+          encode(input)
+        end
+      end
+
       # Use this method before RLP.encode, this method encode ruby objects to rlp friendly format, string or array.
       # see Ciri::RLP::Serializable::TYPES for supported types
       #

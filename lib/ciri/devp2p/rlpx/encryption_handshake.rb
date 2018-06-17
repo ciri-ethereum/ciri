@@ -69,7 +69,7 @@ module Ciri
           # xor
           signed = xor(token, nonce)
 
-          signature = random_key.ecdsa_signature(signed)
+          signature = random_key.ecdsa_signature(signed).signature
           initiator_pubkey = private_key.raw_public_key[1..-1]
           AuthMsgV4.new(signature: signature, initiator_pubkey: initiator_pubkey, nonce: nonce, version: 4)
         end

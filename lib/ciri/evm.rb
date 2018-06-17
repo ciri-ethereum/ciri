@@ -24,8 +24,81 @@
 require_relative 'evm/op'
 require_relative 'evm/cost'
 require_relative 'evm/vm'
+require_relative 'evm/forks'
 
 module Ciri
   module EVM
+
+    BLOCK_REWARD = 3 * 10.pow(18) # 3 ether
+
+    def initialize
+    end
+
+    # run block
+    def finalize_block(block)
+      # validate block
+      # transition
+      # apply_changes
+    end
+
+    def validate_block(block)
+      # valid ommers
+      # valid transactions(block.gas_used == transactions...gas)
+      # Reward miner, ommers(reward == block reward + ommers reward)
+      # apply changes
+      # verify state and block nonce
+      # 1. parent header root == trie(state[i]) 当前状态的 root 相等, 返回 state[i] otherwise state[0]
+    end
+
+    # transition block
+    # block -> new block(mining)
+    # return new_block and status change
+    def transition(block)
+      # execute transactions, we don't need to valid transactions, it should be done before evm(in Chain module).
+      block.transactions.each do |transaction|
+        transact(transaction, header: block.header)
+      end
+      # status transfer
+      # state[c].balance += mining reward
+      # ommers: state[u.c].balance += uncle reward
+      #
+      # block.nonce
+      # block.mix
+      # R[i].gas_used = gas_used(state[i - 1], block.transactions[i]) + R[i - 1].gas_used
+      # R[i].logs = logs(state[i - 1], block.transactions[i])
+      # R[i].z = z(state[i - 1], block.transactions[i])
+    end
+
+    # execute transaction
+    # @param t Transaction
+    # @param header Chain::Header
+    def transact(t, header:)
+      instruction = Instruction.new(
+        address: t.sender,
+        origin: t.sender,
+        price: t.gas_price,
+        data: t.data,
+        sender: t.sender,
+        value: t.value,
+        bytes_code: t.init,
+        header: header
+      )
+
+      vm = VM.spawn(
+        state: state,
+        gas_limit: t.gas_limit,
+        instruction: instruction,
+        header: header,
+        fork_config: Forks.detect_fork(header)
+      )
+
+      if t.contract_creation?
+        # contract creation
+        vm.create_contract
+      else
+        vm.run
+      end
+    end
+
   end
 end

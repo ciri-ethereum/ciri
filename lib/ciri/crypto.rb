@@ -82,8 +82,9 @@ module Ciri
     end
 
     def ecdsa_recover(msg, signature, return_raw_key: true)
+      signature = Signature.new(signature: signature) unless signature.is_a?(Signature)
       pk = Secp256k1::PrivateKey.new(flags: Secp256k1::ALL_FLAGS)
-      sig, recid = signature[0..-2], Ciri::Utils.big_endian_decode(signature[-1])
+      sig, recid = signature.signature[0..-2], signature.v
 
       recsig = pk.ecdsa_recoverable_deserialize(sig, recid % 4)
       pubkey = pk.ecdsa_recover(msg, recsig, raw: true)
