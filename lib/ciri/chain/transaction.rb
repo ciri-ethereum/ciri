@@ -29,6 +29,10 @@ module Ciri
   class Chain
 
     class Transaction
+
+      class InvalidError < StandardError
+      end
+
       EIP155_CHAIN_ID_OFFSET = 35
       V_OFFSET = 27
 
@@ -52,7 +56,9 @@ module Ciri
       # @return address String
       def sender
         @sender ||= begin
-          Utils.sha3(Crypto.ecdsa_recover(sign_hash(chain_id), signature)[1..-1])[-20..-1]
+          address = Types::Address.new(Utils.sha3(Crypto.ecdsa_recover(sign_hash(chain_id), signature)[1..-1])[-20..-1])
+          address.validate
+          address
         end
       end
 
@@ -77,7 +83,7 @@ module Ciri
       end
 
       def contract_creation?
-        to.nil? || to == "\x00".b
+        to.empty?
       end
 
       def sign_hash(chain_id = nil)
@@ -91,6 +97,30 @@ module Ciri
 
       def get_hash
         Utils.sha3 rlp_encode!
+      end
+
+      # validate transaction
+      # @param intrinsic_gas_of_transaction Proc
+      def validate!(intrinsic_gas_of_transaction: nil)
+        begin
+          sender
+        rescue Ciri::Crypto::ECDSASignatureError => e
+          raise InvalidError.new("recover signature error, error: #{e}")
+        rescue Ciri::Types::Errors::InvalidError => e
+          raise InvalidError.new(e.to_s)
+        end
+
+        raise InvalidError.new('signature rvs error') unless signature.valid?
+        raise InvalidError.new('signature s is low') unless signature.low_s?
+
+        if intrinsic_gas_of_transaction
+          begin
+            intrinsic_gas = intrinsic_gas_of_transaction[self]
+          rescue StandardError
+            raise InvalidError.new 'intrinsic gas calculation error'
+          end
+          raise InvalidError.new 'intrinsic gas not enough' unless intrinsic_gas <= gas_limit
+        end
       end
 
       private

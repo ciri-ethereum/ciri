@@ -24,7 +24,7 @@
 require 'ciri/utils'
 
 module Ciri
-  module EVM
+  class EVM
 
     Account = Struct.new(:address, :balance, :code, :nonce, :storage, keyword_init: true) do
       # EMPTY(σ,a) ≡ σ[a]c =KEC􏰁()􏰂∧σ[a]n =0∧σ[a]b =0

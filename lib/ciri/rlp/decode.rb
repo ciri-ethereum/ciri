@@ -49,7 +49,9 @@ module Ciri
         s = StringIO.new(s) if s.is_a?(String)
         if type == Integer
           item = s.read(1)
-          if item == "\x80".b || item.empty?
+          if item.nil?
+            raise InvalidValueError.new "invalid bool value nil"
+          elsif item == "\x80".b || item.empty?
             0
           elsif item.ord < 0x80
             item.ord

@@ -25,7 +25,7 @@ require 'ciri/utils'
 require 'ciri/utils/number'
 
 module Ciri
-  module EVM
+  class EVM
 
     # OP module include all EVM operations
     module OP

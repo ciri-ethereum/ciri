@@ -32,7 +32,8 @@ module Ciri
           ForkConfig.new(
             cost_of_operation: proc {|vm| EVM::Forks::Frontier::Cost.cost_of_operation vm},
             cost_of_memory: proc {|i| EVM::Forks::Frontier::Cost.cost_of_memory i},
-            # transaction_klass: nil
+            intrinsic_gas_of_transaction: proc {|t| EVM::Forks::Frontier::Cost.intrinsic_gas_of_transaction t}
+          # transaction_klass: nil
           )
         end
       end

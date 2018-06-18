@@ -24,12 +24,11 @@
 require 'ciri/evm/op'
 
 module Ciri
-  module EVM
+  class EVM
     module Forks
       module Frontier
 
         module Cost
-          include Ciri::EVM
           #   fee schedule, start with G
           G_ZERO = 0
           G_BASE = 2
@@ -140,6 +139,11 @@ module Ciri
 
             def cost_of_memory(i)
               G_MEMORY * i + (i ** 2) / 512
+            end
+
+            def intrinsic_gas_of_transaction(t)
+              gas = (t.data.each_byte || '').reduce(0) {|sum, i| sum + i.zero? ? G_TXDATAZERO : G_TXDATANONZERO}
+              gas + (t.to.empty? ? G_TXCREATE : 0) + G_TRANSACTION
             end
 
             private

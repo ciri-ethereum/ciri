@@ -21,46 +21,23 @@
 # THE SOFTWARE.
 
 
-require_relative 'errors'
-require 'ciri/rlp'
-
 module Ciri
-  module Types
-    class Address
+  class EVM
 
-      include RLP::Serializable
-      include Errors
+    # sub state contained changed accounts and log_series
+    class SubState
 
-      def initialize(address)
-        @address = address.to_s
+      EMPTY = SubState.new.freeze
+
+      attr_reader :suicide_accounts, :log_series, :touched_accounts, :refunds
+
+      def initialize(suicide_accounts: [], log_series: [], touched_accounts: [], refunds: [])
+        @suicide_accounts = suicide_accounts
+        @log_series = log_series
+        @touched_accounts = touched_accounts
+        @refunds = refunds
       end
-
-      def rlp_encode!
-        RLP.encode(@address)
-      end
-
-      def self.rlp_decode!(data)
-        address = self.new(RLP.decode(data))
-        address.validate
-        address
-      end
-
-      def to_s
-        @address
-      end
-
-      alias to_str to_s
-
-      def empty?
-        @address.empty?
-      end
-
-      def validate
-        # empty address is valid
-        return if empty?
-        raise InvalidError.new("address must be 20 size, got #{@address.size}") unless @address.size == 20
-      end
-
     end
+
   end
 end

@@ -21,131 +21,16 @@
 # THE SOFTWARE.
 
 
+require_relative 'machine_state'
+require_relative 'instruction'
+require_relative 'sub_state'
+require_relative 'block_info'
+
 module Ciri
-  module EVM
-
-    #### VM States, defined in yellow paper
-    # represent instruction
-    Instruction = Struct.new(:address, :origin, :price, :data, :sender, :value, :bytes_code, :header, :execute_depth,
-                             keyword_init: true) do
-
-      def get_op(pos)
-        return 0 if pos >= bytes_code.size
-        bytes_code[pos].ord
-      end
-
-      # get data from instruction
-      def get_code(pos, size = 1)
-        if size > 0 && pos < bytes_code.size && pos + size - 1 < bytes_code.size
-          bytes_code[pos..(pos + size - 1)]
-        else
-          "\x00".b * size
-        end
-      end
-
-      def get_data(pos, size)
-        if pos < data.size && size > 0
-          data[pos..(pos + size - 1)].ljust(size, "\x00".b)
-        else
-          "\x00".b * size
-        end
-      end
-
-      # valid destinations of bytes_code
-      def destinations
-        @destinations ||= destinations_by_index(bytes_code, 0)
-      end
-
-      def next_valid_instruction_pos(pos, op_code)
-        if (OP::PUSH1..OP::PUSH32).include?(op_code)
-          pos + op_code - OP::PUSH1 + 2
-        else
-          pos + 1
-        end
-      end
-
-      private
-
-      def destinations_by_index(bytes_code, i)
-        if i > bytes_code.size
-          []
-        elsif bytes_code[i] == OP::JUMPDEST
-          [i] + destinations_by_index(bytes_code, next_valid_instruction_pos(i, bytes_code[i]))
-        else
-          destinations_by_index(bytes_code, next_valid_instruction_pos(i, bytes_code[i]))
-        end
-      end
-
-    end
-
-    # sub state contained changed accounts and log_series
-    class SubState
-      attr_reader :suicide_accounts, :log_series, :touched_accounts, :refunds
-
-      def initialize(suicide_accounts: [], log_series: [], touched_accounts: [], refunds: [])
-        @suicide_accounts = suicide_accounts
-        @log_series = log_series
-        @touched_accounts = touched_accounts
-        @refunds = refunds
-      end
-    end
-
-    # represent current vm status, include stack, memory..
-    MachineState = Struct.new(:gas_remain, :pc, :memory, :memory_item, :stack, :output, keyword_init: true) do
-
-      # fetch a list of items from stack
-      def pop_list(count, type = nil)
-        count.times.map {pop(type)}
-      end
-
-      # pop a item from stack
-      def pop(type = nil)
-        item = stack.shift
-        item && Utils.deserialize(type, item)
-      end
-
-      # get item from stack
-      def get_stack(index, type = nil)
-        item = stack[index]
-        item && Utils.deserialize(type, item)
-      end
-
-      # push into stack
-      def push(item)
-        stack.unshift(item)
-      end
-
-      # store data to memory
-      def memory_store(start, size, data)
-        if start < memory.size && start + size - 1 < memory.size
-          memory[start..(start + size - 1)] = Utils.serialize(data).rjust(size, "\x00".b)
-        end
-      end
-
-      # fetch data from memory
-      def memory_fetch(start, size)
-        if size > 0 && start < memory.size && start + size - 1 < memory.size
-          memory[start..(start + size - 1)]
-        else
-          "\x00".b * size
-        end
-      end
-
-      # extend vm memory, used for memory_gas calculation
-      def extend_memory(pos, size)
-        if size != 0 && (i = Utils.ceil_div(pos + size, 32)) > memory_item
-          self.memory_item = i
-        end
-      end
-
-    end
-
-    # Block Info
-    BlockInfo = Struct.new(:coinbase, :difficulty, :gas_limit, :number, :timestamp, keyword_init: true)
+  class EVM
 
     # represent empty set, distinguished with nil
     EMPTY_SET = [].freeze
-    EMPTY_SUBSTATE = SubState.new.freeze
 
     # EVM
     # Here include batch constants(OP, Cost..) you can find there definition in Ethereum yellow paper.
@@ -160,6 +45,19 @@ module Ciri
     #
     class VM
 
+      class VMError < StandardError
+      end
+      class InvalidOpCodeError < VMError
+      end
+      class GasNotEnoughError < VMError
+      end
+      class StackError < VMError
+      end
+      class InvalidJumpError < VMError
+      end
+      class ReturnError < VMError
+      end
+
       class << self
         # this method provide a simpler interface to create VM and execute code
         # VM.spawn(...) == VM.new(...)
@@ -167,7 +65,7 @@ module Ciri
         def spawn(state:, gas_limit:, header:, instruction:, fork_config:)
           ms = MachineState.new(gas_remain: gas_limit, pc: 0, stack: [], memory: "\x00".b * 256, memory_item: 0)
 
-          block_info = BlockInfo.new(
+          block_info = header && BlockInfo.new(
             coinbase: header.beneficiary,
             difficulty: header.difficulty,
             gas_limit: header.gas_limit,
@@ -195,7 +93,7 @@ module Ciri
       def_delegators :@instruction, :get_op, :get_code, :next_valid_instruction_pos, :get_data, :data, :sender
 
       attr_reader :machine_state, :instruction, :sub_state, :block_info, :fork_config
-      attr_accessor :output
+      attr_accessor :output, :exception
 
       def initialize(state:, machine_state:, sub_state: nil, instruction:, block_info:, fork_config:)
         @state = state
@@ -277,9 +175,9 @@ module Ciri
       # Ξ(σ,g,I,T) ≡ (σ′,μ′ ,A,o)
       def execute
         loop do
-          if (err = check_exception(@state, machine_state, instruction))
-            debug("exception: #{err}")
-            return [EMPTY_SET, machine_state, EMPTY_SUBSTATE, instruction, EMPTY_SET]
+          if (@exception = check_exception(@state, machine_state, instruction))
+            debug("exception: #{@exception}")
+            return [EMPTY_SET, machine_state, SubState::EMPTY, instruction, EMPTY_SET]
           elsif get_op(machine_state.pc) == OP::REVERT
             o = halt
             gas_cost = fork_config.cost_of_operation[self]
@@ -344,19 +242,19 @@ module Ciri
         w = instruction.get_op(ms.pc)
         case
         when OP.input_count(w).nil?
-          "can't find op code #{w}"
+          InvalidOpCodeError.new "can't find op code #{w}"
         when ms.stack.size < (consume = OP.input_count(w))
-          "stack not enough: stack:#{ms.stack.size} next consume: #{consume}"
+          StackError.new "stack not enough: stack:#{ms.stack.size} next consume: #{consume}"
         when ms.gas_remain < (gas_cost = fork_config.cost_of_operation[self])
-          "gas not enough: gas remain:#{ms.gas_remain} gas cost: #{gas_cost}"
+          GasNotEnoughError.new "gas not enough: gas remain:#{ms.gas_remain} gas cost: #{gas_cost}"
         when w == OP::JUMP && instruction.destinations.include?(ms.get_stack(0, Integer))
-          "invalid jump dest #{ms.get_stack(0, Integer)}"
+          InvalidJumpError.new "invalid jump dest #{ms.get_stack(0, Integer)}"
         when w == OP::JUMPI && ms.get_stack(1, Integer) != 0 && instruction.destinations.include?(ms.get_stack(0, Integer))
-          "invalid condition jump dest #{ms.get_stack(0, Integer)}"
+          InvalidJumpError.new "invalid condition jump dest #{ms.get_stack(0, Integer)}"
         when w == OP::RETURNDATACOPY && ms.get_stack(1, Integer) + ms.get_stack(2, Integer) > ms.output.size
-          "return data copy error"
+          ReturnError.new "return data copy error"
         when stack.size - OP.input_count(w) + OP.output_count(w) > 1024
-          "stack size reach 1024 limit"
+          StackError.new "stack size reach 1024 limit"
           # A condition in yellow paper but I can't understand..: (¬Iw ∧W(w,μ))
         else
           nil

@@ -48,7 +48,7 @@ module Ciri
       end
 
       def data_to_hex(data)
-        hex = data.unpack("H*").first
+        hex = data.to_s.unpack("H*").first
         hex[0..1] = '0x' if hex.start_with?('01')
         hex
       end

@@ -79,6 +79,10 @@ module Ciri
           r < SECP256K1N && r >= 1 &&
           s < SECP256K1N && s >= 1
       end
+
+      def low_s?
+        s < (SECP256K1N / 2)
+      end
     end
 
     def ecdsa_signature(key, data)
@@ -97,6 +101,8 @@ module Ciri
 
       key = Secp256k1::PublicKey.new(pubkey: pubkey)
       return_raw_key ? key.serialize(compressed: false) : key
+    rescue Secp256k1::AssertError => e
+      raise ECDSASignatureError.new(e)
     end
 
     def ecies_encrypt(message, raw_pubkey, shared_mac_data = '')

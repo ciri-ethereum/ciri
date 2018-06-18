@@ -22,16 +22,18 @@
 
 
 require_relative 'evm/op'
-require_relative 'evm/cost'
 require_relative 'evm/vm'
 require 'ciri/forks'
 
 module Ciri
-  module EVM
+  class EVM
 
     BLOCK_REWARD = 3 * 10.pow(18) # 3 ether
 
-    def initialize
+    attr_reader :state
+
+    def initialize(state:)
+      @state = state
     end
 
     # run block
@@ -72,32 +74,37 @@ module Ciri
     # execute transaction
     # @param t Transaction
     # @param header Chain::Header
-    def transact(t, header:)
+    def transact(t, header: nil)
       instruction = Instruction.new(
         address: t.sender,
         origin: t.sender,
         price: t.gas_price,
-        data: t.data,
         sender: t.sender,
         value: t.value,
-        bytes_code: t.init,
         header: header
       )
 
-      vm = VM.spawn(
+      if t.contract_creation?
+        instruction.bytes_code = t.data
+      else
+        instruction.data = t.data
+      end
+
+      @vm = VM.spawn(
         state: state,
         gas_limit: t.gas_limit,
         instruction: instruction,
         header: header,
-        fork_config: Forks.detect_fork(header)
+        fork_config: Ciri::Forks.detect_fork(header)
       )
 
       if t.contract_creation?
         # contract creation
-        vm.create_contract
+        @vm.create_contract
       else
-        vm.run
+        @vm.run
       end
+      nil
     end
 
   end
