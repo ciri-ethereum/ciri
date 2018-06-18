@@ -29,7 +29,8 @@ module Ciri
     # Fork configure
     ForkConfig = Struct.new(:cost_of_operation, :cost_of_memory, :intrinsic_gas_of_transaction, keyword_init: true)
 
-    def self.detect_fork(header: nil)
+    def self.detect_fork(header: nil, number: nil)
+      number ||= header.number
       Frontier.fork_config
     end
 

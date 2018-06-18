@@ -62,10 +62,10 @@ module Ciri
         # this method provide a simpler interface to create VM and execute code
         # VM.spawn(...) == VM.new(...)
         # @return VM
-        def spawn(state:, gas_limit:, header:, instruction:, fork_config:)
+        def spawn(state:, gas_limit:, header: nil, block_info: nil, instruction:, fork_config:)
           ms = MachineState.new(gas_remain: gas_limit, pc: 0, stack: [], memory: "\x00".b * 256, memory_item: 0)
 
-          block_info = header && BlockInfo.new(
+          block_info = block_info || header && BlockInfo.new(
             coinbase: header.beneficiary,
             difficulty: header.difficulty,
             gas_limit: header.gas_limit,
@@ -91,6 +91,7 @@ module Ciri
       def_delegators :@machine_state, :stack, :pc, :pop, :push, :pop_list, :get_stack,
                      :memory_item, :memory_item=, :memory_store, :memory_fetch, :extend_memory
       def_delegators :@instruction, :get_op, :get_code, :next_valid_instruction_pos, :get_data, :data, :sender
+      def_delegators :@sub_state, :add_refund_account, :add_touched_account, :add_suicide_account
 
       attr_reader :machine_state, :instruction, :sub_state, :block_info, :fork_config
       attr_accessor :output, :exception
@@ -114,9 +115,9 @@ module Ciri
 
         # remove unnecessary null byte from key
         key = key.gsub(/\A\0+(?=.)/, ''.b)
-        account = @state[address] || Account.new(address: address, balance: 0, storage: {}, nonce: 0)
+        account = find_account address
         account.storage[key] = Utils.serialize(data).rjust(32, "\x00".b)
-        @state[address] = account
+        update_account address, account
       end
 
       # fetch data from address
@@ -157,16 +158,22 @@ module Ciri
       end
 
       def account_dead?(address)
+        address = address.to_s
         account = @state[address]
         account.nil? || account.empty?
       end
 
       def find_account(address)
+        address = address.to_s
         @state[address] || Account.new_empty(address)
       end
 
+      # the only method which touch state
+      # VM do not consider state revert/commit, we let it to state implementation
       def update_account(address, account)
-        @state[address] = account unless account.empty?
+        address = address.to_s
+        @state[address] = account
+        add_touched_account(account)
       end
 
       private

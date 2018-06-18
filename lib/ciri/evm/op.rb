@@ -429,6 +429,10 @@ module Ciri
 
         vm.update_account(refund_address, refund_account)
         vm.update_account(vm.instruction.address, contract_account)
+
+        # register changed accounts
+        vm.add_refund_account(refund_account)
+        vm.add_suicide_account(contract_account)
       end
 
     end

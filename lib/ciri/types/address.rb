@@ -51,6 +51,10 @@ module Ciri
 
       alias to_str to_s
 
+      def to_hex
+        Utils.data_to_hex to_s
+      end
+
       def empty?
         @address.empty?
       end

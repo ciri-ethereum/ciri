@@ -74,7 +74,7 @@ module Ciri
     # execute transaction
     # @param t Transaction
     # @param header Chain::Header
-    def transact(t, header: nil)
+    def transact(t, header: nil, block_info: nil)
       instruction = Instruction.new(
         address: t.sender,
         origin: t.sender,
@@ -87,6 +87,9 @@ module Ciri
       if t.contract_creation?
         instruction.bytes_code = t.data
       else
+        if (account = state[t.to.to_s])
+          instruction.bytes_code = account.code
+        end
         instruction.data = t.data
       end
 
@@ -95,7 +98,8 @@ module Ciri
         gas_limit: t.gas_limit,
         instruction: instruction,
         header: header,
-        fork_config: Ciri::Forks.detect_fork(header)
+        block_info: block_info,
+        fork_config: Ciri::Forks.detect_fork(header: header, number: block_info&.number)
       )
 
       if t.contract_creation?
@@ -105,6 +109,11 @@ module Ciri
         @vm.run
       end
       nil
+    end
+
+    def logs_hash
+      return nil unless @vm
+      Utils.sha3(RLP.encode_simple(@vm.sub_state.log_series))
     end
 
   end

@@ -64,6 +64,7 @@ module Ciri
 
       def signature
         v = if eip_155_signed_transaction?
+              # retrieve actually v from transaction.v, see EIP-155(prevent replay attack)
               (self.v - 1) % 2
             elsif [27, 28].include?(self.v)
               self.v - 27
@@ -128,10 +129,12 @@ module Ciri
       # return chain_id by v
       def chain_id
         if eip_155_signed_transaction?
+          # retrieve chain_id from v, see EIP-155
           (v - 35) / 2
         end
       end
 
+      # https://github.com/ethereum/EIPs/blob/984cf5de90bbf5fbe7e49be227b0c2f9567e661e/EIPS/eip-155.md
       def eip_155_signed_transaction?
         v >= EIP155_CHAIN_ID_OFFSET
       end

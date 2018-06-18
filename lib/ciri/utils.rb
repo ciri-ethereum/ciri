@@ -43,14 +43,22 @@ module Ciri
 
       def hex_to_data(hex)
         data = [hex].pack("H*")
-        data = data[1..-1] if data[0].ord == 1
+        data = data[1..-1] if data.size > 0 && data[0].ord == 1
         data
+      end
+
+      def hex_to_number(hex)
+        big_endian_decode hex_to_data(hex)
       end
 
       def data_to_hex(data)
         hex = data.to_s.unpack("H*").first
         hex[0..1] = '0x' if hex.start_with?('01')
         hex
+      end
+
+      def number_to_hex(number)
+        data_to_hex big_endian_encode(number)
       end
 
       def create_ec_pk(raw_pubkey: nil, raw_privkey: nil)

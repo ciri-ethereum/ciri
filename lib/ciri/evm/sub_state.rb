@@ -32,10 +32,22 @@ module Ciri
       attr_reader :suicide_accounts, :log_series, :touched_accounts, :refunds
 
       def initialize(suicide_accounts: [], log_series: [], touched_accounts: [], refunds: [])
-        @suicide_accounts = suicide_accounts
+        @suicide_accounts = Set.new(suicide_accounts)
         @log_series = log_series
-        @touched_accounts = touched_accounts
-        @refunds = refunds
+        @touched_accounts = Set.new(touched_accounts)
+        @refunds = Set.new(refunds)
+      end
+
+      def add_refund_account(account)
+        @refunds.add account
+      end
+
+      def add_touched_account(account)
+        @touched_accounts.add account
+      end
+
+      def add_suicide_account(account)
+        @suicide_accounts.add account
       end
     end
 
