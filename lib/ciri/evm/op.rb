@@ -214,7 +214,11 @@ module Ciri
         vm.push(vm.instruction.address)
       end
 
-      BALANCE = 0x31
+      def_op :BALANCE, 0x31, 1, 1 do |vm|
+        address = vm.pop
+        account = vm.find_account(address)
+        vm.push(account.balance)
+      end
 
       def_op :ORIGIN, 0x32, 0, 1 do |vm|
         vm.push vm.instruction.origin
@@ -394,7 +398,7 @@ module Ciri
             log_data = vm.memory_fetch(pos, size)
             vm.extend_memory(pos, size)
             topics = vm.pop_list(i, Integer)
-            vm.sub_state.log_series << [vm.instruction.address, topics, log_data]
+            vm.add_log_entry(topics, log_data)
           end
         end.call(i))
       end
@@ -427,8 +431,8 @@ module Ciri
 
         contract_account.balance = 0
 
-        vm.update_account(refund_address, refund_account)
-        vm.update_account(vm.instruction.address, contract_account)
+        vm.update_account(refund_account)
+        vm.update_account(contract_account)
 
         # register changed accounts
         vm.add_refund_account(refund_account)

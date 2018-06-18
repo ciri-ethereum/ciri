@@ -35,6 +35,15 @@ module Ciri
       def self.new_empty(address)
         Account.new(address: address, balance: 0, nonce: 0, storage: {})
       end
+
+      def self.find_account(state, address)
+        state[address.to_s] || new_empty(address.to_s)
+      end
+
+      def self.account_dead?(state, address)
+        account = state[address.to_s]
+        account.nil? || account.empty?
+      end
     end
 
   end

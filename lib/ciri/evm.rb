@@ -23,6 +23,7 @@
 
 require_relative 'evm/op'
 require_relative 'evm/vm'
+require_relative 'evm/account'
 require 'ciri/forks'
 
 module Ciri
@@ -58,7 +59,7 @@ module Ciri
     def transition(block)
       # execute transactions, we don't need to valid transactions, it should be done before evm(in Chain module).
       block.transactions.each do |transaction|
-        transact(transaction, header: block.header)
+        execute_transaction(transaction, header: block.header)
       end
       # status transfer
       # state[c].balance += mining reward
@@ -74,9 +75,8 @@ module Ciri
     # execute transaction
     # @param t Transaction
     # @param header Chain::Header
-    def transact(t, header: nil, block_info: nil)
+    def execute_transaction(t, header: nil, block_info: nil)
       instruction = Instruction.new(
-        address: t.sender,
         origin: t.sender,
         price: t.gas_price,
         sender: t.sender,
@@ -86,9 +86,11 @@ module Ciri
 
       if t.contract_creation?
         instruction.bytes_code = t.data
+        instruction.address = t.sender
       else
-        if (account = state[t.to.to_s])
+        if (account = find_account t.to)
           instruction.bytes_code = account.code
+          instruction.address = account.address
         end
         instruction.data = t.data
       end
@@ -102,6 +104,9 @@ module Ciri
         fork_config: Ciri::Forks.detect_fork(header: header, number: block_info&.number)
       )
 
+      # transact ether
+      transact(sender: t.sender, value: t.value, to: t.to)
+
       if t.contract_creation?
         # contract creation
         @vm.create_contract
@@ -111,9 +116,33 @@ module Ciri
       nil
     end
 
+    # transact value from sender to target address
+    def transact(sender:, value:, to:)
+      sender = find_account(sender)
+      to = find_account(to)
+
+      raise "balance not enough" if sender.balance < value
+
+      sender.balance -= value
+      to.balance += value
+
+      @vm.update_account(sender)
+      @vm.update_account(to)
+    end
+
     def logs_hash
       return nil unless @vm
       Utils.sha3(RLP.encode_simple(@vm.sub_state.log_series))
+    end
+
+    private
+
+    def account_dead?(address)
+      Account.account_dead?(state, address)
+    end
+
+    def find_account(address)
+      Account.find_account(state, address)
     end
 
   end

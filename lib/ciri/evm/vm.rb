@@ -32,17 +32,11 @@ module Ciri
     # represent empty set, distinguished with nil
     EMPTY_SET = [].freeze
 
-    # EVM
     # Here include batch constants(OP, Cost..) you can find there definition in Ethereum yellow paper.
     # If you can't understand some mystery formula in comments... go to read Ethereum yellow paper.
     #
-    # VM 'immutable style':
-    # for making VM implementation according to the 'Ethereum yellow paper' expression,
-    # we use 'immutable style' to design our VM:
-    #
-    # 1. pass vm states as arguments rather than using instance variables
-    # 2. mostly methods should not cause side effect, using dup instead directly update object
-    #
+    # VM: core logic of EVM
+    # other logic of EVM (include transaction logic) in EVM module.
     class VM
 
       class VMError < StandardError
@@ -117,7 +111,7 @@ module Ciri
         key = key.gsub(/\A\0+(?=.)/, ''.b)
         account = find_account address
         account.storage[key] = Utils.serialize(data).rjust(32, "\x00".b)
-        update_account address, account
+        update_account(account)
       end
 
       # fetch data from address
@@ -126,8 +120,9 @@ module Ciri
       end
 
       # run vm
-      def run
+      def run(ignore_exception: false)
         execute
+        raise exception unless ignore_exception || exception.nil?
       end
 
       # create_contract
@@ -140,12 +135,12 @@ module Ciri
         contract_account.nonce = 1
         contract_account.balance += instruction.value
         contract_account.code = Utils::BLANK_SHA3
-        update_account(contract_address, contract_account)
+        update_account(contract_account)
 
         # update sender account
         sender_account = find_account(sender)
         sender_account.balance -= instruction.value
-        update_account(sender, sender_account)
+        update_account(sender_account)
 
         # execute initialize code
         execute
@@ -158,22 +153,23 @@ module Ciri
       end
 
       def account_dead?(address)
-        address = address.to_s
-        account = @state[address]
-        account.nil? || account.empty?
+        Account.account_dead?(@state, address)
       end
 
       def find_account(address)
-        address = address.to_s
-        @state[address] || Account.new_empty(address)
+        Account.find_account(@state, address)
       end
 
       # the only method which touch state
       # VM do not consider state revert/commit, we let it to state implementation
-      def update_account(address, account)
-        address = address.to_s
+      def update_account(account)
+        address = account.address.to_s
         @state[address] = account
         add_touched_account(account)
+      end
+
+      def add_log_entry(topics, log_data)
+        sub_state.log_series << [instruction.address, topics, log_data]
       end
 
       private

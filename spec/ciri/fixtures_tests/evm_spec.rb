@@ -79,7 +79,9 @@ RSpec.describe Ciri::EVM do
 
         fork_config = Ciri::Forks::Frontier.fork_config
         vm = Ciri::EVM::VM.new(state: state, machine_state: ms, instruction: instruction, block_info: block_info, fork_config: fork_config)
-        vm.run
+
+        # ignore exception
+        vm.run(ignore_exception: true)
         next unless t['post']
         # post
         output = t['out'].yield_self {|out| out && Ciri::Utils.hex_to_data(out)}
