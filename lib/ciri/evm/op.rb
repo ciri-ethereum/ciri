@@ -23,12 +23,15 @@
 
 require 'ciri/utils'
 require 'ciri/utils/number'
+require 'ciri/types/address'
+require_relative 'serialize'
 
 module Ciri
   class EVM
 
     # OP module include all EVM operations
     module OP
+      include Types
 
       OPERATIONS = {}
 
@@ -215,7 +218,7 @@ module Ciri
       end
 
       def_op :BALANCE, 0x31, 1, 1 do |vm|
-        address = vm.pop
+        address = vm.pop(Address)
         account = vm.find_account(address)
         vm.push(account.balance)
       end
@@ -262,8 +265,29 @@ module Ciri
         vm.push vm.instruction.price
       end
 
-      EXTCODESIZE = 0x3b
-      EXTCODECOPY = 0x3c
+      def_op :EXTCODESIZE, 0x3b, 0, 1 do |vm|
+        address = vm.pop(Address)
+        code_size = vm.find_account(address).code&.size || 0
+        vm.push code_size
+      end
+
+      def_op :EXTCODECOPY, 0x3c, 4, 0 do |vm|
+        address = vm.pop(Address)
+        mem_pos, data_pos, size = vm.pop_list(3, Integer)
+
+        account = vm.find_account(address)
+        code = account.code || ''.b
+        data_end_pos = data_pos + size - 1
+        data = if data_pos >= code.size
+                 ''.b
+               elsif data_end_pos >= code.size
+                 code[data_pos..-1]
+               else
+                 code[data_pos..data_end_pos]
+               end
+        vm.memory_store(mem_pos, size, data)
+      end
+
       RETURNDATASIZE = 0x3d
       RETURNDATACOPY = 0x3e
 
@@ -406,7 +430,36 @@ module Ciri
       # f0s: System operations
       CREATE = 0xf0
       CALL = 0xf1
-      CALLCODE = 0xf2
+
+      def_op :CALLCODE, 0xf2, 7, 1 do |vm|
+        # this method consume 7 items from stack, but seems not all of them are used
+        # skip 2 items
+        vm.pop
+        target = vm.pop(Address)
+        value = vm.pop(Integer)
+        input_mem_pos, input_size = vm.pop_list(2, Integer)
+        output_mem_pos, output_size = vm.pop_list(2, Integer)
+
+        if value <= vm.find_account(vm.instruction.address).balance && vm.instruction.execute_depth < 1024
+          instruction = vm.instruction.dup
+          instruction.sender = instruction.address
+          instruction.value = value
+          instruction.execute_depth += 1
+          data = vm.memory_fetch(input_mem_pos, input_size)
+          instruction.data = data
+          instruction.bytes_code = vm.find_account(target).code || ''.b
+
+          # vm.transact(sender: vm.instruction.sender)
+
+          vm.with_new_instruction(instruction) do
+            vm.execute
+          end
+
+          output = vm.output || ''.b
+          out_size = [output_size, output.size].min
+          vm.memory_store(output_mem_pos, out_size, output)
+        end
+      end
 
       def_op :RETURN, 0xf3, 2, 0 do |vm|
         index, size = vm.pop_list(2, Integer)
@@ -419,7 +472,7 @@ module Ciri
       REVERT = 0xfd
 
       def_op :SELFDESTRUCT, 0xff, 1, 0 do |vm|
-        refund_address = vm.pop[-20..-1]
+        refund_address = vm.pop(Address)
         refund_account = vm.find_account(refund_address)
 
         vm.sub_state.suicide_accounts << vm.instruction.address

@@ -78,23 +78,6 @@ module Ciri
         str.gsub(/[A-Z]/) {|a| "_" + a.downcase}
       end
 
-      def serialize(item)
-        case item
-        when Integer
-          Utils.big_endian_encode(item)
-        else
-          item
-        end
-      end
-
-      def deserialize(type, item)
-        if type == Integer && !item.is_a?(Integer)
-          Utils.big_endian_decode(item)
-        else
-          item
-        end
-      end
-
       def blank_binary?(item)
         return true if item.is_a?(String) && item.each_byte.all?(&:zero?)
         blank?(item)

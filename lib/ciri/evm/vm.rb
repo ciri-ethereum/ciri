@@ -25,6 +25,7 @@ require_relative 'machine_state'
 require_relative 'instruction'
 require_relative 'sub_state'
 require_relative 'block_info'
+require_relative 'serialize'
 
 module Ciri
   class EVM
@@ -80,7 +81,10 @@ module Ciri
       end
 
       extend Forwardable
+
+      # helper methods
       include Utils::Logger
+      include Serialize
 
       def_delegators :@machine_state, :stack, :pc, :pop, :push, :pop_list, :get_stack,
                      :memory_item, :memory_item=, :memory_store, :memory_fetch, :extend_memory
@@ -108,15 +112,15 @@ module Ciri
         return unless data && !data_is_blank
 
         # remove unnecessary null byte from key
-        key = key.gsub(/\A\0+(?=.)/, ''.b)
+        key = serialize(key).gsub(/\A\0+(?=.)/, ''.b)
         account = find_account address
-        account.storage[key] = Utils.serialize(data).rjust(32, "\x00".b)
+        account.storage[key] = serialize(data).rjust(32, "\x00".b)
         update_account(account)
       end
 
       # fetch data from address
       def fetch(address, key)
-        @state[address].storage[key] || ''.b
+        find_account(address).storage[key] || ''.b
       end
 
       # run vm
@@ -172,7 +176,26 @@ module Ciri
         sub_state.log_series << [instruction.address, topics, log_data]
       end
 
-      private
+      # transact value from sender to target address
+      def transact(sender:, value:, to:)
+        sender = find_account(sender)
+        to = find_account(to)
+
+        raise VMError.new("balance not enough") if sender.balance < value
+
+        sender.balance -= value
+        to.balance += value
+
+        update_account(sender)
+        update_account(to)
+      end
+
+      def with_new_instruction(new_instruction)
+        origin_instruction = instruction
+        @instruction = new_instruction
+        yield
+        @instruction = origin_instruction
+      end
 
       # Execute instruction with states
       # Ξ(σ,g,I,T) ≡ (σ′,μ′ ,A,o)
@@ -194,6 +217,8 @@ module Ciri
           end
         end
       end
+
+      private
 
       # O(σ, μ, A, I) ≡ (σ′, μ′, A′, I)
       def operate

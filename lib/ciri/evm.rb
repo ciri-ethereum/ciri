@@ -81,7 +81,8 @@ module Ciri
         price: t.gas_price,
         sender: t.sender,
         value: t.value,
-        header: header
+        header: header,
+        execute_depth: 0,
       )
 
       if t.contract_creation?
@@ -105,7 +106,7 @@ module Ciri
       )
 
       # transact ether
-      transact(sender: t.sender, value: t.value, to: t.to)
+      @vm.transact(sender: t.sender, value: t.value, to: t.to)
 
       if t.contract_creation?
         # contract creation
@@ -114,20 +115,6 @@ module Ciri
         @vm.run
       end
       nil
-    end
-
-    # transact value from sender to target address
-    def transact(sender:, value:, to:)
-      sender = find_account(sender)
-      to = find_account(to)
-
-      raise "balance not enough" if sender.balance < value
-
-      sender.balance -= value
-      to.balance += value
-
-      @vm.update_account(sender)
-      @vm.update_account(to)
     end
 
     def logs_hash

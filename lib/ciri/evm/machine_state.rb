@@ -21,6 +21,8 @@
 # THE SOFTWARE.
 
 
+require_relative 'serialize'
+
 module Ciri
   class EVM
 
@@ -35,13 +37,13 @@ module Ciri
       # pop a item from stack
       def pop(type = nil)
         item = stack.shift
-        item && Utils.deserialize(type, item)
+        item && Serialize.deserialize(type, item)
       end
 
       # get item from stack
       def get_stack(index, type = nil)
         item = stack[index]
-        item && Utils.deserialize(type, item)
+        item && Serialize.deserialize(type, item)
       end
 
       # push into stack
@@ -52,7 +54,7 @@ module Ciri
       # store data to memory
       def memory_store(start, size, data)
         if start < memory.size && start + size - 1 < memory.size
-          memory[start..(start + size - 1)] = Utils.serialize(data).rjust(size, "\x00".b)
+          memory[start..(start + size - 1)] = Serialize.serialize(data).rjust(size, "\x00".b)
         end
       end
 
