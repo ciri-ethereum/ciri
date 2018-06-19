@@ -76,7 +76,12 @@ module Ciri
     private
 
     def secp256k1_key
-      @secp256k1_key ||= Crypto.ensure_secp256k1_key(privkey: ec_key.private_key.to_s(2))
+      privkey = ec_key.private_key.to_s(2)
+      # some times below error will occurs, raise error with more detail
+      unless privkey.instance_of?(String) && privkey.size == 32
+        raise ArgumentError, "privkey must be composed of 32 bytes, #{bytes}: #{privkey.size} privkey: #{Utils.data_to_hex privkey}"
+      end
+      @secp256k1_key ||= Crypto.ensure_secp256k1_key(privkey: privkey)
     end
   end
 end

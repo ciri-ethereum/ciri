@@ -421,44 +421,62 @@ module Ciri
             pos, size = vm.pop_list(2, Integer)
             log_data = vm.memory_fetch(pos, size)
             vm.extend_memory(pos, size)
-            topics = vm.pop_list(i, Integer)
+            topics = vm.pop_list(i)
             vm.add_log_entry(topics, log_data)
           end
         end.call(i))
       end
 
       # f0s: System operations
-      CREATE = 0xf0
-      CALL = 0xf1
+      def_op :CREATE, 0xf0, 3, 1 do |vm|
+        value = vm.pop(Integer)
+        mem_pos, size = vm.pop_list(2, Integer)
 
-      def_op :CALLCODE, 0xf2, 7, 1 do |vm|
-        # this method consume 7 items from stack, but seems not all of them are used
-        # skip 2 items
+        init = vm.memory_fetch(mem_pos, size)
+        vm.extend_memory(mem_pos, size)
+
+        contract_address = vm.create_contract(value: value, init: init)
+        vm.push contract_address
+      end
+
+      def_op :CALL, 0xf1, 7, 1 do |vm|
         vm.pop
         target = vm.pop(Address)
         value = vm.pop(Integer)
         input_mem_pos, input_size = vm.pop_list(2, Integer)
-        output_mem_pos, output_size = vm.pop_list(2, Integer)
+        output_mem_pos, output_mem_size = vm.pop_list(2, Integer)
 
-        if value <= vm.find_account(vm.instruction.address).balance && vm.instruction.execute_depth < 1024
-          instruction = vm.instruction.dup
-          instruction.sender = instruction.address
-          instruction.value = value
-          instruction.execute_depth += 1
-          data = vm.memory_fetch(input_mem_pos, input_size)
-          instruction.data = data
-          instruction.bytes_code = vm.find_account(target).code || ''.b
+        data = vm.memory_fetch(input_mem_pos, input_size)
+        vm.extend_memory(input_mem_pos, input_size)
 
-          # vm.transact(sender: vm.instruction.sender)
+        status, output = vm.call_message(sender: vm.instruction.address, value: value,
+                                         data: data, receipt: target, code_address: target)
 
-          vm.with_new_instruction(instruction) do
-            vm.execute
-          end
+        output_size = [output_mem_size, output.size].min
+        vm.memory_store(output_mem_pos, output_size, output)
+        vm.extend_memory(output_mem_pos, output_size)
+        vm.push status
+      end
 
-          output = vm.output || ''.b
-          out_size = [output_size, output.size].min
-          vm.memory_store(output_mem_pos, out_size, output)
-        end
+      def_op :CALLCODE, 0xf2, 7, 1 do |vm|
+        # this method consume 7 items from stack, but seems not all of them are used
+        # skip item
+        vm.pop
+        target = vm.pop(Address)
+        value = vm.pop(Integer)
+        input_mem_pos, input_size = vm.pop_list(2, Integer)
+        output_mem_pos, output_mem_size = vm.pop_list(2, Integer)
+
+        data = vm.memory_fetch(input_mem_pos, input_size)
+        vm.extend_memory(input_mem_pos, input_size)
+
+        status, output = vm.call_message(sender: vm.instruction.address, value: value,
+                                         data: data, receipt: vm.instruction.address, code_address: target)
+
+        output_size = [output_mem_size, output.size].min
+        vm.memory_store(output_mem_pos, output_size, output)
+        vm.extend_memory(output_mem_pos, output_size)
+        vm.push status
       end
 
       def_op :RETURN, 0xf3, 2, 0 do |vm|
@@ -467,7 +485,24 @@ module Ciri
         vm.extend_memory(index, size)
       end
 
-      DELEGATECALL = 0xf4
+      def_op :DELEGATECALL, 0xf4, 6, 1 do |vm|
+        vm.pop
+        target = vm.pop(Address)
+        input_mem_pos, input_size = vm.pop_list(2, Integer)
+        output_mem_pos, output_mem_size = vm.pop_list(2, Integer)
+
+        data = vm.memory_fetch(input_mem_pos, input_size)
+        vm.extend_memory(input_mem_pos, input_size)
+
+        status, output = vm.call_message(sender: vm.instruction.sender, value: vm.instruction.value,
+                                         data: data, receipt: vm.instruction.address, code_address: target)
+
+        output_size = [output_mem_size, output.size].min
+        vm.memory_store(output_mem_pos, output_size, output)
+        vm.extend_memory(output_mem_pos, output_size)
+        vm.push status
+      end
+
       STATICCALL = 0xfa
       REVERT = 0xfd
 

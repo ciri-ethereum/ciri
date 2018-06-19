@@ -95,7 +95,7 @@ RSpec.describe Ciri::EVM do
             transaction.sender
 
             evm = Ciri::EVM.new(state: state)
-            evm.transact(transaction, block_info: block_info)
+            evm.execute_transaction(transaction, block_info: block_info, ignore_exception: true)
 
             if config['logs']
               expect(Ciri::Utils.data_to_hex evm.logs_hash).to eq config['logs'][2..-1]
@@ -143,8 +143,8 @@ RSpec.describe Ciri::EVM do
     end
   end if false
 
-  Dir.glob("fixtures/GeneralStateTests/stArgsZeroOneBalance/addmodNonConst.json").each do |t|
-    run_test_case[JSON.load(open t), prefix: 'state']
+  Dir.glob("fixtures/GeneralStateTests/stArgsZeroOneBalance/*.json").each do |t|
+    run_test_case[JSON.load(open t), prefix: 'GeneralStateTests']
   end
 
 end

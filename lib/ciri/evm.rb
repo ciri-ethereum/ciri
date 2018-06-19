@@ -75,7 +75,7 @@ module Ciri
     # execute transaction
     # @param t Transaction
     # @param header Chain::Header
-    def execute_transaction(t, header: nil, block_info: nil)
+    def execute_transaction(t, header: nil, block_info: nil, ignore_exception: false)
       instruction = Instruction.new(
         origin: t.sender,
         price: t.gas_price,
@@ -105,14 +105,13 @@ module Ciri
         fork_config: Ciri::Forks.detect_fork(header: header, number: block_info&.number)
       )
 
-      # transact ether
-      @vm.transact(sender: t.sender, value: t.value, to: t.to)
-
       if t.contract_creation?
         # contract creation
-        @vm.create_contract
+        @vm.create_contract(value: instruction.value, init: instruction.init)
       else
-        @vm.run
+        # transact ether
+        @vm.transact(sender: t.sender, value: t.value, to: t.to)
+        @vm.run(ignore_exception: ignore_exception)
       end
       nil
     end

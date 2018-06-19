@@ -112,7 +112,9 @@ module Ciri
         return unless data && !data_is_blank
 
         # remove unnecessary null byte from key
-        key = serialize(key).gsub(/\A\0+(?=.)/, ''.b)
+        key = serialize(key).gsub(/\A\0+/, ''.b)
+        key = "\x00".b if key.empty?
+
         account = find_account address
         account.storage[key] = serialize(data).rjust(32, "\x00".b)
         update_account(account)
@@ -120,6 +122,10 @@ module Ciri
 
       # fetch data from address
       def fetch(address, key)
+        # remove unnecessary null byte from key
+        key = serialize(key).gsub(/\A\0+/, ''.b)
+        key = "\x00".b if key.empty?
+
         find_account(address).storage[key] || ''.b
       end
 
@@ -129,25 +135,72 @@ module Ciri
         raise exception unless ignore_exception || exception.nil?
       end
 
-      # create_contract
-      def create_contract
+      # low_level create_contract interface
+      # CREATE_CONTRACT op is based on this method
+      def create_contract(value:, init:)
+
+        account = find_account(instruction.address)
+
+        # return contract address 0 represent execution failed
+        return 0 unless account.balance >= value || instruction.execute_depth > 1024
+
+        account.nonce += 1
+        account.balance -= value
+
         # generate contract_address
-        contract_address = Utils.sha3(RLP.encode([sender, find_account(sender).nonce - 1]))[96..255]
+        material = RLP.encode_simple([instruction.address.to_s, find_account(instruction.address).nonce - 1])
+        contract_address = Utils.sha3(material)[-20..-1]
 
         # initialize contract account
         contract_account = find_account(contract_address)
         contract_account.nonce = 1
-        contract_account.balance += instruction.value
+        contract_account.balance += value
         contract_account.code = Utils::BLANK_SHA3
-        update_account(contract_account)
 
-        # update sender account
-        sender_account = find_account(sender)
-        sender_account.balance -= instruction.value
-        update_account(sender_account)
+        # update account
+        update_account(contract_account)
+        update_account(account)
 
         # execute initialize code
-        execute
+        create_contract_instruction = instruction.dup
+        create_contract_instruction.bytes_code = init
+        create_contract_instruction.execute_depth += 1
+
+        with_new_instruction(create_contract_instruction) do
+          execute
+        end
+
+        if exception
+          update_account(Account.new_empty(contract_address))
+          contract_address = 0
+        end
+
+        contract_address
+      end
+
+      # low level call message interface
+      # CALL, CALLCODE, DELEGATECALL ops is base on this method
+      def call_message(sender:, value:, receipt:, data:, code_address:)
+        # return status code 0 represent execution failed
+        return [0, ''.b] unless value <= find_account(instruction.address).balance && instruction.execute_depth < 1024
+
+        call_instruction = instruction.dup
+        call_instruction.sender = sender
+        call_instruction.value = value
+
+        call_instruction.execute_depth += 1
+
+        call_instruction.data = data
+        call_instruction.bytes_code = find_account(code_address).code || ''.b
+
+        transact(sender: sender, value: value, to: receipt)
+
+        with_new_instruction(call_instruction) do
+          execute
+        end
+
+        status = exception.nil? ? 0 : 1
+        [status, output || ''.b]
       end
 
       # jump to pc

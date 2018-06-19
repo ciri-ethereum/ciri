@@ -26,7 +26,7 @@ module Ciri
     module Number
       extend self
 
-      def big_endian_encode(n, zero = '')
+      def big_endian_encode(n, zero = ''.b)
         if n == 0
           zero
         elsif n > 0
@@ -36,7 +36,7 @@ module Ciri
         end
       end
 
-      def big_endian_encode_to_size(n, zero = '', size:)
+      def big_endian_encode_to_size(n, zero = ''.b, size:)
         big_endian_encode(n, zero).rjust(size, "\x00".b)
       end
 

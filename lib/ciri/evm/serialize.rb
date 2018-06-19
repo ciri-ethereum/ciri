@@ -43,6 +43,9 @@ module Ciri
           Utils.big_endian_decode(item)
         elsif type == Types::Address && !item.is_a?(Types::Address)
           Types::Address.new(item.size >= 20 ? item[-20..-1] : '')
+        elsif type.nil?
+          # get serialized word
+          serialize(item).rjust(32, "\x00".b)
         else
           item
         end
