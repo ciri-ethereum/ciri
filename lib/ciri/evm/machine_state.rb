@@ -63,7 +63,8 @@ module Ciri
         if size > 0 && start < memory.size && start + size - 1 < memory.size
           memory[start..(start + size - 1)]
         else
-          "\x00".b * size
+          # prevent size is too large
+          "\x00".b * [size, memory.size].min
         end
       end
 

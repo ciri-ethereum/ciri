@@ -38,6 +38,15 @@ module Ciri
         @refunds = Set.new(refunds)
       end
 
+      # support safety copy
+      def initialize_copy(orig)
+        super
+        @suicide_accounts = orig.suicide_accounts.dup
+        @log_series = orig.log_series.dup
+        @touched_accounts = orig.touched_accounts.dup
+        @refunds = orig.refunds.dup
+      end
+
       def add_refund_account(account)
         @refunds.add account
       end

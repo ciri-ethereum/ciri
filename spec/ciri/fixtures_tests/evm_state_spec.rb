@@ -129,7 +129,17 @@ RSpec.describe Ciri::EVM do
     end
   end
 
-  skip_topics = %w{}.map {|f| [f, true]}.to_h
+  skip_topics = %w{
+    fixtures/GeneralStateTests/stQuadraticComplexityTest
+    fixtures/GeneralStateTests/stRandom
+    fixtures/GeneralStateTests/stRandom2
+    fixtures/GeneralStateTests/stWalletTest
+    fixtures/GeneralStateTests/stMemoryStressTest
+    fixtures/GeneralStateTests/stTransactionTest
+    fixtures/GeneralStateTests/stSolidityTest
+    fixtures/GeneralStateTests/stSystemOperationsTest
+    fixtures/GeneralStateTests/stLogTests
+  }.map {|f| [f, true]}.to_h
 
   Dir.glob("fixtures/GeneralStateTests/*").each do |topic|
     # skip topics
@@ -141,10 +151,6 @@ RSpec.describe Ciri::EVM do
     Dir.glob("#{topic}/*.json").each do |t|
       run_test_case[JSON.load(open t), prefix: topic]
     end
-  end if false
-
-  Dir.glob("fixtures/GeneralStateTests/stArgsZeroOneBalance/*.json").each do |t|
-    run_test_case[JSON.load(open t), prefix: 'GeneralStateTests']
   end
 
 end

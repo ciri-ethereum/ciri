@@ -33,6 +33,8 @@ module Ciri
         case item
         when Integer
           Utils.big_endian_encode(item)
+        when Types::Address
+          item.to_s
         else
           item
         end
@@ -40,9 +42,11 @@ module Ciri
 
       def deserialize(type, item)
         if type == Integer && !item.is_a?(Integer)
-          Utils.big_endian_decode(item)
+          Utils.big_endian_decode(item.to_s)
         elsif type == Types::Address && !item.is_a?(Types::Address)
-          Types::Address.new(item.size >= 20 ? item[-20..-1] : '')
+          # check if address represent in Integer
+          item = Utils.big_endian_encode(item) if item.is_a?(Integer)
+          Types::Address.new(item.size >= 20 ? item[-20..-1] : ''.b)
         elsif type.nil?
           # get serialized word
           serialize(item).rjust(32, "\x00".b)

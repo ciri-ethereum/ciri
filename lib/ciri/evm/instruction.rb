@@ -28,8 +28,16 @@ module Ciri
     Instruction = Struct.new(:address, :origin, :price, :data, :sender, :value, :bytes_code, :header, :execute_depth,
                              keyword_init: true) do
 
+      def initialize(*args)
+        super
+        self.data ||= ''.b
+        self.value ||= 0
+        self.bytes_code ||= ''.b
+        self.execute_depth ||= 0
+      end
+
       def get_op(pos)
-        return 0 if pos >= bytes_code.size
+        return 0 if pos >= (bytes_code || ''.b).size
         bytes_code[pos].ord
       end
 
@@ -66,13 +74,16 @@ module Ciri
       private
 
       def destinations_by_index(bytes_code, i)
-        if i > bytes_code.size
-          []
-        elsif bytes_code[i] == OP::JUMPDEST
-          [i] + destinations_by_index(bytes_code, next_valid_instruction_pos(i, bytes_code[i]))
-        else
-          destinations_by_index(bytes_code, next_valid_instruction_pos(i, bytes_code[i]))
+        destinations = []
+        loop do
+          if i > bytes_code.size
+            break
+          elsif bytes_code[i] == OP::JUMPDEST
+            destinations << i
+          end
+          i = next_valid_instruction_pos(i, bytes_code[i])
         end
+        destinations
       end
 
     end

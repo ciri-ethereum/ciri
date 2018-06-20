@@ -287,12 +287,22 @@ module Ciri
         op_cost = fork_config.cost_of_operation[self]
         old_memory_cost = fork_config.cost_of_memory[ms.memory_item]
         ms.gas_remain -= op_cost
+
+        prev_sub_state = sub_state.dup
+
         # call operation
         operation.call(self)
         # calculate gas_cost
         new_memory_cost = fork_config.cost_of_memory[ms.memory_item]
         memory_gas_cost = new_memory_cost - old_memory_cost
-        ms.gas_remain -= memory_gas_cost
+
+        if ms.gas_remain >= memory_gas_cost
+          ms.gas_remain -= memory_gas_cost
+        else
+          # memory gas_not_enough revert sub_state
+          @sub_state = prev_sub_state
+          @exception = GasNotEnoughError.new "gas not enough: gas remain:#{ms.gas_remain} gas cost: #{memory_gas_cost}"
+        end
 
         debug("#{ms.pc} #{operation.name} gas: #{op_cost + memory_gas_cost} stack: #{stack.size}")
         ms.pc = case
