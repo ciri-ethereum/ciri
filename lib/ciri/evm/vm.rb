@@ -138,14 +138,12 @@ module Ciri
       # low_level create_contract interface
       # CREATE_CONTRACT op is based on this method
       def create_contract(value:, init:)
-
         account = find_account(instruction.address)
 
         # return contract address 0 represent execution failed
         return 0 unless account.balance >= value || instruction.execute_depth > 1024
 
         account.nonce += 1
-        account.balance -= value
 
         # generate contract_address
         material = RLP.encode_simple([instruction.address.to_s, find_account(instruction.address).nonce - 1])
@@ -154,12 +152,7 @@ module Ciri
         # initialize contract account
         contract_account = find_account(contract_address)
         contract_account.nonce = 1
-        contract_account.balance += value
         contract_account.code = Utils::BLANK_SHA3
-
-        # update account
-        update_account(contract_account)
-        update_account(account)
 
         # execute initialize code
         create_contract_instruction = instruction.dup
@@ -173,7 +166,17 @@ module Ciri
         if exception
           update_account(Account.new_empty(contract_address))
           contract_address = 0
+        else
+          # set contract code
+          contract_account.code = output || ''.b
+          # transact value
+          account.balance -= value
+          contract_account.balance += value
         end
+
+        # update account
+        update_account(contract_account)
+        update_account(account)
 
         contract_address
       end
