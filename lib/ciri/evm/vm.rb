@@ -146,7 +146,7 @@ module Ciri
         account.nonce += 1
 
         # generate contract_address
-        material = RLP.encode_simple([instruction.address.to_s, find_account(instruction.address).nonce - 1])
+        material = RLP.encode_simple([instruction.address.to_s, account.nonce - 1])
         contract_address = Utils.sha3(material)[-20..-1]
 
         # initialize contract account
@@ -158,6 +158,7 @@ module Ciri
         create_contract_instruction = instruction.dup
         create_contract_instruction.bytes_code = init
         create_contract_instruction.execute_depth += 1
+        create_contract_instruction.address = contract_address
 
         with_new_instruction(create_contract_instruction) do
           execute
@@ -188,6 +189,7 @@ module Ciri
         return [0, ''.b] unless value <= find_account(instruction.address).balance && instruction.execute_depth < 1024
 
         call_instruction = instruction.dup
+        call_instruction.address = receipt
         call_instruction.sender = sender
         call_instruction.value = value
 

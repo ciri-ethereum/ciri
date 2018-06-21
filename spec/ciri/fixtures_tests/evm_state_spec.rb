@@ -64,13 +64,8 @@ RSpec.describe Ciri::EVM do
   run_test_case = proc do |test_case, prefix: nil|
     test_case.each do |name, t|
 
-      it "#{prefix} #{name}" do
-        state = Ciri::DB::Backend::Memory.new
-        # pre
-        t['pre'].each do |address, v|
-          account = parse_account[address, v]
-          state[account.address.to_s] = account
-        end
+      context "#{prefix} #{name}" do
+
         # transaction
         transaction_arguments = t['transaction']
 
@@ -86,42 +81,51 @@ RSpec.describe Ciri::EVM do
         )
 
         t['post'].each do |fork_name, configs|
-          configs.each do |config|
-            indexes = config['indexes']
-            transaction = build_transaction[transaction_arguments, indexes]
-            transaction.validate!
+          it fork_name do
+            configs.each do |config|
+              state = Ciri::DB::Backend::Memory.new
+              # pre
+              t['pre'].each do |address, v|
+                account = parse_account[address, v]
+                state[account.address.to_s] = account
+              end
 
-            # expect(Ciri::Utils.data_to_hex transaction.get_hash).to eq config['hash']
-            transaction.sender
+              indexes = config['indexes']
+              transaction = build_transaction[transaction_arguments, indexes]
+              transaction.validate!
 
-            evm = Ciri::EVM.new(state: state)
-            evm.execute_transaction(transaction, block_info: block_info, ignore_exception: true)
+              # expect(Ciri::Utils.data_to_hex transaction.get_hash).to eq config['hash']
+              transaction.sender
 
-            if config['logs']
-              expect(Ciri::Utils.data_to_hex evm.logs_hash).to eq config['logs'][2..-1]
+              evm = Ciri::EVM.new(state: state)
+              evm.execute_transaction(transaction, block_info: block_info, ignore_exception: true)
+
+              if config['logs']
+                expect(Ciri::Utils.data_to_hex evm.logs_hash).to eq config['logs'][2..-1]
+              end
+
+              # # post
+              # output = t['out'].yield_self {|out| out && Ciri::Utils.hex_to_data(out)}
+              # if output
+              #   # padding vm output, cause testcases return length is uncertain
+              #   vm_output = (vm.output || '').rjust(output.size, "\x00".b)
+              #   expect(vm_output).to eq output
+              # end
+              #
+              # gas_remain = t['gas'].yield_self {|gas_remain| gas_remain && Ciri::Utils.big_endian_decode(Ciri::Utils.hex_to_data(gas_remain))}
+              # expect(vm.machine_state.gas_remain).to eq gas_remain if gas_remain
+              #
+              # account = parse_account[address, v]
+              # vm_account = state[account.address]
+              # storage = account.storage.map {|k, v| [Ciri::Utils.data_to_hex(k), Ciri::Utils.data_to_hex(v)]}.to_h
+              # vm_storage = if vm_account
+              #                vm_account.storage.map {|k, v| [Ciri::Utils.data_to_hex(k), Ciri::Utils.data_to_hex(v)]}.to_h
+              #              else
+              #                {}
+              #              end
+              # expect(vm_storage).to eq storage
+              # expect(vm_account).to eq account
             end
-
-            # # post
-            # output = t['out'].yield_self {|out| out && Ciri::Utils.hex_to_data(out)}
-            # if output
-            #   # padding vm output, cause testcases return length is uncertain
-            #   vm_output = (vm.output || '').rjust(output.size, "\x00".b)
-            #   expect(vm_output).to eq output
-            # end
-            #
-            # gas_remain = t['gas'].yield_self {|gas_remain| gas_remain && Ciri::Utils.big_endian_decode(Ciri::Utils.hex_to_data(gas_remain))}
-            # expect(vm.machine_state.gas_remain).to eq gas_remain if gas_remain
-            #
-            # account = parse_account[address, v]
-            # vm_account = state[account.address]
-            # storage = account.storage.map {|k, v| [Ciri::Utils.data_to_hex(k), Ciri::Utils.data_to_hex(v)]}.to_h
-            # vm_storage = if vm_account
-            #                vm_account.storage.map {|k, v| [Ciri::Utils.data_to_hex(k), Ciri::Utils.data_to_hex(v)]}.to_h
-            #              else
-            #                {}
-            #              end
-            # expect(vm_storage).to eq storage
-            # expect(vm_account).to eq account
           end
         end
       end
