@@ -44,10 +44,10 @@ RSpec.describe Ciri::EVM do
     Ciri::EVM::Account.new(address: address, balance: balance, nonce: nonce, storage: storage)
   end
 
-  run_test_case = proc do |test_case, prefix: nil|
+  run_test_case = proc do |test_case, prefix: nil, tags: {}|
     test_case.each do |name, t|
 
-      it "#{prefix} #{name}" do
+      it "#{prefix} #{name}", **tags do
         state = Ciri::DB::Backend::Memory.new
         # pre
         t['pre'].each do |address, v|
@@ -111,17 +111,18 @@ RSpec.describe Ciri::EVM do
     end
   end
 
-  skip_topics = %w{fixtures/VMTests/vmPerformance}.map {|f| [f, true]}.to_h
+  slow_tests = %w{fixtures/VMTests/vmPerformance}.map {|f| [f, true]}.to_h
 
   Dir.glob("fixtures/VMTests/*").each do |topic|
-    # skip topics
-    if skip_topics.include? topic
-      skip topic
-      next
+    tags = {}
+
+    # add slow_tests tag
+    if slow_tests.include? topic
+      tags = {slow_tests: true}
     end
 
     Dir.glob("#{topic}/*.json").each do |t|
-      run_test_case[JSON.load(open t), prefix: topic]
+      run_test_case[JSON.load(open t), prefix: topic, tags: tags]
     end
   end
 

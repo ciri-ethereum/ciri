@@ -39,6 +39,11 @@ namespace :docker do
 
   desc 'run tests in docker'
   task :test do
-    system("docker run -v `pwd`:/app --rm #{base_image}:latest rake")
+    system("docker run -v `pwd`:/app --rm #{base_image}:latest rspec -t ~slow_tests")
+  end
+
+  desc 'run all tests(include slow tests) in docker'
+  task :"test:all" do
+    system("docker run -v `pwd`:/app --rm #{base_image}:latest rspec")
   end
 end
