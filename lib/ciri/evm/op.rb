@@ -506,6 +506,10 @@ module Ciri
       STATICCALL = 0xfa
       REVERT = 0xfd
 
+      def_op :INVALID, 0xfe, 0, 0 do |vm|
+        raise 'should not invoke INVALID'
+      end
+
       def_op :SELFDESTRUCT, 0xff, 1, 0 do |vm|
         refund_address = vm.pop(Address)
         refund_account = vm.find_account(refund_address)

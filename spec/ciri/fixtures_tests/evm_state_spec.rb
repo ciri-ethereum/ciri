@@ -134,12 +134,18 @@ RSpec.describe Ciri::EVM do
   end
 
   # these tests are slow
-  skip_test_cases = %w{
+  slow_test_cases = %w{
     fixtures/GeneralStateTests/stRevertTest/LoopCallsThenRevert.json
     fixtures/GeneralStateTests/stRevertTest/LoopCallsDepthThenRevert.json
     fixtures/GeneralStateTests/stRevertTest/LoopCallsDepthThenRevert2.json
     fixtures/GeneralStateTests/stRevertTest/LoopCallsDepthThenRevert3.json
     fixtures/GeneralStateTests/stRevertTest/LoopDelegateCallsDepthThenRevert.json
+    fixtures/GeneralStateTests/stCallCreateCallCodeTest/CallLoseGasOOG.json
+    fixtures/GeneralStateTests/stCallCreateCallCodeTest/Call1024PreCalls.json
+    fixtures/GeneralStateTests/stAttackTest/ContractCreationSpam.json
+    fixtures/GeneralStateTests/stDelegatecallTestHomestead/Call1024PreCalls.json
+    fixtures/GeneralStateTests/stChangedEIP150/Call1024PreCalls.json
+    fixtures/GeneralStateTests/stCallCreateCallCodeTest/Call1024PreCalls.json
   }.map {|f| [f, true]}.to_h
 
   skip_topics = %w{
@@ -161,7 +167,7 @@ RSpec.describe Ciri::EVM do
     end
 
     Dir.glob("#{topic}/*.json").each do |t|
-      if skip_test_cases.include?(t)
+      if slow_test_cases.include?(t)
         skip t
         next
       end

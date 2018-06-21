@@ -162,17 +162,17 @@ module Ciri
 
         call_instruction(create_contract_instruction) do
           execute
-        end
 
-        if exception
-          update_account(Account.new_empty(contract_address))
-          contract_address = 0
-        else
-          # set contract code
-          contract_account.code = output || ''.b
-          # transact value
-          account.balance -= value
-          contract_account.balance += value
+          if exception
+            update_account(Account.new_empty(contract_address))
+            contract_address = 0
+          else
+            # set contract code
+            contract_account.code = output || ''.b
+            # transact value
+            account.balance -= value
+            contract_account.balance += value
+          end
         end
 
         # update account
@@ -186,7 +186,7 @@ module Ciri
       # CALL, CALLCODE, DELEGATECALL ops is base on this method
       def call_message(sender:, value:, receipt:, data:, code_address:)
         # return status code 0 represent execution failed
-        return [0, ''.b] unless value <= find_account(sender).balance && instruction.execute_depth < 1024
+        return [0, ''.b] unless value <= find_account(sender).balance && instruction.execute_depth <= 1024
 
         message_call_instruction = instruction.dup
         message_call_instruction.address = receipt
@@ -201,10 +201,9 @@ module Ciri
         transact(sender: sender, value: value, to: receipt)
         call_instruction(message_call_instruction) do
           execute
+          status = exception.nil? ? 0 : 1
+          [status, output || ''.b]
         end
-
-        status = exception.nil? ? 0 : 1
-        [status, output || ''.b]
       end
 
       # jump to pc
@@ -253,16 +252,15 @@ module Ciri
         origin_pc = pc
         @instruction = new_instruction
         @machine_state.pc = 0
-        yield
 
-        # check op
-        # do not resume the origin instruction if op is STOP
-        # this intention is to let the execute method detect halt state and stop vm
-        w = get_op(machine_state.pc)
-        unless w == OP::STOP
-          @instruction = origin_instruction
-          @machine_state.pc = origin_pc
-        end
+        return_value = yield
+
+        @instruction = origin_instruction
+        @machine_state.pc = origin_pc
+        # clear up state
+        @exception = nil
+        @output = ''.b
+        return_value
       end
 
       # Execute instruction with states
@@ -321,7 +319,7 @@ module Ciri
           return
         end
 
-        debug("#{ms.pc} #{operation.name} gas: #{op_cost + memory_gas_cost} stack: #{stack.size}")
+        debug("depth: #{instruction.execute_depth} pc: #{ms.pc} #{operation.name} gas: #{op_cost + memory_gas_cost} stack: #{stack.size} logs: #{sub_state.log_series.size}")
         ms.pc = case
                 when w == OP::JUMP
                   @jump_to
@@ -352,6 +350,8 @@ module Ciri
       def check_exception(state, ms, instruction)
         w = instruction.get_op(ms.pc)
         case
+        when w == OP::INVALID
+          InvalidOpCodeError.new "can't find op code #{w}"
         when OP.input_count(w).nil?
           InvalidOpCodeError.new "can't find op code #{w}"
         when ms.stack.size < (consume = OP.input_count(w))
@@ -367,6 +367,8 @@ module Ciri
         when stack.size - OP.input_count(w) + OP.output_count(w) > 1024
           StackError.new "stack size reach 1024 limit"
           # A condition in yellow paper but I can't understand..: (¬Iw ∧W(w,μ))
+        when instruction.execute_depth > 1024
+          StackError.new "call depth reach 1024 limit"
         else
           nil
         end
