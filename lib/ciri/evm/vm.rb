@@ -160,7 +160,7 @@ module Ciri
         create_contract_instruction.execute_depth += 1
         create_contract_instruction.address = contract_address
 
-        with_new_instruction(create_contract_instruction) do
+        call_instruction(create_contract_instruction) do
           execute
         end
 
@@ -186,21 +186,20 @@ module Ciri
       # CALL, CALLCODE, DELEGATECALL ops is base on this method
       def call_message(sender:, value:, receipt:, data:, code_address:)
         # return status code 0 represent execution failed
-        return [0, ''.b] unless value <= find_account(instruction.address).balance && instruction.execute_depth < 1024
+        return [0, ''.b] unless value <= find_account(sender).balance && instruction.execute_depth < 1024
 
-        call_instruction = instruction.dup
-        call_instruction.address = receipt
-        call_instruction.sender = sender
-        call_instruction.value = value
+        message_call_instruction = instruction.dup
+        message_call_instruction.address = receipt
+        message_call_instruction.sender = sender
+        message_call_instruction.value = value
 
-        call_instruction.execute_depth += 1
+        message_call_instruction.execute_depth += 1
 
-        call_instruction.data = data
-        call_instruction.bytes_code = find_account(code_address).code || ''.b
+        message_call_instruction.data = data
+        message_call_instruction.bytes_code = find_account(code_address).code || ''.b
 
         transact(sender: sender, value: value, to: receipt)
-
-        with_new_instruction(call_instruction) do
+        call_instruction(message_call_instruction) do
           execute
         end
 
@@ -248,18 +247,29 @@ module Ciri
         update_account(to)
       end
 
-      def with_new_instruction(new_instruction)
+      # call instruction
+      def call_instruction(new_instruction)
         origin_instruction = instruction
+        origin_pc = pc
         @instruction = new_instruction
+        @machine_state.pc = 0
         yield
-        @instruction = origin_instruction
+
+        # check op
+        # do not resume the origin instruction if op is STOP
+        # this intention is to let the execute method detect halt state and stop vm
+        w = get_op(machine_state.pc)
+        unless w == OP::STOP
+          @instruction = origin_instruction
+          @machine_state.pc = origin_pc
+        end
       end
 
       # Execute instruction with states
       # Ξ(σ,g,I,T) ≡ (σ′,μ′ ,A,o)
       def execute
         loop do
-          if (@exception = check_exception(@state, machine_state, instruction))
+          if (@exception ||= check_exception(@state, machine_state, instruction))
             debug("exception: #{@exception}")
             return [EMPTY_SET, machine_state, SubState::EMPTY, instruction, EMPTY_SET]
           elsif get_op(machine_state.pc) == OP::REVERT
@@ -301,9 +311,14 @@ module Ciri
         if ms.gas_remain >= memory_gas_cost
           ms.gas_remain -= memory_gas_cost
         else
-          # memory gas_not_enough revert sub_state
-          @sub_state = prev_sub_state
+          # memory gas_not_enough
           @exception = GasNotEnoughError.new "gas not enough: gas remain:#{ms.gas_remain} gas cost: #{memory_gas_cost}"
+        end
+
+        # revert sub_state and return if exception occur
+        if exception
+          @sub_state = prev_sub_state
+          return
         end
 
         debug("#{ms.pc} #{operation.name} gas: #{op_cost + memory_gas_cost} stack: #{stack.size}")

@@ -114,6 +114,7 @@ module Ciri
           @vm.transact(sender: t.sender, value: t.value, to: t.to)
         rescue VM::VMError
           raise unless ignore_exception
+          return nil
         end
         @vm.run(ignore_exception: ignore_exception)
       end

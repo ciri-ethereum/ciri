@@ -133,6 +133,15 @@ RSpec.describe Ciri::EVM do
     end
   end
 
+  # these tests are slow
+  skip_test_cases = %w{
+    fixtures/GeneralStateTests/stRevertTest/LoopCallsThenRevert.json
+    fixtures/GeneralStateTests/stRevertTest/LoopCallsDepthThenRevert.json
+    fixtures/GeneralStateTests/stRevertTest/LoopCallsDepthThenRevert2.json
+    fixtures/GeneralStateTests/stRevertTest/LoopCallsDepthThenRevert3.json
+    fixtures/GeneralStateTests/stRevertTest/LoopDelegateCallsDepthThenRevert.json
+  }.map {|f| [f, true]}.to_h
+
   skip_topics = %w{
     fixtures/GeneralStateTests/stQuadraticComplexityTest
     fixtures/GeneralStateTests/stRandom
@@ -142,7 +151,6 @@ RSpec.describe Ciri::EVM do
     fixtures/GeneralStateTests/stTransactionTest
     fixtures/GeneralStateTests/stSolidityTest
     fixtures/GeneralStateTests/stSystemOperationsTest
-    fixtures/GeneralStateTests/stLogTests
   }.map {|f| [f, true]}.to_h
 
   Dir.glob("fixtures/GeneralStateTests/*").each do |topic|
@@ -153,6 +161,11 @@ RSpec.describe Ciri::EVM do
     end
 
     Dir.glob("#{topic}/*.json").each do |t|
+      if skip_test_cases.include?(t)
+        skip t
+        next
+      end
+
       run_test_case[JSON.load(open t), prefix: topic]
     end
   end
