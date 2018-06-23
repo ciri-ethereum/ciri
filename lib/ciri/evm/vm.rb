@@ -87,7 +87,7 @@ module Ciri
       include Serialize
 
       def_delegators :@machine_state, :stack, :pc, :pop, :push, :pop_list, :get_stack,
-                     :memory_item, :memory_item=, :memory_store, :memory_fetch, :extend_memory
+                     :memory_item, :memory_item=, :memory_store, :memory_fetch, :extend_memory, :gas_remain
       def_delegators :@instruction, :get_op, :get_code, :next_valid_instruction_pos, :get_data, :data, :sender
       def_delegators :@sub_state, :add_refund_account, :add_touched_account, :add_suicide_account
 
@@ -201,9 +201,12 @@ module Ciri
         transact(sender: sender, value: value, to: receipt)
         call_instruction(message_call_instruction) do
           execute
-          status = exception.nil? ? 0 : 1
           [status, output || ''.b]
         end
+      end
+
+      def status
+        exception.nil? ? 0 : 1
       end
 
       # jump to pc
@@ -223,8 +226,7 @@ module Ciri
       # the only method which touch state
       # VM do not consider state revert/commit, we let it to state implementation
       def update_account(account)
-        address = account.address.to_s
-        @state[address] = account
+        Account.update_account(@state, account)
         add_touched_account(account)
       end
 

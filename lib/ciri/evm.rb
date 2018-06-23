@@ -31,45 +31,43 @@ module Ciri
 
     BLOCK_REWARD = 3 * 10.pow(18) # 3 ether
 
+    ExecuteResult = Struct.new(:status, :logs, :gas_used, keyword_init: true)
+
     attr_reader :state
 
     def initialize(state:)
       @state = state
     end
 
-    # run block
-    def finalize_block(block)
-      # validate block
-      # transition
-      # apply_changes
-    end
-
-    def validate_block(block)
-      # valid ommers
-      # valid transactions(block.gas_used == transactions...gas)
-      # Reward miner, ommers(reward == block reward + ommers reward)
-      # apply changes
-      # verify state and block nonce
-      # 1. parent header root == trie(state[i]) 当前状态的 root 相等, 返回 state[i] otherwise state[0]
-    end
-
     # transition block
-    # block -> new block(mining)
-    # return new_block and status change
     def transition(block)
+      results = []
       # execute transactions, we don't need to valid transactions, it should be done before evm(in Chain module).
       block.transactions.each do |transaction|
-        execute_transaction(transaction, header: block.header)
+        result = execute_transaction(transaction, header: block.header)
+        results << result
       end
-      # status transfer
-      # state[c].balance += mining reward
-      # ommers: state[u.c].balance += uncle reward
-      #
-      # block.nonce
-      # block.mix
-      # R[i].gas_used = gas_used(state[i - 1], block.transactions[i]) + R[i - 1].gas_used
-      # R[i].logs = logs(state[i - 1], block.transactions[i])
-      # R[i].z = z(state[i - 1], block.transactions[i])
+
+      rewards = Hash.new(0)
+
+      # reward miner
+      rewards[block.header.beneficiary] += (1 + block.ommers.count.to_f / 32) * BLOCK_REWARD
+
+      # reward ommer(uncle) block miners
+      block.ommers.each do |ommer|
+        rewards[ommer.beneficiary] += (1 + (ommer.number - block.header.number).to_f / 8) * BLOCK_REWARD
+      end
+
+      # apply rewards
+      rewards.each do |address, value|
+        if value > 0
+          account = find_account(address)
+          account.balance += value
+          update_account(account)
+        end
+      end
+
+      results
     end
 
     # execute transaction
@@ -118,7 +116,8 @@ module Ciri
         end
         @vm.run(ignore_exception: ignore_exception)
       end
-      nil
+      gas_used = t.gas_limit - @vm.gas_remain
+      ExecuteResult.new(status: @vm.status, logs: logs_hash, gas_used: gas_used)
     end
 
     def logs_hash
@@ -134,6 +133,10 @@ module Ciri
 
     def find_account(address)
       Account.find_account(state, address)
+    end
+
+    def update_account(account)
+      Account.update_account(state, account)
     end
 
   end
