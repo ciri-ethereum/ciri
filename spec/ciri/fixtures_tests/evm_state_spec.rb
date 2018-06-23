@@ -139,8 +139,6 @@ RSpec.describe Ciri::EVM, slow_tests: true do
     fixtures/GeneralStateTests/stRandom2
     fixtures/GeneralStateTests/stWalletTest
     fixtures/GeneralStateTests/stMemoryStressTest
-    fixtures/GeneralStateTests/stTransactionTest
-    fixtures/GeneralStateTests/stSolidityTest
     fixtures/GeneralStateTests/stSystemOperationsTest
   }.map {|f| [f, true]}.to_h
 
