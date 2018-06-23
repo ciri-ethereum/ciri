@@ -30,7 +30,7 @@ require 'ciri/db/backend/memory'
 require 'ciri/chain/transaction'
 require 'ciri/key'
 
-RSpec.describe Ciri::EVM, slow_tests: true do
+RSpec.describe Ciri::EVM do
 
   before(:all) do
     prepare_ethereum_fixtures
@@ -61,10 +61,10 @@ RSpec.describe Ciri::EVM, slow_tests: true do
     transaction
   end
 
-  run_test_case = proc do |test_case, prefix: nil|
+  run_test_case = proc do |test_case, prefix: nil, tags: {}|
     test_case.each do |name, t|
 
-      context "#{prefix} #{name}" do
+      context "#{prefix} #{name}", **tags do
 
         # transaction
         transaction_arguments = t['transaction']
@@ -104,27 +104,6 @@ RSpec.describe Ciri::EVM, slow_tests: true do
                 expect(Ciri::Utils.data_to_hex evm.logs_hash).to eq config['logs'][2..-1]
               end
 
-              # # post
-              # output = t['out'].yield_self {|out| out && Ciri::Utils.hex_to_data(out)}
-              # if output
-              #   # padding vm output, cause testcases return length is uncertain
-              #   vm_output = (vm.output || '').rjust(output.size, "\x00".b)
-              #   expect(vm_output).to eq output
-              # end
-              #
-              # gas_remain = t['gas'].yield_self {|gas_remain| gas_remain && Ciri::Utils.big_endian_decode(Ciri::Utils.hex_to_data(gas_remain))}
-              # expect(vm.machine_state.gas_remain).to eq gas_remain if gas_remain
-              #
-              # account = parse_account[address, v]
-              # vm_account = state[account.address]
-              # storage = account.storage.map {|k, v| [Ciri::Utils.data_to_hex(k), Ciri::Utils.data_to_hex(v)]}.to_h
-              # vm_storage = if vm_account
-              #                vm_account.storage.map {|k, v| [Ciri::Utils.data_to_hex(k), Ciri::Utils.data_to_hex(v)]}.to_h
-              #              else
-              #                {}
-              #              end
-              # expect(vm_storage).to eq storage
-              # expect(vm_account).to eq account
             end
           end
         end
@@ -133,14 +112,28 @@ RSpec.describe Ciri::EVM, slow_tests: true do
     end
   end
 
+  slow_cases = %w{
+    stDelegatecallTestHomestead/Call1024BalanceTooLow.json
+    stDelegatecallTestHomestead/Delegatecall1024.json
+    stDelegatecallTestHomestead/CallLoseGasOOG.json
+    stReturnDataTest/returndatasize_after_oog_after_deeper.json
+  }.map {|f| ["fixtures/GeneralStateTests/#{f}", true]}.to_h
+
+  slow_topics = %w{
+    stRevertTest
+    stCallCreateCallCodeTest
+    stChangedEIP150
+    stAttackTest
+  }.map {|f| ["fixtures/GeneralStateTests/#{f}", true]}.to_h
+
   skip_topics = %w{
-    fixtures/GeneralStateTests/stQuadraticComplexityTest
-    fixtures/GeneralStateTests/stRandom
-    fixtures/GeneralStateTests/stRandom2
-    fixtures/GeneralStateTests/stWalletTest
-    fixtures/GeneralStateTests/stMemoryStressTest
-    fixtures/GeneralStateTests/stSystemOperationsTest
-  }.map {|f| [f, true]}.to_h
+    stQuadraticComplexityTest
+    stRandom
+    stRandom2
+    stWalletTest
+    stMemoryStressTest
+    stSystemOperationsTest
+  }.map {|f| ["fixtures/GeneralStateTests/#{f}", true]}.to_h
 
   Dir.glob("fixtures/GeneralStateTests/*").each do |topic|
     # skip topics
@@ -149,8 +142,20 @@ RSpec.describe Ciri::EVM, slow_tests: true do
       next
     end
 
+    tags = {}
+    # tag slow test topics
+    if slow_topics.include?(topic)
+      tags[:slow_tests] = true
+    end
+
     Dir.glob("#{topic}/*.json").each do |t|
-      run_test_case[JSON.load(open t), prefix: topic]
+      tags = tags.dup
+      # tag slow test cases
+      if slow_cases.include?(t)
+        tags[:slow_tests] = true
+      end
+
+      run_test_case[JSON.load(open t), prefix: topic, tags: tags]
     end
   end
 
