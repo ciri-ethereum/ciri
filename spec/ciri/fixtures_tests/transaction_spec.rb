@@ -64,8 +64,8 @@ RSpec.describe Ciri::Chain::Transaction do
           #
           # end.to raise_error Ciri::Chain::Transaction::InvalidError
           transaction = Ciri::Chain::Transaction.rlp_decode Ciri::Utils.hex_to_data(t['rlp'])
-          expect(Ciri::Utils.data_to_hex transaction.get_hash).to eq expect_result['hash']
-          expect(Ciri::Utils.data_to_hex transaction.sender).to eq expect_result['sender']
+          expect(Ciri::Utils.data_to_hex transaction.get_hash).to eq "0x#{expect_result['hash']}"
+          expect(Ciri::Utils.data_to_hex transaction.sender).to eq "0x#{expect_result['sender']}"
         end
 
       end

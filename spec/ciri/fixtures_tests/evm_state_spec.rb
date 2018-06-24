@@ -101,7 +101,7 @@ RSpec.describe Ciri::EVM do
               evm.execute_transaction(transaction, block_info: block_info, ignore_exception: true)
 
               if config['logs']
-                expect(Ciri::Utils.data_to_hex evm.logs_hash).to eq config['logs'][2..-1]
+                expect(Ciri::Utils.data_to_hex evm.logs_hash).to eq config['logs']
               end
 
             end
