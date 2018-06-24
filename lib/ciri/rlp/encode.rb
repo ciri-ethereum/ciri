@@ -43,8 +43,8 @@ module Ciri
           encode_list(input) {|i| encode_simple(i)}
         elsif input.is_a?(Integer)
           encode(input, Integer)
-        elsif input.is_a?(Serializable)
-          input.rlp_encode!
+        elsif input.respond_to?(:rlp_encode)
+          input.rlp_encode
         else
           encode(input)
         end
@@ -70,8 +70,8 @@ module Ciri
           end
         elsif type == Bool
           item ? Bool::ENCODED_TRUE : Bool::ENCODED_FALSE
-        elsif type.is_a?(Class) && type < Serializable
-          item.rlp_encode!
+        elsif type.is_a?(Class) && item.respond_to?(:rlp_encode)
+          item.rlp_encode
         elsif type.is_a?(Array)
           if type.size == 1 # array type
             encode_list(item) {|i| encode_with_type(i, type[0])}

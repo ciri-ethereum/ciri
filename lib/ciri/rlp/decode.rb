@@ -68,8 +68,8 @@ module Ciri
           else
             raise InvalidValueError.new "invalid bool value #{item}"
           end
-        elsif type.is_a?(Class) && type < Serializable
-          type.rlp_decode!(s)
+        elsif type.is_a?(Class) && type.respond_to?(:rlp_decode)
+          type.rlp_decode(s)
         elsif type.is_a?(Array)
           decode_list(s) do |list, s2|
             until s2.eof?

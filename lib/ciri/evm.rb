@@ -31,7 +31,10 @@ module Ciri
 
     BLOCK_REWARD = 3 * 10.pow(18) # 3 ether
 
-    ExecuteResult = Struct.new(:status, :logs, :gas_used, keyword_init: true)
+    class InvalidTransition < StandardError
+    end
+
+    ExecuteResult = Struct.new(:status, :logs, :gas_used, :exception, keyword_init: true)
 
     attr_reader :state
 
@@ -40,12 +43,27 @@ module Ciri
     end
 
     # transition block
-    def transition(block)
+    def transition(block, check_gas_limit: true, check_gas_used: true)
       results = []
+
+      total_gas_used = 0
       # execute transactions, we don't need to valid transactions, it should be done before evm(in Chain module).
       block.transactions.each do |transaction|
-        result = execute_transaction(transaction, header: block.header)
+        result = execute_transaction(transaction, header: block.header, ignore_exception: true)
+
+        total_gas_used += result.gas_used
+        if check_gas_limit && total_gas_used > block.header.gas_limit
+          raise InvalidTransition.new('reach block gas_limit')
+        end
+        if check_gas_used && total_gas_used > block.header.gas_used
+          raise InvalidTransition.new('incorrect gas_used')
+        end
+
         results << result
+      end
+
+      if check_gas_used && total_gas_used != block.header.gas_used
+        raise InvalidTransition.new('incorrect gas_used')
       end
 
       rewards = Hash.new(0)
@@ -117,7 +135,7 @@ module Ciri
         @vm.run(ignore_exception: ignore_exception)
       end
       gas_used = t.gas_limit - @vm.gas_remain
-      ExecuteResult.new(status: @vm.status, logs: logs_hash, gas_used: gas_used)
+      ExecuteResult.new(status: @vm.status, logs: logs_hash, gas_used: gas_used, exception: @vm.exception)
     end
 
     def logs_hash

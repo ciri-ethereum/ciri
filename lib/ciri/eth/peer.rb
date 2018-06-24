@@ -47,16 +47,16 @@ module Ciri
       def handshake(network_id, total_difficulty, head_hash, genesis_hash)
         status = Status.new(protocol_version: 63, network_id: network_id,
                             total_difficulty: total_difficulty, current_block: head_hash, genesis_block: genesis_hash)
-        io.send_data(Status::CODE, status.rlp_encode!)
+        io.send_data(Status::CODE, status.rlp_encode)
         msg = io.read_msg
-        @status = Status.rlp_decode!(msg.payload)
+        @status = Status.rlp_decode(msg.payload)
         @total_difficulty = @status.total_difficulty
         @status
       end
 
       def send_msg(msg_class, **data)
         msg = msg_class.new(data)
-        io.send_data(msg_class::CODE, msg.rlp_encode!)
+        io.send_data(msg_class::CODE, msg.rlp_encode)
       end
     end
 

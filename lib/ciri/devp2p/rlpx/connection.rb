@@ -67,7 +67,7 @@ module Ciri
 
         # protocol handshake
         def protocol_handshake!(our_hs)
-          @frame_io.send_data(MESSAGES[:handshake], our_hs.rlp_encode!)
+          @frame_io.send_data(MESSAGES[:handshake], our_hs.rlp_encode)
           remote_hs = read_protocol_handshake
           # enable snappy compress if remote peer support
           @frame_io.snappy = remote_hs.version >= SNAPPY_PROTOCOL_VERSION
@@ -81,7 +81,7 @@ module Ciri
           receiver.handle_auth_msg(auth_msg)
 
           auth_ack_msg = receiver.auth_ack_msg
-          auth_ack_msg_plain_text = auth_ack_msg.rlp_encode!
+          auth_ack_msg_plain_text = auth_ack_msg.rlp_encode
           auth_ack_packet = if auth_msg.got_plain
                               raise NotImplementedError.new('not support pre eip8 plain text seal')
                             else
@@ -94,13 +94,13 @@ module Ciri
 
         def initiator_enc_handshake(initiator)
           initiator_auth_msg = initiator.auth_msg
-          auth_msg_plain_text = initiator_auth_msg.rlp_encode!
+          auth_msg_plain_text = initiator_auth_msg.rlp_encode
           # seal eip8
           auth_packet = seal_eip8(auth_msg_plain_text, initiator)
           @io.write(auth_packet)
 
           auth_ack_mgs_binary, auth_ack_packet = read_enc_handshake_msg(ENC_AUTH_RESP_MSG_LENGTH, initiator.private_key)
-          auth_ack_msg = AuthRespV4.rlp_decode! auth_ack_mgs_binary
+          auth_ack_msg = AuthRespV4.rlp_decode auth_ack_mgs_binary
           initiator.handle_auth_ack_msg(auth_ack_msg)
 
           initiator.extract_secrets(auth_packet, auth_ack_packet, initiator: true)
@@ -142,7 +142,7 @@ module Ciri
           if msg.code != MESSAGES[:handshake]
             raise UnexpectedMessageError.new("expected handshake, get #{msg.code}")
           end
-          ProtocolHandshake.rlp_decode!(msg.payload)
+          ProtocolHandshake.rlp_decode(msg.payload)
         end
 
         def set_timeout(io)

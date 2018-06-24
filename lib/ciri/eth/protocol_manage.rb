@@ -104,13 +104,13 @@ module Ciri
             header.reverse! if get_header_msg.reverse
           end
 
-          headers_msg = BlockHeaders.new(headers: headers).rlp_encode!
+          headers_msg = BlockHeaders.new(headers: headers).rlp_encode
           peer.io.send_data(BlockHeaders::CODE, headers_msg)
         when BlockHeaders::CODE
-          headers = BlockHeaders.rlp_decode!(msg.payload).headers
+          headers = BlockHeaders.rlp_decode(msg.payload).headers
           synchronizer << [:receive_headers, peer, headers] unless headers.empty?
         when BlockBodies::CODE
-          bodies = BlockBodies.rlp_decode!(msg.payload).bodies
+          bodies = BlockBodies.rlp_decode(msg.payload).bodies
           synchronizer << [:receive_bodies, peer, bodies] unless bodies.empty?
         else
           raise StandardError, "unknown code #{msg.code}, #{msg}"

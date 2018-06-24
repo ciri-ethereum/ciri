@@ -48,12 +48,12 @@ module Ciri
 
       # header hash
       def get_hash
-        Utils.sha3(rlp_encode!)
+        Utils.sha3(rlp_encode)
       end
 
       # mining_hash, used for mining
       def mining_hash
-        Utils.sha3(rlp_encode! skip_keys: [:mix_hash, :nonce])
+        Utils.sha3(rlp_encode skip_keys: [:mix_hash, :nonce])
       end
 
     end

@@ -55,7 +55,7 @@ RSpec.describe Ciri::Chain::Transaction do
           expect_result = t[fork_name]
           # expect do
           #   transaction = begin
-          #     Ciri::Chain::Transaction.rlp_decode! Ciri::Utils.hex_to_data(t['rlp'])
+          #     Ciri::Chain::Transaction.rlp_decode Ciri::Utils.hex_to_data(t['rlp'])
           #   rescue Ciri::RLP::InvalidValueError, Ciri::Types::Errors::InvalidError
           #     raise Ciri::Chain::Transaction::InvalidError
           #   end
@@ -63,7 +63,7 @@ RSpec.describe Ciri::Chain::Transaction do
           #   transaction.validate!(intrinsic_gas_of_transaction: Ciri::Forks.detect_fork.intrinsic_gas_of_transaction)
           #
           # end.to raise_error Ciri::Chain::Transaction::InvalidError
-          transaction = Ciri::Chain::Transaction.rlp_decode! Ciri::Utils.hex_to_data(t['rlp'])
+          transaction = Ciri::Chain::Transaction.rlp_decode Ciri::Utils.hex_to_data(t['rlp'])
           expect(Ciri::Utils.data_to_hex transaction.get_hash).to eq expect_result['hash']
           expect(Ciri::Utils.data_to_hex transaction.sender).to eq expect_result['sender']
         end

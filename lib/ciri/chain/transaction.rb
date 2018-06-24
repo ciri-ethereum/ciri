@@ -97,7 +97,7 @@ module Ciri
       end
 
       def get_hash
-        Utils.sha3 rlp_encode!
+        Utils.sha3 rlp_encode
       end
 
       # validate transaction

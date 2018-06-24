@@ -58,13 +58,13 @@ RSpec.describe Ciri::Eth::ProtocolManage do
       end
 
       def write_msg(msg)
-        content = msg.rlp_encode!
+        content = msg.rlp_encode
         @io.write "#{content.length};#{content}"
       end
 
       def read_msg
         len = @io.readline(sep = ';').to_i
-        Ciri::DevP2P::RLPX::Message.rlp_decode! @io.read(len)
+        Ciri::DevP2P::RLPX::Message.rlp_decode @io.read(len)
       end
 
     end
@@ -91,13 +91,13 @@ RSpec.describe Ciri::Eth::ProtocolManage do
       msg
     end
     write_msg = proc do |code, m|
-      payload = m.rlp_encode!
+      payload = m.rlp_encode
       msg = Ciri::DevP2P::RLPX::Message.new(code: Ciri::DevP2P::RLPX::BASE_PROTOCOL_LENGTH + code, payload: payload, size: payload.size)
       peer << [:handle, msg]
     end
 
     # receive status from peer
-    status = Ciri::Eth::Status.rlp_decode! read_msg[].payload
+    status = Ciri::Eth::Status.rlp_decode read_msg[].payload
     expect(status.network_id).to eq 1
     expect(status.total_difficulty).to eq chain.total_difficulty
     expect(status.genesis_block).to eq chain.genesis.get_hash
@@ -113,7 +113,7 @@ RSpec.describe Ciri::Eth::ProtocolManage do
 
     # should receive get_header
     msg = read_msg[]
-    get_block_bodies = Ciri::Eth::GetBlockHeaders.rlp_decode! msg.payload
+    get_block_bodies = Ciri::Eth::GetBlockHeaders.rlp_decode msg.payload
     # peer should request for current head
     expect(get_block_bodies.hash_or_number).to eq blocks[3].get_hash
 
@@ -129,13 +129,13 @@ RSpec.describe Ciri::Eth::ProtocolManage do
       msg = read_msg[]
       case msg.code
       when Ciri::Eth::GetBlockHeaders::CODE
-        get_block_bodies = Ciri::Eth::GetBlockHeaders.rlp_decode! msg.payload
+        get_block_bodies = Ciri::Eth::GetBlockHeaders.rlp_decode msg.payload
         block = blocks.find {|b| b.get_hash == get_block_bodies.hash_or_number || b.number == get_block_bodies.hash_or_number}
         headers = block ? [block.header] : []
         block_headers = Ciri::Eth::BlockHeaders.new(headers: headers)
         write_msg[Ciri::Eth::BlockHeaders::CODE, block_headers]
       when Ciri::Eth::GetBlockBodies::CODE
-        get_block_bodies = Ciri::Eth::GetBlockBodies.rlp_decode! msg.payload
+        get_block_bodies = Ciri::Eth::GetBlockBodies.rlp_decode msg.payload
         bodies = []
         get_block_bodies.hashes.each do |hash|
           b = blocks.find {|b| hash == b.get_hash}
@@ -144,7 +144,7 @@ RSpec.describe Ciri::Eth::ProtocolManage do
         block_bodies = Ciri::Eth::BlockBodies.new(bodies: bodies)
         write_msg[Ciri::Eth::BlockBodies::CODE, block_bodies]
       when Ciri::Eth::BlockHeaders::CODE
-        block_headers = Ciri::Eth::BlockHeaders.rlp_decode! msg.payload
+        block_headers = Ciri::Eth::BlockHeaders.rlp_decode msg.payload
         break block_headers.headers[0] if !block_headers.headers.empty? && block_headers.headers[0].number == 3
       else
         raise "unknown code #{msg.code}"

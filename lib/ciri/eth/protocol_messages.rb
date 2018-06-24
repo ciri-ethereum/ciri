@@ -30,15 +30,13 @@ module Ciri
 
     # represent a hash or a number
     class HashOrNumber
-      include Ciri::RLP::Serializable
-
       attr_reader :value
 
       def initialize(value)
         @value = value
       end
 
-      def rlp_encode!
+      def rlp_encode
         if value.is_a? Integer
           RLP.encode(value, Integer)
         else
@@ -46,7 +44,7 @@ module Ciri
         end
       end
 
-      def self.rlp_decode!(s)
+      def self.rlp_decode(s)
         s = StringIO.new(s) if s.is_a?(String)
         # start with 0xA0, represent s is a 32 length hash bytes
         c = s.getc
@@ -100,11 +98,11 @@ module Ciri
         @headers = headers
       end
 
-      def rlp_encode!
+      def rlp_encode
         Ciri::RLP.encode(@headers, [Chain::Header])
       end
 
-      def self.rlp_decode!(payload)
+      def self.rlp_decode(payload)
         new headers: Ciri::RLP.decode(payload, [Chain::Header])
       end
     end
@@ -118,11 +116,11 @@ module Ciri
         @hashes = hashes
       end
 
-      def rlp_encode!
+      def rlp_encode
         Ciri::RLP.encode(@hashes)
       end
 
-      def self.rlp_decode!(payload)
+      def self.rlp_decode(payload)
         new hashes: Ciri::RLP.decode(payload)
       end
     end
@@ -145,11 +143,11 @@ module Ciri
         @bodies = bodies
       end
 
-      def rlp_encode!
+      def rlp_encode
         Ciri::RLP.encode(@bodies, [Bodies])
       end
 
-      def self.rlp_decode!(bodies)
+      def self.rlp_decode(bodies)
         new bodies: Ciri::RLP.decode(bodies, [Bodies])
       end
     end

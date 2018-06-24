@@ -69,8 +69,8 @@ module Ciri
     #   end
     #
     #   msg = AuthMsgV4.new(signature: "\x00", initiator_pubkey: my_pubkey, nonce: [1, 2, 3], version: 4)
-    #   encoded = msg.rlp_encode!
-    #   msg2 = AuthMsgV4.rlp_decode!(encoded)
+    #   encoded = msg.rlp_encode
+    #   msg2 = AuthMsgV4.rlp_decode(encoded)
     #   msg == msg2 # true
     #
     module Serializable
@@ -125,7 +125,7 @@ module Ciri
           end
         end
 
-        def rlp_encode!(data, skip_keys: nil, white_list_keys: nil)
+        def rlp_encode(data, skip_keys: nil, white_list_keys: nil)
           # pre-encode, encode data to rlp compatible format(only string or array)
           used_keys = if white_list_keys
                         white_list_keys
@@ -143,7 +143,7 @@ module Ciri
           encode_list(data_list)
         end
 
-        def rlp_decode!(input)
+        def rlp_decode(input)
           values = decode_list(input) do |list, stream|
             keys.each do |key|
               # decode data by type
@@ -159,7 +159,7 @@ module Ciri
 
         def check_key_type(type)
           return true if TYPES.key?(type)
-          return true if type.is_a?(Class) && type < Serializable
+          return true if type.is_a?(Class) && type.respond_to?(:rlp_decode) && type.public_method_defined?(:rlp_encode)
 
           if type.is_a?(Array) && type.size == 1
             check_key_type(type[0])
@@ -172,11 +172,9 @@ module Ciri
       module ClassMethods
         # Decode object from input
         def rlp_decode(input)
-          data = schema.rlp_decode!(input)
+          data = schema.rlp_decode(input)
           self.new(data)
         end
-
-        alias rlp_decode! rlp_decode
 
         def schema(data_schema = nil)
           @data_schema ||= Schema.new(data_schema).tap do |schema|
@@ -225,8 +223,8 @@ module Ciri
       end
 
       # Encode object to rlp encoding string
-      def rlp_encode!(skip_keys: nil, white_list_keys: nil)
-        self.class.schema.rlp_encode!(serializable_attributes, skip_keys: skip_keys, white_list_keys: white_list_keys)
+      def rlp_encode(skip_keys: nil, white_list_keys: nil)
+        self.class.schema.rlp_encode(serializable_attributes, skip_keys: skip_keys, white_list_keys: white_list_keys)
       end
 
       def ==(other)

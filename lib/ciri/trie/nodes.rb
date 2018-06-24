@@ -21,50 +21,5 @@
 # THE SOFTWARE.
 
 
-require_relative 'errors'
-require 'ciri/rlp'
-
-module Ciri
-  module Types
-    class Address
-
-      include RLP::Serializable
-      include Errors
-
-      def initialize(address)
-        @address = address.to_s
-      end
-
-      def rlp_encode
-        RLP.encode(@address)
-      end
-
-      def self.rlp_decode(data)
-        address = self.new(RLP.decode(data))
-        address.validate
-        address
-      end
-
-      def to_s
-        @address
-      end
-
-      alias to_str to_s
-
-      def to_hex
-        Utils.data_to_hex to_s
-      end
-
-      def empty?
-        @address.empty?
-      end
-
-      def validate
-        # empty address is valid
-        return if empty?
-        raise InvalidError.new("address must be 20 size, got #{@address.size}") unless @address.size == 20
-      end
-
-    end
-  end
+class Nodes
 end

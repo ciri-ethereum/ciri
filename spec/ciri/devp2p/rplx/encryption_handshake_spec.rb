@@ -37,7 +37,7 @@ RSpec.describe Ciri::DevP2P::RLPX::EncryptionHandshake do
 
     # initiator send auth-msg
     initiator_auth_msg = initiator.auth_msg
-    auth_packet = initiator_auth_msg.rlp_encode!
+    auth_packet = initiator_auth_msg.rlp_encode
     auth_msg = Ciri::DevP2P::RLPX::AuthMsgV4.rlp_decode(auth_packet)
 
     # check serialize/deserialize
@@ -50,7 +50,7 @@ RSpec.describe Ciri::DevP2P::RLPX::EncryptionHandshake do
 
     # receiver send auth-ack
     auth_ack_msg = receiver.auth_ack_msg
-    auth_ack_packet = auth_ack_msg.rlp_encode!
+    auth_ack_packet = auth_ack_msg.rlp_encode
     initiator.handle_auth_ack_msg(auth_ack_msg)
     expect(initiator.remote_random_key.raw_public_key).to eq receiver.random_key.raw_public_key
     expect(initiator.receiver_nonce).to eq receiver.receiver_nonce

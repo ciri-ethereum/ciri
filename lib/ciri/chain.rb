@@ -51,11 +51,12 @@ module Ciri
 
     attr_reader :genesis, :network_id, :store, :header_chain
 
-    def initialize(store, genesis:, network_id:, byzantium_block: nil, homestead_block: nil)
+    def initialize(store, genesis:, network_id:, evm: nil, byzantium_block: nil, homestead_block: nil)
       @store = store
       @header_chain = HeaderChain.new(store, byzantium_block: byzantium_block, homestead_block: homestead_block)
       @genesis = genesis
       @network_id = network_id
+      @evm = evm
       load_or_init_store
     end
 
@@ -78,13 +79,28 @@ module Ciri
       # apply_changes
     end
 
-    def validate_block(block)
+    def validate_block(block, update_state: false)
+      raise InvalidBlockError.new('invalid header') unless @header_chain.valid?(header)
       # valid ommers
-      # valid transactions(block.gas_used == transactions...gas)
-      # Reward miner, ommers(reward == block reward + ommers reward)
-      # apply changes
-      # verify state and block nonce
+      raise InvalidBlockError.new('ommers blocks can not more than 2') if block.ommers.size <= 2
+      block.ommers.each do |ommer|
+        unless is_kin?(ommer, get_block(block.header.parent_hash), 6)
+          raise InvalidBlockError.new("invalid ommer relation")
+        end
+      end
+
+      # valid transactions and gas
+      begin
+        results = @evm.transition(block)
+      rescue EVM::InvalidTransition => e
+        raise InvalidBlockError.new(e.message)
+      end
+
+      # verify state, root_state 如何计算，由 DB 计算？
       # 1. parent header root == trie(state[i]) 当前状态的 root 相等, 返回 state[i] otherwise state[0]
+      if update_state
+        # @evm.apply_changes
+      end
     end
 
     def genesis_hash
@@ -121,17 +137,17 @@ module Ciri
 
     def get_block(hash)
       encoded = store[BODY_PREFIX + hash]
-      encoded && Block.rlp_decode!(encoded)
+      encoded && Block.rlp_decode(encoded)
     end
 
     def write_block(block)
       # write header
       header = block.header
-      raise InvalidHeaderError.new("invalid header: #{header.number}") unless @header_chain.valid?(header)
+      # raise InvalidHeaderError.new("invalid header: #{header.number}") unless @header_chain.valid?(header)
       @header_chain.write(header)
 
       # write body
-      store[BODY_PREFIX + header.get_hash] = block.rlp_encode!
+      store[BODY_PREFIX + header.get_hash] = block.rlp_encode
 
       td = total_difficulty(header.get_hash)
 
@@ -148,6 +164,14 @@ module Ciri
     end
 
     private
+
+    def is_kin?(ommer, parent, n)
+      return false if n == 0
+      return true if get_header(ommer.parent_hash) == get_header(parent.header.parent_hash) &&
+        ommer != parent.header &&
+        !parent.ommers.include?(ommer)
+      is_kin?(ommer, get_block(parent.header.parent_hash), n - 1)
+    end
 
     # reorg chain
     def reorg_chain(new_block, old_block)

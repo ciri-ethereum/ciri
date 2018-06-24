@@ -20,16 +20,16 @@ module Ciri
 
       def head
         encoded = store[HEAD]
-        encoded && Header.rlp_decode!(encoded)
+        encoded && Header.rlp_decode(encoded)
       end
 
       def head=(header)
-        store[HEAD] = header.rlp_encode!
+        store[HEAD] = header.rlp_encode
       end
 
       def get_header(hash)
         encoded = store[HEADER_PREFIX + hash]
-        encoded && Header.rlp_decode!(encoded)
+        encoded && Header.rlp_decode(encoded)
       end
 
       def get_header_by_number(number)
@@ -111,7 +111,7 @@ module Ciri
              end
         # write header and td
         store.batch do |b|
-          b.put(HEADER_PREFIX + hash, header.rlp_encode!)
+          b.put(HEADER_PREFIX + hash, header.rlp_encode)
           b.put(HEADER_PREFIX + hash + TD_SUFFIX, RLP.encode(td, Integer))
         end
       end

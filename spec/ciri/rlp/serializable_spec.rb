@@ -52,11 +52,11 @@ RSpec.describe Ciri::RLP::Serializable do
 
   it 'rlp encoding/decoding' do
     msg = my_class.new(signature: '123', nonce: [1, 2, 3], version: 4)
-    binary = msg.rlp_encode!
+    binary = msg.rlp_encode
     # is valid RLP encoding format
     expect {Ciri::RLP.decode(binary)}.to_not raise_error
 
-    decoded_msg = my_class.rlp_decode!(binary)
+    decoded_msg = my_class.rlp_decode(binary)
     expect(decoded_msg).to eq msg
   end
 
