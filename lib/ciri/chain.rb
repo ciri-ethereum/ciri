@@ -97,6 +97,7 @@ module Ciri
       end
 
       # verify state, root_state 如何计算，由 DB 计算？
+      @evm.state.root_hash
       # 1. parent header root == trie(state[i]) 当前状态的 root 相等, 返回 state[i] otherwise state[0]
       if update_state
         # @evm.apply_changes

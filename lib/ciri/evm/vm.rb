@@ -25,6 +25,7 @@ require_relative 'machine_state'
 require_relative 'instruction'
 require_relative 'sub_state'
 require_relative 'block_info'
+require_relative 'log_entry'
 require_relative 'serialize'
 
 module Ciri
@@ -231,7 +232,7 @@ module Ciri
       end
 
       def add_log_entry(topics, log_data)
-        sub_state.log_series << [instruction.address, topics, log_data]
+        sub_state.log_series << LogEntry.new(address: instruction.address, topics: topics, data: log_data)
       end
 
       # transact value from sender to target address

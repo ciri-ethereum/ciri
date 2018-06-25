@@ -34,7 +34,7 @@ module Ciri
     class InvalidTransition < StandardError
     end
 
-    ExecuteResult = Struct.new(:status, :logs, :gas_used, :exception, keyword_init: true)
+    ExecuteResult = Struct.new(:status, :state_root, :logs, :gas_used, :exception, keyword_init: true)
 
     attr_reader :state
 
@@ -135,7 +135,8 @@ module Ciri
         @vm.run(ignore_exception: ignore_exception)
       end
       gas_used = t.gas_limit - @vm.gas_remain
-      ExecuteResult.new(status: @vm.status, logs: logs_hash, gas_used: gas_used, exception: @vm.exception)
+      state_root = state.respond_to?(:root_hash) ? state.root_hash : nil
+      ExecuteResult.new(status: @vm.status, state_root: state_root, logs: logs_hash, gas_used: gas_used, exception: @vm.exception)
     end
 
     def logs_hash
