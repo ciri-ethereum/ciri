@@ -29,9 +29,33 @@ module Ciri
   # copy py-trie implementation https://github.com/ethereum/py-trie/
   class Trie
 
+    class BadProofError < StandardError
+    end
+
+    class << self
+      def proof(root_hash, key, proofs)
+        proof_nodes = proofs.map {|n| n.is_a?(Trie::Node) ? n : Trie::Node.decode(n)}
+        proof_with_nodes(root_hash, key, proof_nodes)
+      end
+
+      def proof_with_nodes(root_hash, key, proof_nodes)
+        trie = new
+        proof_nodes.each do |node|
+          trie.persist_node(node)
+        end
+        trie.root_hash = root_hash
+        begin
+          result = trie.fetch(key)
+        rescue KeyError => e
+          raise BadProofError.new("missing proof with hash #{e.message}")
+        end
+        result
+      end
+    end
+
     include Nodes
 
-    attr_reader :root_hash
+    attr_accessor :root_hash
 
     def initialize(db: {}, root_hash: BLANK_NODE_HASH, prune: false)
       @db = db
@@ -54,30 +78,38 @@ module Ciri
       trie_key = Nibbles.bytes_to_nibbles(trie_key) if trie_key.is_a?(String)
       case node
       when NullNode
-        NullNode::NULL
+        NullNode::NULL.to_s
       when Leaf
-        trie_key == node.extract_key ? node.value : NullNode::NULL
+        trie_key == node.extract_key ? node.value : NullNode::NULL.to_s
       when Extension
         if trie_key[0...node.extract_key.size] == node.extract_key
           sub_node = get_node(node.node_hash)
           get(trie_key[node.extract_key.size..-1], node: sub_node)
         else
-          NullNode::NULL
+          NullNode::NULL.to_s
         end
       when Branch
         if trie_key.empty?
           node.value
         else
-          sub_node = get_node(node.branches[trie_key[0]])
-          get(sub_node, trie_key[1..-1])
+          sub_node = get_node(node[trie_key[0]])
+          get(trie_key[1..-1], node: sub_node)
         end
       else
         raise "unknown node type #{node}"
       end
     end
 
+    def fetch(trie_key)
+      result = get(trie_key)
+      raise KeyError.new("key not found: #{trie_key}") if result.nil?
+      result
+    end
+
     def [](key)
       get(key)
+    rescue KeyError
+      nil
     end
 
     def exists?(key)
@@ -102,7 +134,7 @@ module Ciri
       if node_hash.size < 32
         encoded_node = node_hash
       else
-        encoded_node = @db[node_hash]
+        encoded_node = @db.fetch(node_hash)
       end
       Node.decode(encoded_node)
     end
@@ -113,6 +145,14 @@ module Ciri
 
     def root_node=(value)
       update_root_node(value)
+    end
+
+    def persist_node(node)
+      key, value = node_to_db_mapping(node)
+      if value
+        @db[key] = value
+      end
+      key
     end
 
     private
@@ -233,14 +273,6 @@ module Ciri
       return [node, nil] if encoded_node.size < 32
       encoded_node_hash = Utils.sha3(encoded_node)
       [encoded_node_hash, encoded_node]
-    end
-
-    def persist_node(node)
-      key, value = node_to_db_mapping(node)
-      if value
-        @db[key] = value
-      end
-      key
     end
 
     def prune_node(node)

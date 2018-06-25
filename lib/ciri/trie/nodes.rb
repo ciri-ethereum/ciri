@@ -107,6 +107,10 @@ module Ciri
         def rlp_encode
           RLP.encode(''.b)
         end
+
+        def to_s
+          ''.b
+        end
       end
 
       class Branch < Node
