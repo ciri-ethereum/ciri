@@ -18,12 +18,14 @@ namespace :docker do
   desc 'pull base docker image'
   task :pull_base do
     system("docker pull #{base_image}:latest")
+    exit $?.exitstatus
   end
 
   desc 'build base docker image, rerun this task after updated Gemfile or Dockerfile'
   task :build_base do
     system("git submodule init && git submodule update")
     system("docker build . -f docker/Base -t #{base_image}:latest")
+    exit $?.exitstatus
   end
 
   desc 'open Ciri develop container shell'
@@ -40,10 +42,12 @@ namespace :docker do
   desc 'run tests in docker'
   task :test do
     system("docker run -v `pwd`:/app --rm #{base_image}:latest rspec -t ~slow_tests")
+    exit $?.exitstatus
   end
 
   desc 'run all tests(include slow tests) in docker'
   task :"test:all" do
     system("docker run -v `pwd`:/app --rm #{base_image}:latest rspec")
+    exit $?.exitstatus
   end
 end
