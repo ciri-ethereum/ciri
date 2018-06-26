@@ -159,7 +159,7 @@ module Ciri
 
         def check_key_type(type)
           return true if TYPES.key?(type)
-          return true if type.is_a?(Class) && type.respond_to?(:rlp_decode) && type.public_method_defined?(:rlp_encode)
+          return true if type.is_a?(Class) && type.respond_to?(:rlp_decode) && type.respond_to?(:rlp_encode)
 
           if type.is_a?(Array) && type.size == 1
             check_key_type(type[0])
@@ -174,6 +174,11 @@ module Ciri
         def rlp_decode(input)
           data = schema.rlp_decode(input)
           self.new(data)
+        end
+
+        # Encode object to rlp encoding string
+        def rlp_encode(item, skip_keys: nil, white_list_keys: nil)
+          schema.rlp_encode(item.serializable_attributes, skip_keys: skip_keys, white_list_keys: white_list_keys)
         end
 
         def schema(data_schema = nil)
@@ -224,7 +229,7 @@ module Ciri
 
       # Encode object to rlp encoding string
       def rlp_encode(skip_keys: nil, white_list_keys: nil)
-        self.class.schema.rlp_encode(serializable_attributes, skip_keys: skip_keys, white_list_keys: white_list_keys)
+        self.class.rlp_encode(self, skip_keys: skip_keys, white_list_keys: white_list_keys)
       end
 
       def ==(other)

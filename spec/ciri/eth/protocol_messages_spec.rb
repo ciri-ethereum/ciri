@@ -27,11 +27,11 @@ require 'ciri/utils'
 RSpec.describe Ciri::Eth::BlockBodies do
 
   it Ciri::Eth::HashOrNumber do
-    encoded = Ciri::Eth::HashOrNumber.new(42).rlp_encode
+    encoded = Ciri::Eth::HashOrNumber.rlp_encode Ciri::Eth::HashOrNumber.new(42)
     expect(Ciri::Eth::HashOrNumber.rlp_decode(encoded)).to eq 42
 
     hash = "\x02".b * 32
-    encoded = Ciri::Eth::HashOrNumber.new(hash).rlp_encode
+    encoded = Ciri::Eth::HashOrNumber.rlp_encode Ciri::Eth::HashOrNumber.new(hash)
     expect(Ciri::Eth::HashOrNumber.rlp_decode(encoded)).to eq hash
   end
 

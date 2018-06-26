@@ -28,25 +28,25 @@ module Ciri
       class InputOverflow < StandardError
       end
 
-      # Encode input to rlp encoding, only allow string or array
+      # Encode input to rlp encoding
       #
       # Examples:
       #
       #   Ciri::RLP.encode("hello world")
       #
-      def encode(input, type = Raw)
-        encode_with_type(input, type)
+      def encode(input, type = nil)
+        type ? encode_with_type(input, type) : encode_simple(input)
       end
 
       def encode_simple(input)
         if input.is_a?(Array)
           encode_list(input) {|i| encode_simple(i)}
         elsif input.is_a?(Integer)
-          encode(input, Integer)
-        elsif input.respond_to?(:rlp_encode)
-          input.rlp_encode
+          encode_with_type(input, Integer)
+        elsif input.class.respond_to?(:rlp_encode)
+          input.class.rlp_encode(input)
         else
-          encode(input)
+          encode_with_type(input, Raw)
         end
       end
 
@@ -70,8 +70,8 @@ module Ciri
           end
         elsif type == Bool
           item ? Bool::ENCODED_TRUE : Bool::ENCODED_FALSE
-        elsif type.is_a?(Class) && item.respond_to?(:rlp_encode)
-          item.rlp_encode
+        elsif type.is_a?(Class) && type.respond_to?(:rlp_encode)
+          type.rlp_encode(item)
         elsif type.is_a?(Array)
           if type.size == 1 # array type
             encode_list(item) {|i| encode_with_type(i, type[0])}

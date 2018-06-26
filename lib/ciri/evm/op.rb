@@ -421,7 +421,7 @@ module Ciri
             pos, size = vm.pop_list(2, Integer)
             log_data = vm.memory_fetch(pos, size)
             vm.extend_memory(pos, size)
-            topics = vm.pop_list(i)
+            topics = vm.pop_list(i, Integer)
             vm.add_log_entry(topics, log_data)
           end
         end.call(i))

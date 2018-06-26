@@ -32,28 +32,31 @@ module Ciri
     class HashOrNumber
       attr_reader :value
 
+      class << self
+        def rlp_encode(item)
+          value = item.value
+          if value.is_a? Integer
+            RLP.encode(value, Integer)
+          else
+            RLP.encode(value)
+          end
+        end
+
+        def rlp_decode(s)
+          s = StringIO.new(s) if s.is_a?(String)
+          # start with 0xA0, represent s is a 32 length hash bytes
+          c = s.getc
+          s.ungetc(c)
+          if c.ord == 0xa0
+            RLP.decode(s)
+          else
+            RLP.decode(s, Integer)
+          end
+        end
+      end
+
       def initialize(value)
         @value = value
-      end
-
-      def rlp_encode
-        if value.is_a? Integer
-          RLP.encode(value, Integer)
-        else
-          RLP.encode(value)
-        end
-      end
-
-      def self.rlp_decode(s)
-        s = StringIO.new(s) if s.is_a?(String)
-        # start with 0xA0, represent s is a 32 length hash bytes
-        c = s.getc
-        s.ungetc(c)
-        if c.ord == 0xa0
-          RLP.decode(s)
-        else
-          RLP.decode(s, Integer)
-        end
       end
     end
 

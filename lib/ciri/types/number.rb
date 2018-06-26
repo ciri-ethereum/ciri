@@ -20,52 +20,50 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
-
-require_relative 'errors'
+require 'ciri/utils'
 require 'ciri/rlp'
 
 module Ciri
   module Types
-    class Address
 
+    class Number
       class << self
-        def rlp_encode(address)
-          RLP.encode(address.to_s)
+        attr_reader :size
+
+        def rlp_encode(item)
+          RLP.encode new(item).to_bytes
         end
 
-        def rlp_decode(data)
-          address = self.new(RLP.decode(data))
-          address.validate
-          address
+        def rlp_decode(encoded)
+          Utils.big_endian_decode(RLP.decode(encoded))
         end
       end
 
-      include Errors
+      @size = 0
 
-      def initialize(address)
-        @address = address.to_s
+      def initialize(value)
+        raise "can't initialize size #{self.class.size} number" if self.class.size <= 0
+        @value = value
       end
 
-      def to_s
-        @address
+      def serialized
+        Utils.big_endian_encode_to_size(@value, size: bytes_size)
       end
 
-      alias to_str to_s
+      alias to_bytes serialized
 
-      def to_hex
-        Utils.data_to_hex to_s
+      def bytes_size
+        self.class.size / 8
       end
 
-      def empty?
-        @address.empty?
+      def to_i
+        @value
       end
-
-      def validate
-        # empty address is valid
-        return if empty?
-        raise InvalidError.new("address must be 20 size, got #{@address.size}") unless @address.size == 20
-      end
-
     end
+
+    class U256 < Number
+      @size = 256
+    end
+
   end
 end

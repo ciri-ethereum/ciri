@@ -104,7 +104,7 @@ module Ciri
           true
         end
 
-        def rlp_encode
+        def self.rlp_encode(_)
           RLP.encode(''.b)
         end
 
@@ -125,6 +125,8 @@ module Ciri
 
         def_delegators :@branches, :[], :[]=, :each, :all?, :any?
 
+        attr_reader :branches
+
         def initialize(branches = [NullNode::NULL] * 16 + [''.b])
           raise InvalidNode.new('branches size should be 17') if branches.size != 17
           @branches = branches
@@ -138,8 +140,8 @@ module Ciri
           true
         end
 
-        def rlp_encode
-          RLP.encode_simple(@branches)
+        def self.rlp_encode(node)
+          RLP.encode_simple(node.branches)
         end
       end
 
@@ -155,8 +157,8 @@ module Ciri
           Nibbles.remove_nibbles_terminator(Nibbles.decode_nibbles key)
         end
 
-        def rlp_encode
-          RLP.encode_simple([key, node_hash])
+        def self.rlp_encode(node)
+          RLP.encode_simple([node.key, node.node_hash])
         end
       end
 
@@ -173,8 +175,8 @@ module Ciri
           Nibbles.remove_nibbles_terminator(Nibbles.decode_nibbles key)
         end
 
-        def rlp_encode
-          RLP.encode_simple([key, value])
+        def self.rlp_encode(node)
+          RLP.encode_simple([node.key, node.value])
         end
       end
 

@@ -23,6 +23,8 @@
 
 require 'ciri/rlp'
 require 'ciri/utils'
+require 'ciri/types/address'
+require 'ciri/types/number'
 require_relative 'serialize'
 
 module Ciri
@@ -30,10 +32,10 @@ module Ciri
 
     class LogEntry
       include RLP::Serializable
-      schema [:address, :topics, :data]
+      schema [{address: Types::Address}, {topics: [Types::U256]}, :data]
 
       def to_blooms
-        [address, *topics.map {|t| Utils.big_endian_encode_to_size(t, size: 32)}]
+        [address.to_s, *topics.map {|t| Utils.big_endian_encode_to_size(t, size: 32)}]
       end
     end
 
