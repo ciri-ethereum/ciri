@@ -21,35 +21,30 @@
 # THE SOFTWARE.
 
 
-require 'ciri/rlp'
+require 'spec_helper'
+require 'ciri/bloom_filter'
+require 'ciri/evm/log_entry'
+require 'ciri/types/number'
+require 'ciri/utils'
 
-module Ciri
-  class Chain
 
-    class Receipt
+RSpec.describe Ciri::BloomFilter do
+  it 'with log entry' do
+    address = "\x00".b * 20
+    topics = 5.times.map {rand(100)}
+    log_entry = Ciri::EVM::LogEntry.new(address: address, topics: topics, data: ''.b)
 
-      include RLP::Serializable
-
-      schema [
-               :state_root,
-               {gas_used: Integer},
-               {bloom: Integer},
-               :logs,
-             ]
-
-      def initialize(state_root:, gas_used:, logs:, bloom: nil)
-        bloom ||= begin
-          blooms = logs.reduce([]) {|log| log.to_blooms}
-          BloomFilter.from_iterable(blooms).to_i
-        end
-        super(state_root: state_root, gas_used: gas_used, logs: logs, bloom: bloom)
-      end
-
-      def bloom_filter
-        BloomFilter.new(bloom)
-      end
-
+    bloom_filter = Ciri::BloomFilter.from_iterable(log_entry.to_blooms)
+    topics.each do |topic|
+      expect(bloom_filter.include? Ciri::Types::U256.new(topic).to_bytes).to be_truthy
     end
-
   end
+
+  it 'other values' do
+    bloom_filter = Ciri::BloomFilter.new
+    bloom_filter << "harry potter"
+    expect(bloom_filter.include?("harry potter")).to be_truthy
+    expect(bloom_filter.include?("voldemort")).to be_falsey
+  end
+
 end

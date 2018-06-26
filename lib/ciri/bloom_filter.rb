@@ -21,34 +21,62 @@
 # THE SOFTWARE.
 
 
-require 'ciri/rlp'
-
+require 'ciri/utils'
 module Ciri
-  class Chain
 
-    class Receipt
+  # modified from py-evm
+  class BloomFilter
 
-      include RLP::Serializable
+    def initialize(value = 0)
+      @value = value
+    end
 
-      schema [
-               :state_root,
-               {gas_used: Integer},
-               {bloom: Integer},
-               :logs,
-             ]
-
-      def initialize(state_root:, gas_used:, logs:, bloom: nil)
-        bloom ||= begin
-          blooms = logs.reduce([]) {|log| log.to_blooms}
-          BloomFilter.from_iterable(blooms).to_i
-        end
-        super(state_root: state_root, gas_used: gas_used, logs: logs, bloom: bloom)
+    def <<(value)
+      get_bloom_bits(value).each do |v|
+        @value |= v
       end
+    end
 
-      def bloom_filter
-        BloomFilter.new(bloom)
+    def extend(list)
+      list.each do |value|
+        self << value
       end
+    end
 
+    def |(value)
+      BloomFilter.new(@value | value.to_i)
+    end
+
+    def include?(value)
+      get_bloom_bits(value).all? do |bits|
+        @value & bits != 0
+      end
+    end
+
+    def to_i
+      @value
+    end
+
+    def self.from_iterable(list)
+      b = BloomFilter.new
+      b.extend(list)
+      b
+    end
+
+    private
+
+    def get_bloom_bits(value)
+      value_hash = Utils.sha3(value)
+      get_chunks_for_bloom(value_hash).map {|v| chunk_to_bloom_bits(v)}
+    end
+
+    def get_chunks_for_bloom(value)
+      value[0..5].each_char.each_slice(2).map(&:join)
+    end
+
+    def chunk_to_bloom_bits(value)
+      high, low = value.each_byte.to_a
+      1 << ((low + (high << 8)) & 2047)
     end
 
   end
