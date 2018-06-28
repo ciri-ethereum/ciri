@@ -22,10 +22,12 @@
 
 
 require 'forwardable'
+require 'ciri/evm'
 require_relative 'chain/header_chain'
 require_relative 'chain/block'
 require_relative 'chain/header'
 require_relative 'chain/transaction'
+require_relative 'chain/receipt'
 require_relative 'pow'
 
 module Ciri
@@ -80,9 +82,9 @@ module Ciri
     end
 
     def validate_block(block, update_state: false)
-      raise InvalidBlockError.new('invalid header') unless @header_chain.valid?(header)
+      raise InvalidBlockError.new('invalid header') unless @header_chain.valid?(block.header)
       # valid ommers
-      raise InvalidBlockError.new('ommers blocks can not more than 2') if block.ommers.size <= 2
+      raise InvalidBlockError.new('ommers blocks can not more than 2') if block.ommers.size > 2
       block.ommers.each do |ommer|
         unless is_kin?(ommer, get_block(block.header.parent_hash), 6)
           raise InvalidBlockError.new("invalid ommer relation")
@@ -96,8 +98,33 @@ module Ciri
         raise InvalidBlockError.new(e.message)
       end
 
-      # verify state, root_state 如何计算，由 DB 计算？
-      @evm.state.root_hash
+      # verify state root
+      if @evm.state.root_hash != block.header.state_root
+        raise InvalidBlockError.new("incorrect state_root")
+      end
+
+      receipts = results.map {|r| Receipt.new(state_root: r.state_root, gas_used: r.gas_used, logs: r.logs)}
+
+      # verify receipts root
+      trie = Trie.new
+      receipts.each_with_index do |r, i|
+        trie[RLP.encode(i), RLP.encode(r)]
+      end
+
+      if trie.root_hash != block.header.receipts_root
+        raise InvalidBlockError.new("incorrect receipts_root")
+      end
+
+      # verify state root
+      trie = Trie.new
+      block.transactions.each_with_index do |t, i|
+        trie[RLP.encode(i), RLP.encode(t)]
+      end
+
+      if trie.transactions_root != trie.root_hash
+        raise InvalidBlockError.new("incorrect transactions_root")
+      end
+
       # 1. parent header root == trie(state[i]) 当前状态的 root 相等, 返回 state[i] otherwise state[0]
       if update_state
         # @evm.apply_changes

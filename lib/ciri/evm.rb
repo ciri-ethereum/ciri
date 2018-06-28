@@ -75,11 +75,11 @@ module Ciri
       rewards = Hash.new(0)
 
       # reward miner
-      rewards[block.header.beneficiary] += (1 + block.ommers.count.to_f / 32) * BLOCK_REWARD
+      rewards[block.header.beneficiary] += ((1 + block.ommers.count.to_f / 32) * BLOCK_REWARD).to_i
 
       # reward ommer(uncle) block miners
       block.ommers.each do |ommer|
-        rewards[ommer.beneficiary] += (1 + (ommer.number - block.header.number).to_f / 8) * BLOCK_REWARD
+        rewards[ommer.beneficiary] += ((1 + (ommer.number - block.header.number).to_f / 8) * BLOCK_REWARD).to_i
       end
 
       # apply rewards
