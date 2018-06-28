@@ -103,7 +103,7 @@ module Ciri
               elsif (OP::LOG0..OP::LOG4).include? w
                 G_LOG + G_LOGDATA * ms.get_stack(1, Integer) + (w - OP::LOG0) * G_TOPIC
               elsif w == OP::CALL || w == OP::CALLCODE || w == OP::DELEGATECALL
-                1# cost_of_call(state, ms)
+                1 # cost_of_call(state, ms)
               elsif w == OP::SELFDESTRUCT
                 cost_of_self_destruct(vm)
               elsif w == OP::CREATE
@@ -162,10 +162,9 @@ module Ciri
 
               key = ms.stack[0]
               value = ms.stack[1]
-              account = vm.find_account instruction.address
 
               value_exists = !Ciri::Utils.blank_binary?(value)
-              has_key = account && account.storage[key]
+              has_key = !vm.fetch(instruction.address, key).empty?
 
               if value_exists && !has_key
                 G_SSET

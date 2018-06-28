@@ -21,12 +21,12 @@
 # THE SOFTWARE.
 
 
+require 'ciri/db/account_db'
 require_relative 'machine_state'
 require_relative 'instruction'
 require_relative 'sub_state'
 require_relative 'block_info'
 require_relative 'log_entry'
-require_relative 'serialize'
 
 module Ciri
   class EVM
@@ -58,7 +58,7 @@ module Ciri
         # this method provide a simpler interface to create VM and execute code
         # VM.spawn(...) == VM.new(...)
         # @return VM
-        def spawn(state:, gas_limit:, header: nil, block_info: nil, instruction:, fork_config:)
+        def spawn(state:, gas_limit:, account_db: nil, header: nil, block_info: nil, instruction:, fork_config:)
           ms = MachineState.new(gas_remain: gas_limit, pc: 0, stack: [], memory: "\x00".b * 256, memory_item: 0)
 
           block_info = block_info || header && BlockInfo.new(
@@ -85,49 +85,25 @@ module Ciri
 
       # helper methods
       include Utils::Logger
-      include Serialize
 
       def_delegators :@machine_state, :stack, :pc, :pop, :push, :pop_list, :get_stack,
                      :memory_item, :memory_item=, :memory_store, :memory_fetch, :extend_memory, :gas_remain
       def_delegators :@instruction, :get_op, :get_code, :next_valid_instruction_pos, :get_data, :data, :sender
       def_delegators :@sub_state, :add_refund_account, :add_touched_account, :add_suicide_account
+      def_delegators :account_db, :find_account, :account_dead?, :store, :fetch, :set_account_code, :get_account_code
 
-      attr_reader :machine_state, :instruction, :sub_state, :block_info, :fork_config
+      attr_reader :account_db, :machine_state, :instruction, :sub_state, :block_info, :fork_config
       attr_accessor :output, :exception
 
-      def initialize(state:, machine_state:, sub_state: nil, instruction:, block_info:, fork_config:)
+      def initialize(state:, account_db: nil, machine_state:, sub_state: nil, instruction:, block_info:, fork_config:)
         @state = state
+        @account_db = account_db || DB::AccountDB.new(state)
         @machine_state = machine_state
         @instruction = instruction
         @sub_state = sub_state || SubState.new
         @output = nil
         @block_info = block_info
         @fork_config = fork_config
-      end
-
-      # store data to address
-      def store(address, key, data)
-        data_is_blank = Ciri::Utils.blank_binary?(data)
-        # key_is_blank = Ciri::Utils.blank_binary?(key)
-
-        return unless data && !data_is_blank
-
-        # remove unnecessary null byte from key
-        key = serialize(key).gsub(/\A\0+/, ''.b)
-        key = "\x00".b if key.empty?
-
-        account = find_account address
-        account.storage[key] = serialize(data).rjust(32, "\x00".b)
-        update_account(account)
-      end
-
-      # fetch data from address
-      def fetch(address, key)
-        # remove unnecessary null byte from key
-        key = serialize(key).gsub(/\A\0+/, ''.b)
-        key = "\x00".b if key.empty?
-
-        find_account(address).storage[key] || ''.b
       end
 
       # run vm
@@ -153,7 +129,6 @@ module Ciri
         # initialize contract account
         contract_account = find_account(contract_address)
         contract_account.nonce = 1
-        contract_account.code = Utils::BLANK_SHA3
 
         # execute initialize code
         create_contract_instruction = instruction.dup
@@ -165,11 +140,11 @@ module Ciri
           execute
 
           if exception
-            update_account(Account.new_empty(contract_address))
+            update_account(contract_address, Types::Account.new_empty)
             contract_address = 0
           else
             # set contract code
-            contract_account.code = output || ''.b
+            set_account_code(contract_address, output)
             # transact value
             account.balance -= value
             contract_account.balance += value
@@ -177,8 +152,8 @@ module Ciri
         end
 
         # update account
-        update_account(contract_account)
-        update_account(account)
+        update_account(contract_address, contract_account)
+        update_account(instruction.address, account)
 
         contract_address
       end
@@ -197,7 +172,7 @@ module Ciri
         message_call_instruction.execute_depth += 1
 
         message_call_instruction.data = data
-        message_call_instruction.bytes_code = find_account(code_address).code || ''.b
+        message_call_instruction.bytes_code = get_account_code(code_address)
 
         transact(sender: sender, value: value, to: receipt)
         call_instruction(message_call_instruction) do
@@ -216,18 +191,10 @@ module Ciri
         @jump_to = pc
       end
 
-      def account_dead?(address)
-        Account.account_dead?(@state, address)
-      end
-
-      def find_account(address)
-        Account.find_account(@state, address)
-      end
-
       # the only method which touch state
       # VM do not consider state revert/commit, we let it to state implementation
-      def update_account(account)
-        Account.update_account(@state, account)
+      def update_account(address, account)
+        account_db.update_account(address, account)
         add_touched_account(account)
       end
 
@@ -237,16 +204,16 @@ module Ciri
 
       # transact value from sender to target address
       def transact(sender:, value:, to:)
-        sender = find_account(sender)
-        to = find_account(to)
+        sender_account = find_account(sender)
+        to_account = find_account(to)
 
-        raise VMError.new("balance not enough") if sender.balance < value
+        raise VMError.new("balance not enough") if sender_account.balance < value
 
-        sender.balance -= value
-        to.balance += value
+        sender_account.balance -= value
+        to_account.balance += value
 
-        update_account(sender)
-        update_account(to)
+        update_account(sender, sender_account)
+        update_account(to, to_account)
       end
 
       # call instruction

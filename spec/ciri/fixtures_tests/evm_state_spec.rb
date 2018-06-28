@@ -23,10 +23,11 @@
 
 require 'spec_helper'
 require 'ciri/evm'
-require 'ciri/evm/account'
+require 'ciri/types/account'
 require 'ciri/forks/frontier'
 require 'ciri/utils'
 require 'ciri/db/backend/memory'
+require 'ciri/db/account_db'
 require 'ciri/chain/transaction'
 require 'ciri/key'
 
@@ -37,14 +38,13 @@ RSpec.describe Ciri::EVM do
   end
 
   parse_account = proc do |address, v|
-    address = Ciri::Types::Address.new Ciri::Utils.hex_to_data(address)
     balance = Ciri::Utils.hex_to_number(v["balance"])
     nonce = Ciri::Utils.hex_to_number(v["nonce"])
     code = Ciri::Utils.hex_to_data(v["code"])
     storage = v["storage"].map do |k, v|
       [Ciri::Utils.hex_to_data(k), Ciri::Utils.hex_to_data(v).rjust(32, "\x00".b)]
     end.to_h
-    Ciri::EVM::Account.new(address: address, balance: balance, nonce: nonce, storage: storage, code: code)
+    [Ciri::Types::Account.new(balance: balance, nonce: nonce), code, storage]
   end
 
   build_transaction = proc do |t_template, args|
@@ -84,10 +84,18 @@ RSpec.describe Ciri::EVM do
           it fork_name do
             configs.each do |config|
               state = Ciri::DB::Backend::Memory.new
+              account_db = Ciri::DB::AccountDB.new(state)
               # pre
               t['pre'].each do |address, v|
-                account = parse_account[address, v]
-                state[account.address.to_s] = account
+                address = Ciri::Types::Address.new Ciri::Utils.hex_to_data(address)
+
+                account, code, storage = parse_account[address, v]
+                account_db.update_account(address, account)
+                account_db.set_account_code(address, code)
+
+                storage.each do |key, value|
+                  account_db.store(address, key, value)
+                end
               end
 
               indexes = config['indexes']

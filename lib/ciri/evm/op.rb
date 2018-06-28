@@ -24,7 +24,6 @@
 require 'ciri/utils'
 require 'ciri/utils/number'
 require 'ciri/types/address'
-require_relative 'serialize'
 
 module Ciri
   class EVM
@@ -267,7 +266,7 @@ module Ciri
 
       def_op :EXTCODESIZE, 0x3b, 0, 1 do |vm|
         address = vm.pop(Address)
-        code_size = vm.find_account(address).code&.size || 0
+        code_size = vm.get_account_code(address).size
         vm.push code_size
       end
 
@@ -275,8 +274,7 @@ module Ciri
         address = vm.pop(Address)
         mem_pos, data_pos, size = vm.pop_list(3, Integer)
 
-        account = vm.find_account(address)
-        code = account.code || ''.b
+        code = vm.get_account_code(address)
         data_end_pos = data_pos + size - 1
         data = if data_pos >= code.size
                  ''.b
@@ -523,8 +521,8 @@ module Ciri
 
         contract_account.balance = 0
 
-        vm.update_account(refund_account)
-        vm.update_account(contract_account)
+        vm.update_account(refund_address, refund_account)
+        vm.update_account(vm.instruction.address, contract_account)
 
         # register changed accounts
         vm.add_refund_account(refund_account)

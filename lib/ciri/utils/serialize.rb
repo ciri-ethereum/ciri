@@ -21,38 +21,40 @@
 # THE SOFTWARE.
 
 
-require 'ciri/utils'
+require 'ciri/types/address'
 
 module Ciri
-  class EVM
+  module Utils
+    module Serialize
 
-    Account = Struct.new(:address, :balance, :code, :nonce, :storage, keyword_init: true) do
-      # EMPTY(σ,a) ≡ σ[a]c =KEC􏰁()􏰂∧σ[a]n =0∧σ[a]b =0
-      def empty?
-        code == Utils::BLANK_SHA3 && nonce == 0 && balance == 0
+      extend self
+
+      def serialize(item)
+        case item
+        when Integer
+          Utils.big_endian_encode(item)
+        when Types::Address
+          item.to_s
+        else
+          item
+        end
       end
 
-      class << self
-        def new_empty(address)
-          Account.new(address: address, balance: 0, nonce: 0, storage: {})
-        end
-
-        def find_account(state, address)
-          state[address.to_s] || new_empty(address.to_s)
-        end
-
-        def account_dead?(state, address)
-          account = state[address.to_s]
-          account.nil? || account.empty?
-        end
-
-        def update_account(state, account)
-          address = account.address.to_s
-          state[address] = account
+      def deserialize(type, item)
+        if type == Integer && !item.is_a?(Integer)
+          Utils.big_endian_decode(item.to_s)
+        elsif type == Types::Address && !item.is_a?(Types::Address)
+          # check if address represent in Integer
+          item = Utils.big_endian_encode(item) if item.is_a?(Integer)
+          Types::Address.new(item.size >= 20 ? item[-20..-1] : ''.b)
+        elsif type.nil?
+          # get serialized word
+          serialize(item).rjust(32, "\x00".b)
+        else
+          item
         end
       end
 
     end
-
   end
 end

@@ -21,25 +21,31 @@
 # THE SOFTWARE.
 
 
+require 'forwardable'
+require 'ciri/forks'
+require 'ciri/db/account_db'
 require_relative 'evm/op'
 require_relative 'evm/vm'
-require_relative 'evm/account'
-require 'ciri/forks'
+require_relative 'types/account'
 
 module Ciri
   class EVM
+    extend Forwardable
 
     BLOCK_REWARD = 3 * 10.pow(18) # 3 ether
 
     class InvalidTransition < StandardError
     end
 
-    ExecuteResult = Struct.new(:status, :state_root, :logs, :gas_used, :exception, keyword_init: true)
+    ExecutionResult = Struct.new(:status, :state_root, :logs, :gas_used, :exception, keyword_init: true)
 
-    attr_reader :state
+    def_delegators :account_db, :find_account, :update_account, :account_dead?, :get_account_code
+
+    attr_reader :state, :account_db
 
     def initialize(state:)
       @state = state
+      @account_db = DB::AccountDB.new(state)
     end
 
     # transition block
@@ -81,7 +87,7 @@ module Ciri
         if value > 0
           account = find_account(address)
           account.balance += value
-          update_account(account)
+          update_account(address, account)
         end
       end
 
@@ -105,15 +111,14 @@ module Ciri
         instruction.bytes_code = t.data
         instruction.address = t.sender
       else
-        if (account = find_account t.to)
-          instruction.bytes_code = account.code
-          instruction.address = account.address
-        end
+        instruction.bytes_code = get_account_code(t.to)
+        instruction.address = t.to
         instruction.data = t.data
       end
 
       @vm = VM.spawn(
         state: state,
+        account_db: @account_db,
         gas_limit: t.gas_limit,
         instruction: instruction,
         header: header,
@@ -136,26 +141,12 @@ module Ciri
       end
       gas_used = t.gas_limit - @vm.gas_remain
       state_root = state.respond_to?(:root_hash) ? state.root_hash : nil
-      ExecuteResult.new(status: @vm.status, state_root: state_root, logs: logs_hash, gas_used: gas_used, exception: @vm.exception)
+      ExecutionResult.new(status: @vm.status, state_root: state_root, logs: logs_hash, gas_used: gas_used, exception: @vm.exception)
     end
 
     def logs_hash
       return nil unless @vm
       Utils.sha3(RLP.encode_simple(@vm.sub_state.log_series))
-    end
-
-    private
-
-    def account_dead?(address)
-      Account.account_dead?(state, address)
-    end
-
-    def find_account(address)
-      Account.find_account(state, address)
-    end
-
-    def update_account(account)
-      Account.update_account(state, account)
     end
 
   end

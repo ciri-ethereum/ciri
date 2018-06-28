@@ -24,7 +24,7 @@
 require 'spec_helper'
 require 'ciri/chain'
 require 'ciri/evm'
-require 'ciri/evm/account'
+require 'ciri/types/account'
 require 'ciri/forks/frontier'
 require 'ciri/utils'
 require 'ciri/db/backend/memory'

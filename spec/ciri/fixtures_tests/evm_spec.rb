@@ -22,8 +22,9 @@
 
 
 require 'spec_helper'
+require 'ciri/db/account_db'
 require 'ciri/evm'
-require 'ciri/evm/account'
+require 'ciri/types/account'
 require 'ciri/forks/frontier'
 require 'ciri/utils'
 require 'ciri/db/backend/memory'
@@ -35,13 +36,12 @@ RSpec.describe Ciri::EVM do
   end
 
   parse_account = proc do |address, v|
-    address = Ciri::Utils.hex_to_data(address)
     balance = Ciri::Utils.big_endian_decode Ciri::Utils.hex_to_data(v["balance"])
     nonce = Ciri::Utils.big_endian_decode Ciri::Utils.hex_to_data(v["nonce"])
     storage = v["storage"].map do |k, v|
       [Ciri::Utils.hex_to_data(k), Ciri::Utils.hex_to_data(v).rjust(32, "\x00".b)]
     end.to_h
-    Ciri::EVM::Account.new(address: address, balance: balance, nonce: nonce, storage: storage)
+    [Ciri::Types::Account.new(balance: balance, nonce: nonce), storage]
   end
 
   run_test_case = proc do |test_case, prefix: nil, tags: {}|
@@ -49,10 +49,15 @@ RSpec.describe Ciri::EVM do
 
       it "#{prefix} #{name}", **tags do
         state = Ciri::DB::Backend::Memory.new
+        account_db = Ciri::DB::AccountDB.new(state)
         # pre
         t['pre'].each do |address, v|
-          account = parse_account[address, v]
-          state[account.address] = account
+          address = Ciri::Utils.hex_to_data(address)
+          account, storage = parse_account[address, v, account_db]
+          account_db.update_account(address, account)
+          storage.each do |key, value|
+            account_db.store(address, key, value)
+          end
         end
         # env
         # exec
@@ -95,16 +100,18 @@ RSpec.describe Ciri::EVM do
         expect(vm.machine_state.gas_remain).to eq gas_remain if gas_remain
 
         t['post'].each do |address, v|
-          account = parse_account[address, v]
-          vm_account = state[account.address]
-          storage = account.storage.map {|k, v| [Ciri::Utils.data_to_hex(k), Ciri::Utils.data_to_hex(v)]}.to_h
-          vm_storage = if vm_account
-                         vm_account.storage.map {|k, v| [Ciri::Utils.data_to_hex(k), Ciri::Utils.data_to_hex(v)]}.to_h
-                       else
-                         {}
-                       end
-          expect(vm_storage).to eq storage
-          expect(vm_account).to eq account
+          address = Ciri::Utils.hex_to_data(address)
+          account, storage = parse_account[address, v]
+          vm_account = account_db.find_account(address)
+
+          storage.each do |k, v|
+            data = account_db.fetch(address, k)
+            expect(Ciri::Utils.data_to_hex(data)).to eq Ciri::Utils.data_to_hex(v)
+          end
+
+          expect(vm_account.nonce).to eq account.nonce
+          expect(vm_account.balance).to eq account.balance
+          expect(vm_account.code_hash).to eq account.code_hash
         end
       end
 

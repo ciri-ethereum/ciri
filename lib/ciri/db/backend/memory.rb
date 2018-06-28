@@ -40,7 +40,7 @@ module Ciri
           @db = {}
         end
 
-        def_delegators :@db, :[], :[]=
+        def_delegators :@db, :[], :[]=, :fetch
 
         def get(key)
           @db[key]

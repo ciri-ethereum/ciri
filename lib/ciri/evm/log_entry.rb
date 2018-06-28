@@ -25,7 +25,6 @@ require 'ciri/rlp'
 require 'ciri/utils'
 require 'ciri/types/address'
 require 'ciri/types/number'
-require_relative 'serialize'
 
 module Ciri
   class EVM

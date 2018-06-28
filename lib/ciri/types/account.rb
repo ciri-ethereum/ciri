@@ -21,40 +21,37 @@
 # THE SOFTWARE.
 
 
-require 'ciri/types/address'
+require 'ciri/utils'
+require 'ciri/trie'
+require 'ciri/rlp'
 
 module Ciri
-  class EVM
-    module Serialize
+  module Types
 
-      extend self
+    class Account
+      include RLP::Serializable
 
-      def serialize(item)
-        case item
-        when Integer
-          Utils.big_endian_encode(item)
-        when Types::Address
-          item.to_s
-        else
-          item
-        end
+      schema [
+               {nonce: Integer},
+               {balance: Integer},
+               :storage_root,
+               :code_hash
+             ]
+
+      default_data code_hash: Utils::BLANK_SHA3, storage_root: Trie::BLANK_NODE_HASH
+
+      # EMPTY(σ,a) ≡ σ[a]c =KEC􏰁()􏰂∧σ[a]n =0∧σ[a]b =0
+      def empty?
+        code_hash == Utils::BLANK_SHA3 && nonce == 0 && balance == 0
       end
 
-      def deserialize(type, item)
-        if type == Integer && !item.is_a?(Integer)
-          Utils.big_endian_decode(item.to_s)
-        elsif type == Types::Address && !item.is_a?(Types::Address)
-          # check if address represent in Integer
-          item = Utils.big_endian_encode(item) if item.is_a?(Integer)
-          Types::Address.new(item.size >= 20 ? item[-20..-1] : ''.b)
-        elsif type.nil?
-          # get serialized word
-          serialize(item).rjust(32, "\x00".b)
-        else
-          item
+      class << self
+        def new_empty
+          Account.new(balance: 0, nonce: 0)
         end
       end
 
     end
+
   end
 end
