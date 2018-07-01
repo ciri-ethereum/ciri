@@ -20,7 +20,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
-
+require 'ciri/rlp/version'
 require_relative 'rlp/decode'
 require_relative 'rlp/encode'
 require_relative 'rlp/serializable'

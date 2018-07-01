@@ -22,13 +22,17 @@
 
 
 require 'spec_helper'
+require 'json'
 require 'ciri/rlp'
 require 'ciri/utils'
 
 RSpec.describe Ciri::RLP do
 
+  fixture_path = File.join(File.dirname(__FILE__), "..", "..", "..", "fixtures")
+
   before(:all) do
-    prepare_ethereum_fixtures
+    `git submodule init #{fixture_path}`
+    `git submodule update #{fixture_path}`
   end
 
   decode_types = proc do |value|
@@ -82,7 +86,7 @@ RSpec.describe Ciri::RLP do
     end
   end
 
-  Dir.glob("fixtures/RLPTests/**/*.json").each do |topic|
+  Dir.glob("#{fixture_path}/RLPTests/**/*.json").each do |topic|
     tags = {}
 
     run_test_case[JSON.load(open topic), prefix: 'fixtures/RLPTests', tags: tags]

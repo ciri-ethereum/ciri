@@ -12,7 +12,7 @@ rescue LoadError
   nil
 end
 
-SUB_COMPONENTS = %w{ciri-utils}
+SUB_COMPONENTS = %w{ciri-utils ciri-rlp}
 
 desc 'run tests'
 task :test do
