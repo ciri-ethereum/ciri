@@ -72,8 +72,11 @@ module Ciri
           type.rlp_decode(s)
         elsif type.is_a?(Array)
           decode_list(s) do |list, s2|
+            i = 0
             until s2.eof?
-              list << decode_with_type(s2, type[0])
+              t = type.size > i ? type[i] : type[-1]
+              list << decode_with_type(s2, t)
+              i += 1
             end
           end
         elsif type == Raw
