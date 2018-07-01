@@ -26,18 +26,9 @@ module Ciri
     module Number
       extend self
 
-      def big_endian_encode(n, zero = ''.b)
-        if n == 0
-          zero
-        elsif n > 0
-          big_endian_encode(n / 256) + (n % 256).chr
-        else
-          raise ArgumentError.new("can't encode negative number #{n}")
-        end
-      end
-
-      def big_endian_encode_to_size(n, zero = ''.b, size:)
-        big_endian_encode(n, zero).rjust(size, "\x00".b)
+      def big_endian_encode(n, zero = ''.b, size: nil)
+        b = big_endian_encode_raw(n, zero)
+        size.nil? ? b : b.rjust(size, "\x00".b)
       end
 
       def big_endian_decode(input)
@@ -60,6 +51,18 @@ module Ciri
       def ceil_div(n, ceil)
         size, m = n.divmod ceil
         m.zero? ? size : size + 1
+      end
+
+      private
+
+      def big_endian_encode_raw(n, zero = ''.b)
+        if n == 0
+          zero
+        elsif n > 0
+          big_endian_encode(n / 256) + (n % 256).chr
+        else
+          raise ArgumentError.new("can't encode negative number #{n}")
+        end
       end
 
     end

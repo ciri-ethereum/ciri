@@ -52,7 +52,7 @@ module Ciri
 
       def to_s
         @display_name ||= begin
-          Utils.data_to_hex(node_id.id)[0..8]
+          Utils.to_hex(node_id.id)[0..8]
         end
       end
 

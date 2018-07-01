@@ -163,7 +163,7 @@ module Ciri
               key = ms.stack[0]
               value = ms.stack[1]
 
-              value_exists = !Ciri::Utils.blank_binary?(value)
+              value_exists = !Ciri::Utils.blank_bytes?(value)
               has_key = !vm.fetch(instruction.address, key).empty?
 
               if value_exists && !has_key

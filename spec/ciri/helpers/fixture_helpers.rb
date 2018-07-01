@@ -57,7 +57,7 @@ module FixtureHelpers
     data = b.map {|k, v| [Ciri::Utils.to_underscore(k).to_sym, v]}.to_h
     # convert hex to binary
     %i{extra_data hash logs_bloom miner mix_hash nonce parent_hash receipts_root sha3_uncles state_root transactions_root}.each do |k|
-      data[k] = Ciri::Utils.hex_to_data(data[k])
+      data[k] = Ciri::Utils.to_bytes(data[k])
     end
     # fix key name
     data[:ommers_hash] = data[:sha3_uncles]

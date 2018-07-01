@@ -34,11 +34,11 @@ RSpec.describe Ciri::Chain::Transaction do
   end
 
   parse_account = proc do |address, v|
-    address = Ciri::Utils.hex_to_data(address)
-    balance = Ciri::Utils.big_endian_decode Ciri::Utils.hex_to_data(v["balance"])
-    nonce = Ciri::Utils.big_endian_decode Ciri::Utils.hex_to_data(v["nonce"])
+    address = Ciri::Utils.to_bytes(address)
+    balance = Ciri::Utils.big_endian_decode Ciri::Utils.to_bytes(v["balance"])
+    nonce = Ciri::Utils.big_endian_decode Ciri::Utils.to_bytes(v["nonce"])
     storage = v["storage"].map do |k, v|
-      [Ciri::Utils.hex_to_data(k), Ciri::Utils.hex_to_data(v).rjust(32, "\x00".b)]
+      [Ciri::Utils.to_bytes(k), Ciri::Utils.to_bytes(v).rjust(32, "\x00".b)]
     end.to_h
     Ciri::EVM::Account.new(address: address, balance: balance, nonce: nonce, storage: storage)
   end
@@ -63,9 +63,9 @@ RSpec.describe Ciri::Chain::Transaction do
           #   transaction.validate!(intrinsic_gas_of_transaction: Ciri::Forks.detect_fork.intrinsic_gas_of_transaction)
           #
           # end.to raise_error Ciri::Chain::Transaction::InvalidError
-          transaction = Ciri::Chain::Transaction.rlp_decode Ciri::Utils.hex_to_data(t['rlp'])
-          expect(Ciri::Utils.data_to_hex transaction.get_hash).to eq "0x#{expect_result['hash']}"
-          expect(Ciri::Utils.data_to_hex transaction.sender).to eq "0x#{expect_result['sender']}"
+          transaction = Ciri::Chain::Transaction.rlp_decode Ciri::Utils.to_bytes(t['rlp'])
+          expect(Ciri::Utils.to_hex transaction.get_hash).to eq "0x#{expect_result['hash']}"
+          expect(Ciri::Utils.to_hex transaction.sender).to eq "0x#{expect_result['sender']}"
         end
 
       end

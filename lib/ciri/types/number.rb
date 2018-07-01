@@ -47,7 +47,7 @@ module Ciri
       end
 
       def serialized
-        Utils.big_endian_encode_to_size(@value, size: bytes_size)
+        Utils.big_endian_encode(@value, size: bytes_size)
       end
 
       alias to_bytes serialized

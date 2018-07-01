@@ -34,7 +34,7 @@ module Ciri
       schema [{address: Types::Address}, {topics: [Types::U256]}, :data]
 
       def to_blooms
-        [address.to_s, *topics.map {|t| Utils.big_endian_encode_to_size(t, size: 32)}]
+        [address.to_s, *topics.map {|t| Utils.big_endian_encode(t, size: 32)}]
       end
     end
 

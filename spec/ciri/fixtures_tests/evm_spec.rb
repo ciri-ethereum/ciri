@@ -36,10 +36,10 @@ RSpec.describe Ciri::EVM do
   end
 
   parse_account = proc do |address, v|
-    balance = Ciri::Utils.big_endian_decode Ciri::Utils.hex_to_data(v["balance"])
-    nonce = Ciri::Utils.big_endian_decode Ciri::Utils.hex_to_data(v["nonce"])
+    balance = Ciri::Utils.big_endian_decode Ciri::Utils.to_bytes(v["balance"])
+    nonce = Ciri::Utils.big_endian_decode Ciri::Utils.to_bytes(v["nonce"])
     storage = v["storage"].map do |k, v|
-      [Ciri::Utils.hex_to_data(k), Ciri::Utils.hex_to_data(v).rjust(32, "\x00".b)]
+      [Ciri::Utils.to_bytes(k), Ciri::Utils.to_bytes(v).rjust(32, "\x00".b)]
     end.to_h
     [Ciri::Types::Account.new(balance: balance, nonce: nonce), storage]
   end
@@ -52,7 +52,7 @@ RSpec.describe Ciri::EVM do
         account_db = Ciri::DB::AccountDB.new(state)
         # pre
         t['pre'].each do |address, v|
-          address = Ciri::Utils.hex_to_data(address)
+          address = Ciri::Utils.to_bytes(address)
           account, storage = parse_account[address, v, account_db]
           account_db.update_account(address, account)
           storage.each do |key, value|
@@ -61,15 +61,15 @@ RSpec.describe Ciri::EVM do
         end
         # env
         # exec
-        gas = Ciri::Utils.big_endian_decode Ciri::Utils.hex_to_data(t['exec']['gas'])
-        address = Ciri::Utils.hex_to_data(t['exec']['address'])
-        origin = Ciri::Utils.hex_to_data(t['exec']['origin'])
-        caller = Ciri::Utils.hex_to_data(t['exec']['caller'])
-        gas_price = Ciri::Utils.big_endian_decode Ciri::Utils.hex_to_data(t['exec']['gasPrice'])
-        code = Ciri::Utils.hex_to_data(t['exec']['code'])
-        value = Ciri::Utils.hex_to_data(t['exec']['value'])
-        data = Ciri::Utils.hex_to_data(t['exec']['data'])
-        env = t['env'] && t['env'].map {|k, v| [k, Ciri::Utils.hex_to_data(v)]}.to_h
+        gas = Ciri::Utils.big_endian_decode Ciri::Utils.to_bytes(t['exec']['gas'])
+        address = Ciri::Utils.to_bytes(t['exec']['address'])
+        origin = Ciri::Utils.to_bytes(t['exec']['origin'])
+        caller = Ciri::Utils.to_bytes(t['exec']['caller'])
+        gas_price = Ciri::Utils.big_endian_decode Ciri::Utils.to_bytes(t['exec']['gasPrice'])
+        code = Ciri::Utils.to_bytes(t['exec']['code'])
+        value = Ciri::Utils.to_bytes(t['exec']['value'])
+        data = Ciri::Utils.to_bytes(t['exec']['data'])
+        env = t['env'] && t['env'].map {|k, v| [k, Ciri::Utils.to_bytes(v)]}.to_h
 
         ms = Ciri::EVM::MachineState.new(gas_remain: gas, pc: 0, stack: [], memory: "\x00".b * 256, memory_item: 0)
         instruction = Ciri::EVM::Instruction.new(address: address, origin: origin, price: gas_price, sender: caller,
@@ -89,24 +89,24 @@ RSpec.describe Ciri::EVM do
         vm.run(ignore_exception: true)
         next unless t['post']
         # post
-        output = t['out'].yield_self {|out| out && Ciri::Utils.hex_to_data(out)}
+        output = t['out'].yield_self {|out| out && Ciri::Utils.to_bytes(out)}
         if output
           # padding vm output, cause testcases return length is uncertain
           vm_output = (vm.output || '').rjust(output.size, "\x00".b)
           expect(vm_output).to eq output
         end
 
-        gas_remain = t['gas'].yield_self {|gas_remain| gas_remain && Ciri::Utils.big_endian_decode(Ciri::Utils.hex_to_data(gas_remain))}
+        gas_remain = t['gas'].yield_self {|gas_remain| gas_remain && Ciri::Utils.big_endian_decode(Ciri::Utils.to_bytes(gas_remain))}
         expect(vm.machine_state.gas_remain).to eq gas_remain if gas_remain
 
         t['post'].each do |address, v|
-          address = Ciri::Utils.hex_to_data(address)
+          address = Ciri::Utils.to_bytes(address)
           account, storage = parse_account[address, v]
           vm_account = account_db.find_account(address)
 
           storage.each do |k, v|
             data = account_db.fetch(address, k)
-            expect(Ciri::Utils.data_to_hex(data)).to eq Ciri::Utils.data_to_hex(v)
+            expect(Ciri::Utils.to_hex(data)).to eq Ciri::Utils.to_hex(v)
           end
 
           expect(vm_account.nonce).to eq account.nonce

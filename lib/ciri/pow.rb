@@ -68,7 +68,7 @@ module Ciri
       out_mix_hash, out_result = Ethash.hashimoto_light(block_number, cache, mining_hash, Utils.big_endian_decode(nonce_bytes))
 
       if out_mix_hash != mix_hash
-        raise InvalidError.new("mix hash mismatch; #{Utils.data_to_hex(out_mix_hash)} != #{Utils.data_to_hex(mix_hash)}")
+        raise InvalidError.new("mix hash mismatch; #{Utils.to_hex(out_mix_hash)} != #{Utils.to_hex(mix_hash)}")
       end
 
       result = Utils.big_endian_decode(out_result)

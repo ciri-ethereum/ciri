@@ -41,22 +41,22 @@ module Ciri
         s1.size == s2.size && s1.each_byte.each_with_index.map {|b, i| b ^ s2[i].ord}.reduce(0, :+) == 0
       end
 
-      def hex_to_data(hex)
+      def to_bytes(hex)
         hex = hex[2..-1] if hex.start_with?('0x')
         [hex].pack("H*")
       end
 
       def hex_to_number(hex)
-        big_endian_decode hex_to_data(hex)
+        big_endian_decode to_bytes(hex)
       end
 
-      def data_to_hex(data)
+      def to_hex(data)
         hex = data.to_s.unpack("H*").first
         '0x' + hex
       end
 
       def number_to_hex(number)
-        data_to_hex big_endian_encode(number)
+        to_hex big_endian_encode(number)
       end
 
       def create_ec_pk(raw_pubkey: nil, raw_privkey: nil)
@@ -76,7 +76,7 @@ module Ciri
         str.gsub(/[A-Z]/) {|a| "_" + a.downcase}
       end
 
-      def blank_binary?(item)
+      def blank_bytes?(item)
         return true if item.is_a?(String) && item.each_byte.all?(&:zero?)
         blank?(item)
       end

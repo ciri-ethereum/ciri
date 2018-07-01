@@ -84,7 +84,7 @@ module Ciri
           raise RLP::InvalidValueError.new "unknown type #{type}"
         end
       rescue
-        STDERR.puts "when encoding #{Utils.data_to_hex item.to_s} into #{type}"
+        STDERR.puts "when encoding #{Utils.to_hex item.to_s} into #{type}"
         raise
       end
 

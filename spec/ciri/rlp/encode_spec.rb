@@ -66,7 +66,7 @@ RSpec.describe Ciri::RLP::Encode do
     end
 
     it '1833967303248889' do
-      expect(Ciri::RLP.encode_with_type(1833967303248889, Integer)).to eq Ciri::Utils.hex_to_data("870683FBC9A3CBF9")
+      expect(Ciri::RLP.encode_with_type(1833967303248889, Integer)).to eq Ciri::Utils.to_bytes("870683FBC9A3CBF9")
     end
   end
 end

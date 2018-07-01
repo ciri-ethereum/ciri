@@ -39,7 +39,7 @@ module Ciri
       end
 
       def store(address, key, data)
-        data_is_blank = Ciri::Utils.blank_binary?(data)
+        data_is_blank = Ciri::Utils.blank_bytes?(data)
         # key_is_blank = Ciri::Utils.blank_binary?(key)
 
         return unless data && !data_is_blank

@@ -40,21 +40,21 @@ RSpec.describe Ciri::EVM do
   parse_account = proc do |address, v|
     balance = Ciri::Utils.hex_to_number(v["balance"])
     nonce = Ciri::Utils.hex_to_number(v["nonce"])
-    code = Ciri::Utils.hex_to_data(v["code"])
+    code = Ciri::Utils.to_bytes(v["code"])
     storage = v["storage"].map do |k, v|
-      [Ciri::Utils.hex_to_data(k), Ciri::Utils.hex_to_data(v).rjust(32, "\x00".b)]
+      [Ciri::Utils.to_bytes(k), Ciri::Utils.to_bytes(v).rjust(32, "\x00".b)]
     end.to_h
     [Ciri::Types::Account.new(balance: balance, nonce: nonce), code, storage]
   end
 
   build_transaction = proc do |t_template, args|
-    key = Ciri::Key.new(raw_private_key: Ciri::Utils.hex_to_data(t_template['secretKey']))
+    key = Ciri::Key.new(raw_private_key: Ciri::Utils.to_bytes(t_template['secretKey']))
     transaction = Ciri::Chain::Transaction.new(
-      data: Ciri::Utils.hex_to_data(t_template['data'][args['data']]),
+      data: Ciri::Utils.to_bytes(t_template['data'][args['data']]),
       gas_limit: Ciri::Utils.hex_to_number(t_template['gasLimit'][args['gas']]),
       gas_price: Ciri::Utils.hex_to_number(t_template['gasPrice']),
       nonce: Ciri::Utils.hex_to_number(t_template['nonce']),
-      to: Ciri::Types::Address.new(Ciri::Utils.hex_to_data(t_template['to'])),
+      to: Ciri::Types::Address.new(Ciri::Utils.to_bytes(t_template['to'])),
       value: Ciri::Utils.hex_to_number(t_template['value'][args['value']])
     )
     transaction.sign_with_key!(key)
@@ -69,7 +69,7 @@ RSpec.describe Ciri::EVM do
         # transaction
         transaction_arguments = t['transaction']
 
-        env = t['env'] && t['env'].map {|k, v| [k, Ciri::Utils.hex_to_data(v)]}.to_h
+        env = t['env'] && t['env'].map {|k, v| [k, Ciri::Utils.to_bytes(v)]}.to_h
 
         # env
         block_info = env && Ciri::EVM::BlockInfo.new(
@@ -87,7 +87,7 @@ RSpec.describe Ciri::EVM do
               account_db = Ciri::DB::AccountDB.new(state)
               # pre
               t['pre'].each do |address, v|
-                address = Ciri::Types::Address.new Ciri::Utils.hex_to_data(address)
+                address = Ciri::Types::Address.new Ciri::Utils.to_bytes(address)
 
                 account, code, storage = parse_account[address, v]
                 account_db.update_account(address, account)
@@ -109,7 +109,7 @@ RSpec.describe Ciri::EVM do
               evm.execute_transaction(transaction, block_info: block_info, ignore_exception: true)
 
               if config['logs']
-                expect(Ciri::Utils.data_to_hex evm.logs_hash).to eq config['logs']
+                expect(Ciri::Utils.to_hex evm.logs_hash).to eq config['logs']
               end
 
             end

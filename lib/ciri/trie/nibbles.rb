@@ -71,13 +71,13 @@ module Ciri
       end
 
       def bytes_to_nibbles(value)
-        hex_s = Utils.data_to_hex(value)
+        hex_s = Utils.to_hex(value)
         hex_s = hex_s[2..-1] if hex_s.start_with?('0x')
         hex_s.each_char.map {|c| c.to_i(16)}
       end
 
       def nibbles_to_bytes(nibbles)
-        Utils.hex_to_data(nibbles.map {|n| n.to_s(16)}.join)
+        Utils.to_bytes(nibbles.map {|n| n.to_s(16)}.join)
       end
 
       def is_nibbles_terminated?(nibbles)

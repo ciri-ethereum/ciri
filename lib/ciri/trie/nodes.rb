@@ -59,7 +59,7 @@ module Ciri
             elsif decoded.size == 17
               Branch.new(decoded)
             else
-              raise InvalidNode.new("can't determine node type: #{Utils.data_to_hex hash_or_encoded}")
+              raise InvalidNode.new("can't determine node type: #{Utils.to_hex hash_or_encoded}")
             end
           end
 
