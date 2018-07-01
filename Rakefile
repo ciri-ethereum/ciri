@@ -12,6 +12,24 @@ rescue LoadError
   nil
 end
 
+SUB_COMPONENTS = %w{ciri-utils}
+
+desc 'run tests'
+task :test do
+  exit $?.exitstatus unless system("rspec -t ~slow_tests")
+  SUB_COMPONENTS.each do |dir|
+    puts `cd #{dir} && rake`
+  end
+end
+
+desc 'run all tests, include extreme slow tests'
+task :"test:all" do
+  exit $?.exitstatus unless system("rspec")
+  SUB_COMPONENTS.each do |dir|
+    puts `cd #{dir} && rake`
+  end
+end
+
 namespace :docker do
   base_image = 'ciriethereum/base'
 
@@ -41,13 +59,13 @@ namespace :docker do
 
   desc 'run tests in docker'
   task :test do
-    system("docker run -v `pwd`:/app --rm #{base_image}:latest rspec -t ~slow_tests")
+    system("docker run -v `pwd`:/app --rm #{base_image}:latest rake test")
     exit $?.exitstatus
   end
 
   desc 'run all tests(include slow tests) in docker'
   task :"test:all" do
-    system("docker run -v `pwd`:/app --rm #{base_image}:latest rspec")
+    system("docker run -v `pwd`:/app --rm #{base_image}:latest rake test:all")
     exit $?.exitstatus
   end
 end

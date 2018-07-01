@@ -22,13 +22,28 @@
 
 
 require 'ffi'
-require 'ciri/utils/lib_c'
 
 module Ciri
 
   # Ethash Algorithm
   # from https://github.com/ethereum/ethash/blob/master/src/python/core.c
   module Ethash
+
+    module LibC
+      extend FFI::Library
+      ffi_lib FFI::Library::LIBC
+
+      # memory allocators
+      attach_function :malloc, [:size_t], :pointer
+      attach_function :calloc, [:size_t], :pointer
+      attach_function :valloc, [:size_t], :pointer
+      attach_function :realloc, [:pointer, :size_t], :pointer
+      attach_function :free, [:pointer], :void
+
+      # memory movers
+      attach_function :memcpy, [:pointer, :pointer, :size_t], :pointer
+      attach_function :bcopy, [:pointer, :pointer, :size_t], :void
+    end
 
     module Lib
       extend FFI::Library
@@ -88,7 +103,7 @@ module Ciri
       cache_size = cache_bytes.size
       raise Error.new("seed must be 32 bytes long, (was #{header_size})") if header_size != 32
 
-      cache_ptr = Utils::LibC.malloc(cache_size)
+      cache_ptr = LibC.malloc(cache_size)
       cache_ptr.write_string_length(cache_bytes, cache_size)
 
       light = Lib::Light.new
@@ -105,7 +120,7 @@ module Ciri
       result = [value[:mix_hash].get_bytes, value[:result].get_bytes]
 
       # release memory *_*
-      Utils::LibC.free cache_ptr
+      LibC.free cache_ptr
 
       result
     end

@@ -23,13 +23,13 @@
 
 require 'ciri/trie'
 require 'ciri/types/account'
-require 'ciri/utils/serialize'
+require 'ciri/serialize'
 
 module Ciri
   module DB
     class AccountDB
 
-      include Utils::Serialize
+      include Serialize
 
       attr_reader :state
 
