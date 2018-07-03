@@ -65,25 +65,16 @@ module Ciri
     end
 
     # run block
-    def finalize_block(block)
+    def import_block(block)
       validate_block(block)
-      transition(block)
-      #
-      # mining
-      # POW.mine_pow_nonce(block.header.number, block.header.mining_hash, block.header)
+      write_block(block)
 
       # update state
-
-      #
-      # block.nonce
-      # block.mix
-      # R[i].gas_used = gas_used(state[i - 1], block.transactions[i]) + R[i - 1].gas_used
-      # R[i].logs = logs(state[i - 1], block.transactions[i])
-      # R[i].z = z(state[i - 1], block.transactions[i])
       # apply_changes
     end
 
-    def validate_block(block, update_state: false)
+    # validate block, effect current state
+    def validate_block(block)
       raise InvalidBlockError.new('invalid header') unless @header_chain.valid?(block.header)
       # valid ommers
       raise InvalidBlockError.new('ommers blocks can not more than 2') if block.ommers.size > 2
@@ -125,13 +116,8 @@ module Ciri
         trie[RLP.encode(i)] = RLP.encode(t)
       end
 
-      if trie.transactions_root != trie.root_hash
+      if trie.root_hash != block.header.transactions_root
         raise InvalidBlockError.new("incorrect transactions_root")
-      end
-
-      # 1. parent header root == trie(state[i]) 当前状态的 root 相等, 返回 state[i] otherwise state[0]
-      if update_state
-        # @evm.apply_changes
       end
     end
 

@@ -76,8 +76,12 @@ RSpec.describe Ciri::Chain do
 
   run_test_case = proc do |test_case, prefix: nil, tags: {}|
     test_case.each do |name, t|
+      tags2 = tags.dup
 
-      it "#{prefix} #{name}", **tags do
+      # TODO only run Frontier test for now
+      tags2[:skip] = true unless name.include?("Frontier")
+
+      it "#{prefix} #{name}", **tags2 do
         db = Ciri::DB::Backend::Memory.new
         state = Ciri::EVM::State.new(db)
         # pre
@@ -107,7 +111,7 @@ RSpec.describe Ciri::Chain do
         t['blocks'].each do |b|
           begin
             block = Ciri::Chain::Block.rlp_decode Ciri::Utils.to_bytes(b['rlp'])
-            chain.validate_block(block)
+            chain.import_block(block)
           rescue Ciri::Chain::InvalidBlockError, Ciri::RLP::InvalidValueError => e
             p e
             expect(b['blockHeader']).to be_nil
@@ -117,10 +121,10 @@ RSpec.describe Ciri::Chain do
           end
 
           # check status
-          block = Ciri::Chain.get_block(block.hash)
-          expect(block.header).to eq b['blockHeader']
-          expect(block.transactions).to eq b['transactions']
-          expect(block.ommers).to eq b['uncleHeaders']
+          block = chain.get_block(block.get_hash)
+          expect(block.header).to eq fixture_to_block_header(b['blockHeader'])
+          expect(block.transactions).to eq b['transactions'].map {|t| fixture_to_transaction(t)}
+          expect(block.ommers).to eq b['uncleHeaders'].map {|h| fixture_to_block_header(h)}
         end
       end
 

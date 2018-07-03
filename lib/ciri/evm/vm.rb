@@ -21,7 +21,7 @@
 # THE SOFTWARE.
 
 
-require 'ciri/db/account_db'
+require 'ciri/utils/logger'
 require_relative 'machine_state'
 require_relative 'instruction'
 require_relative 'sub_state'
