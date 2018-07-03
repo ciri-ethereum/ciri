@@ -99,7 +99,7 @@ module Ciri
       end
 
       # verify state root
-      if @evm.state.root_hash != block.header.state_root
+      if @evm.state_root != block.header.state_root
         raise InvalidBlockError.new("incorrect state_root")
       end
 

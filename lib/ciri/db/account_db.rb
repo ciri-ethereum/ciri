@@ -38,6 +38,10 @@ module Ciri
         @trie = Trie.new(db: @state, root_hash: root_hash, prune: true)
       end
 
+      def root_hash
+        @trie.root_hash
+      end
+
       def store(address, key, data)
         data_is_blank = Ciri::Utils.blank_bytes?(data)
         # key_is_blank = Ciri::Utils.blank_binary?(key)
@@ -65,7 +69,7 @@ module Ciri
       end
 
       def set_account_code(address, code)
-        return unless code && !code.empty?
+        # return unless code && !code.empty?
         account = find_account(address)
         account.code_hash = Utils.sha3(code)
         update_account(address, account)
@@ -77,7 +81,7 @@ module Ciri
       end
 
       def find_account(address)
-        rlp_encoded_account = state[address.to_s]
+        rlp_encoded_account = @trie[Utils.sha3(address.to_s)]
         if rlp_encoded_account.nil? || rlp_encoded_account.size == 0
           Types::Account.new_empty
         else
@@ -90,7 +94,7 @@ module Ciri
       end
 
       def update_account(address, account)
-        state[address.to_s] = Types::Account.rlp_encode account
+        @trie[Utils.sha3(address.to_s)] = Types::Account.rlp_encode account
       end
 
     end

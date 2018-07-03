@@ -31,6 +31,18 @@ module Ciri
       # implement kvstore
       class Memory
 
+        class Batch
+          attr_reader :value
+
+          def initialize
+            @value = Hash.new
+          end
+
+          def put(k, v)
+            @value[k] = v
+          end
+        end
+
         class InvalidError < StandardError
         end
 
@@ -40,7 +52,7 @@ module Ciri
           @db = {}
         end
 
-        def_delegators :@db, :[], :[]=, :fetch
+        def_delegators :@db, :[], :[]=, :fetch, :delete, :include?
 
         def get(key)
           @db[key]
@@ -52,6 +64,12 @@ module Ciri
 
         def each(&blk)
           keys.each(&blk)
+        end
+
+        def batch
+          b = Batch.new
+          yield(b)
+          @db.merge! b.value
         end
 
         def close

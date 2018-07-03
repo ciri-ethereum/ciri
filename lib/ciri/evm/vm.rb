@@ -209,6 +209,7 @@ module Ciri
 
         raise VMError.new("balance not enough") if sender_account.balance < value
 
+        sender_account.nonce += 1
         sender_account.balance -= value
         to_account.balance += value
 

@@ -37,15 +37,15 @@ module Ciri
     class InvalidTransition < StandardError
     end
 
-    ExecutionResult = Struct.new(:status, :state_root, :logs, :gas_used, :exception, keyword_init: true)
+    ExecutionResult = Struct.new(:status, :state_root, :logs, :gas_used, :gas_price, :exception, keyword_init: true)
 
     def_delegators :account_db, :find_account, :update_account, :account_dead?, :get_account_code
 
     attr_reader :state, :account_db
 
-    def initialize(state:)
+    def initialize(state:, account_db: DB::AccountDB.new(state))
       @state = state
-      @account_db = DB::AccountDB.new(state)
+      @account_db = account_db
     end
 
     # transition block
@@ -65,6 +65,16 @@ module Ciri
           raise InvalidTransition.new('incorrect gas_used')
         end
 
+        # calculate fee
+        fee = result.gas_used * result.gas_price
+        sender_account = find_account(transaction.sender)
+        sender_account.balance -= fee
+        update_account(transaction.sender, sender_account)
+
+        miner_account = find_account(block.header.beneficiary)
+        miner_account.balance += fee
+        update_account(block.header.beneficiary, miner_account)
+
         results << result
       end
 
@@ -73,7 +83,6 @@ module Ciri
       end
 
       rewards = Hash.new(0)
-
       # reward miner
       rewards[block.header.beneficiary] += ((1 + block.ommers.count.to_f / 32) * BLOCK_REWARD).to_i
 
@@ -116,6 +125,8 @@ module Ciri
         instruction.data = t.data
       end
 
+      fork_config = Ciri::Forks.detect_fork(header: header, number: block_info&.number)
+
       @vm = VM.spawn(
         state: state,
         account_db: @account_db,
@@ -123,7 +134,7 @@ module Ciri
         instruction: instruction,
         header: header,
         block_info: block_info,
-        fork_config: Ciri::Forks.detect_fork(header: header, number: block_info&.number)
+        fork_config: fork_config
       )
 
       if t.contract_creation?
@@ -139,14 +150,19 @@ module Ciri
         end
         @vm.run(ignore_exception: ignore_exception)
       end
-      gas_used = t.gas_limit - @vm.gas_remain
+      gas_used = t.gas_limit - @vm.gas_remain + fork_config.transaction_fee_gas
       state_root = state.respond_to?(:root_hash) ? state.root_hash : nil
-      ExecutionResult.new(status: @vm.status, state_root: state_root, logs: logs_hash, gas_used: gas_used, exception: @vm.exception)
+      ExecutionResult.new(status: @vm.status, state_root: state_root, logs: logs_hash, gas_used: gas_used,
+                          gas_price: t.gas_price, exception: @vm.exception)
     end
 
     def logs_hash
       return nil unless @vm
       Utils.sha3(RLP.encode_simple(@vm.sub_state.log_series))
+    end
+
+    def state_root
+      @account_db.root_hash
     end
 
   end
