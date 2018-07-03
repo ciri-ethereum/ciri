@@ -22,7 +22,7 @@
 
 
 require 'spec_helper'
-require 'ciri/db/account_db'
+require 'ciri/evm/state'
 require 'ciri/evm'
 require 'ciri/types/account'
 require 'ciri/forks/frontier'
@@ -48,15 +48,15 @@ RSpec.describe Ciri::EVM do
     test_case.each do |name, t|
 
       it "#{prefix} #{name}", **tags do
-        state = Ciri::DB::Backend::Memory.new
-        account_db = Ciri::DB::AccountDB.new(state)
+        db = Ciri::DB::Backend::Memory.new
+        state = Ciri::EVM::State.new(db)
         # pre
         t['pre'].each do |address, v|
           address = Ciri::Utils.to_bytes(address)
-          account, storage = parse_account[address, v, account_db]
-          account_db.update_account(address, account)
+          account, storage = parse_account[address, v]
+          state.update_account(address, account)
           storage.each do |key, value|
-            account_db.store(address, key, value)
+            state.store(address, key, value)
           end
         end
         # env
@@ -83,7 +83,7 @@ RSpec.describe Ciri::EVM do
         )
 
         fork_config = Ciri::Forks::Frontier.fork_config
-        vm = Ciri::EVM::VM.new(state: state, state_root: account_db.root_hash, machine_state: ms,
+        vm = Ciri::EVM::VM.new(state: state, machine_state: ms,
                                instruction: instruction, block_info: block_info, fork_config: fork_config)
 
         # ignore exception
@@ -100,14 +100,14 @@ RSpec.describe Ciri::EVM do
         gas_remain = t['gas'].yield_self {|gas_remain| gas_remain && Ciri::Utils.big_endian_decode(Ciri::Utils.to_bytes(gas_remain))}
         expect(vm.machine_state.gas_remain).to eq gas_remain if gas_remain
 
-        account_db = vm.account_db
+        state = vm.state
         t['post'].each do |address, v|
           address = Ciri::Utils.to_bytes(address)
           account, storage = parse_account[address, v]
-          vm_account = account_db.find_account(address)
+          vm_account = state.find_account(address)
 
           storage.each do |k, v|
-            data = account_db.fetch(address, k)
+            data = state.fetch(address, k)
             expect(Ciri::Utils.to_hex(data)).to eq Ciri::Utils.to_hex(v)
           end
 

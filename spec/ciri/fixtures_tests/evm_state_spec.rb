@@ -23,11 +23,11 @@
 
 require 'spec_helper'
 require 'ciri/evm'
+require 'ciri/evm/state'
 require 'ciri/types/account'
 require 'ciri/forks/frontier'
 require 'ciri/utils'
 require 'ciri/db/backend/memory'
-require 'ciri/db/account_db'
 require 'ciri/chain/transaction'
 require 'ciri/key'
 
@@ -83,18 +83,18 @@ RSpec.describe Ciri::EVM do
         t['post'].each do |fork_name, configs|
           it fork_name do
             configs.each do |config|
-              state = Ciri::DB::Backend::Memory.new
-              account_db = Ciri::DB::AccountDB.new(state)
+              db = Ciri::DB::Backend::Memory.new
+              state = Ciri::EVM::State.new(db)
               # pre
               t['pre'].each do |address, v|
                 address = Ciri::Types::Address.new Ciri::Utils.to_bytes(address)
 
                 account, code, storage = parse_account[address, v]
-                account_db.update_account(address, account)
-                account_db.set_account_code(address, code)
+                state.update_account(address, account)
+                state.set_account_code(address, code)
 
                 storage.each do |key, value|
-                  account_db.store(address, key, value)
+                  state.store(address, key, value)
                 end
               end
 
@@ -105,7 +105,7 @@ RSpec.describe Ciri::EVM do
               # expect(Ciri::Utils.data_to_hex transaction.get_hash).to eq config['hash']
               transaction.sender
 
-              evm = Ciri::EVM.new(state: state, state_root: account_db.root_hash)
+              evm = Ciri::EVM.new(state: state)
               evm.execute_transaction(transaction, block_info: block_info, ignore_exception: true)
 
               if config['logs']

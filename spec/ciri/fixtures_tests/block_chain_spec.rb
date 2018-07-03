@@ -24,11 +24,11 @@
 require 'spec_helper'
 require 'ciri/chain'
 require 'ciri/evm'
+require 'ciri/evm/state'
 require 'ciri/types/account'
 require 'ciri/forks/frontier'
 require 'ciri/utils'
 require 'ciri/db/backend/memory'
-require 'ciri/db/account_db'
 require 'ciri/chain/transaction'
 require 'ciri/key'
 
@@ -78,22 +78,22 @@ RSpec.describe Ciri::Chain, skip: true do
     test_case.each do |name, t|
 
       it "#{prefix} #{name}", **tags do
-        state = Ciri::DB::Backend::Memory.new
-        account_db = Ciri::DB::AccountDB.new(state)
+        db = Ciri::DB::Backend::Memory.new
+        state = Ciri::DB::AccountDB.new(db)
         # pre
         t['pre'].each do |address, v|
           address = Ciri::Types::Address.new Ciri::Utils.to_bytes(address)
 
           account, code, storage = parse_account[address, v]
-          account_db.update_account(address, account)
-          account_db.set_account_code(address, code)
+          state.update_account(address, account)
+          state.set_account_code(address, code)
 
           storage.each do |key, value|
-            account_db.store(address, key, value)
+            state.store(address, key, value)
           end
         end
 
-        evm = Ciri::EVM.new(state: state, account_db: account_db)
+        evm = Ciri::EVM.new(state: state)
         genesis = if t['genesisRLP']
                     Ciri::Chain::Block.rlp_decode(Ciri::Utils.to_bytes t['genesisRLP'])
                   elsif t['genesisBlockHeader']

@@ -39,14 +39,12 @@ module Ciri
 
     ExecutionResult = Struct.new(:status, :state_root, :logs, :gas_used, :gas_price, :exception, keyword_init: true)
 
-    def_delegators :account_db, :find_account, :update_account, :account_dead?, :get_account_code
+    def_delegators :@state, :find_account, :update_account, :account_dead?, :get_account_code, :state_root
 
-    attr_reader :state, :account_db
+    attr_reader :state
 
-    def initialize(state:, state_root: nil)
+    def initialize(state:)
       @state = state
-      @state_root = state_root
-      @account_db = DB::AccountDB.new(@state, root_hash: @state_root)
     end
 
     # transition block
@@ -130,7 +128,6 @@ module Ciri
 
       @vm = VM.spawn(
         state: state,
-        state_root: @state_root,
         gas_limit: t.gas_limit,
         instruction: instruction,
         header: header,
@@ -160,10 +157,6 @@ module Ciri
     def logs_hash
       return nil unless @vm
       Utils.sha3(RLP.encode_simple(@vm.sub_state.log_series))
-    end
-
-    def state_root
-      @account_db.root_hash
     end
 
   end

@@ -58,7 +58,7 @@ module Ciri
         # this method provide a simpler interface to create VM and execute code
         # VM.spawn(...) == VM.new(...)
         # @return VM
-        def spawn(state:, gas_limit:, state_root: nil, header: nil, block_info: nil, instruction:, fork_config:)
+        def spawn(state:, gas_limit:, header: nil, block_info: nil, instruction:, fork_config:)
           ms = MachineState.new(gas_remain: gas_limit, pc: 0, stack: [], memory: "\x00".b * 256, memory_item: 0)
 
           block_info = block_info || header && BlockInfo.new(
@@ -71,7 +71,6 @@ module Ciri
 
           vm = VM.new(
             state: state,
-            state_root: state_root,
             machine_state: ms,
             block_info: block_info,
             instruction: instruction,
@@ -91,14 +90,13 @@ module Ciri
                      :memory_item, :memory_item=, :memory_store, :memory_fetch, :extend_memory, :gas_remain
       def_delegators :@instruction, :get_op, :get_code, :next_valid_instruction_pos, :get_data, :data, :sender
       def_delegators :@sub_state, :add_refund_account, :add_touched_account, :add_suicide_account
-      def_delegators :account_db, :find_account, :account_dead?, :store, :fetch, :set_account_code, :get_account_code
+      def_delegators :@state, :find_account, :account_dead?, :store, :fetch, :set_account_code, :get_account_code
 
-      attr_reader :account_db, :machine_state, :instruction, :sub_state, :block_info, :fork_config
+      attr_reader :state, :machine_state, :instruction, :sub_state, :block_info, :fork_config
       attr_accessor :output, :exception
 
-      def initialize(state:, state_root: nil, machine_state:, sub_state: nil, instruction:, block_info:, fork_config:)
+      def initialize(state:, machine_state:, sub_state: nil, instruction:, block_info:, fork_config:)
         @state = state
-        @account_db = DB::AccountDB.new(state, root_hash: state_root)
         @machine_state = machine_state
         @instruction = instruction
         @sub_state = sub_state || SubState.new
@@ -195,7 +193,7 @@ module Ciri
       # the only method which touch state
       # VM do not consider state revert/commit, we let it to state implementation
       def update_account(address, account)
-        account_db.update_account(address, account)
+        @state.update_account(address, account)
         add_touched_account(account)
       end
 
