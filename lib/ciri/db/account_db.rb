@@ -33,8 +33,9 @@ module Ciri
 
       attr_reader :state
 
-      def initialize(state, root_hash: Trie::BLANK_NODE_HASH)
+      def initialize(state, root_hash: nil)
         @state = state
+        root_hash ||= Trie::BLANK_NODE_HASH
         @trie = Trie.new(db: @state, root_hash: root_hash, prune: true)
       end
 
@@ -69,7 +70,7 @@ module Ciri
       end
 
       def set_account_code(address, code)
-        # return unless code && !code.empty?
+        code ||= ''.b
         account = find_account(address)
         account.code_hash = Utils.sha3(code)
         update_account(address, account)
@@ -81,7 +82,7 @@ module Ciri
       end
 
       def find_account(address)
-        rlp_encoded_account = @trie[Utils.sha3(address.to_s)]
+        rlp_encoded_account = @trie[convert_key address]
         if rlp_encoded_account.nil? || rlp_encoded_account.size == 0
           Types::Account.new_empty
         else
@@ -94,7 +95,13 @@ module Ciri
       end
 
       def update_account(address, account)
-        @trie[Utils.sha3(address.to_s)] = Types::Account.rlp_encode account
+        @trie[convert_key address] = Types::Account.rlp_encode account
+      end
+
+      private
+
+      def convert_key(key)
+        Utils.sha3 key.to_s
       end
 
     end

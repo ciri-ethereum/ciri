@@ -43,9 +43,10 @@ module Ciri
 
     attr_reader :state, :account_db
 
-    def initialize(state:, account_db: DB::AccountDB.new(state))
+    def initialize(state:, state_root: nil)
       @state = state
-      @account_db = account_db
+      @state_root = state_root
+      @account_db = DB::AccountDB.new(@state, root_hash: @state_root)
     end
 
     # transition block
@@ -129,7 +130,7 @@ module Ciri
 
       @vm = VM.spawn(
         state: state,
-        account_db: @account_db,
+        state_root: @state_root,
         gas_limit: t.gas_limit,
         instruction: instruction,
         header: header,

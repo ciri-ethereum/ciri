@@ -83,7 +83,8 @@ RSpec.describe Ciri::EVM do
         )
 
         fork_config = Ciri::Forks::Frontier.fork_config
-        vm = Ciri::EVM::VM.new(state: state, machine_state: ms, instruction: instruction, block_info: block_info, fork_config: fork_config)
+        vm = Ciri::EVM::VM.new(state: state, state_root: account_db.root_hash, machine_state: ms,
+                               instruction: instruction, block_info: block_info, fork_config: fork_config)
 
         # ignore exception
         vm.run(ignore_exception: true)
@@ -99,6 +100,7 @@ RSpec.describe Ciri::EVM do
         gas_remain = t['gas'].yield_self {|gas_remain| gas_remain && Ciri::Utils.big_endian_decode(Ciri::Utils.to_bytes(gas_remain))}
         expect(vm.machine_state.gas_remain).to eq gas_remain if gas_remain
 
+        account_db = vm.account_db
         t['post'].each do |address, v|
           address = Ciri::Utils.to_bytes(address)
           account, storage = parse_account[address, v]

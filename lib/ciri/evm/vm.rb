@@ -58,7 +58,7 @@ module Ciri
         # this method provide a simpler interface to create VM and execute code
         # VM.spawn(...) == VM.new(...)
         # @return VM
-        def spawn(state:, gas_limit:, account_db: nil, header: nil, block_info: nil, instruction:, fork_config:)
+        def spawn(state:, gas_limit:, state_root: nil, header: nil, block_info: nil, instruction:, fork_config:)
           ms = MachineState.new(gas_remain: gas_limit, pc: 0, stack: [], memory: "\x00".b * 256, memory_item: 0)
 
           block_info = block_info || header && BlockInfo.new(
@@ -71,6 +71,7 @@ module Ciri
 
           vm = VM.new(
             state: state,
+            state_root: state_root,
             machine_state: ms,
             block_info: block_info,
             instruction: instruction,
@@ -95,9 +96,9 @@ module Ciri
       attr_reader :account_db, :machine_state, :instruction, :sub_state, :block_info, :fork_config
       attr_accessor :output, :exception
 
-      def initialize(state:, account_db: nil, machine_state:, sub_state: nil, instruction:, block_info:, fork_config:)
+      def initialize(state:, state_root: nil, machine_state:, sub_state: nil, instruction:, block_info:, fork_config:)
         @state = state
-        @account_db = account_db || DB::AccountDB.new(state)
+        @account_db = DB::AccountDB.new(state, root_hash: state_root)
         @machine_state = machine_state
         @instruction = instruction
         @sub_state = sub_state || SubState.new

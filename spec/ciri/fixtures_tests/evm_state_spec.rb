@@ -105,7 +105,7 @@ RSpec.describe Ciri::EVM do
               # expect(Ciri::Utils.data_to_hex transaction.get_hash).to eq config['hash']
               transaction.sender
 
-              evm = Ciri::EVM.new(state: state)
+              evm = Ciri::EVM.new(state: state, state_root: account_db.root_hash)
               evm.execute_transaction(transaction, block_info: block_info, ignore_exception: true)
 
               if config['logs']
