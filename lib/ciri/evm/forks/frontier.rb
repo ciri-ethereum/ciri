@@ -142,8 +142,9 @@ module Ciri
             end
 
             def intrinsic_gas_of_transaction(t)
-              gas = (t.data.each_byte || '').reduce(0) {|sum, i| sum + i.zero? ? G_TXDATAZERO : G_TXDATANONZERO}
-              gas + (t.to.empty? ? G_TXCREATE : 0) + G_TRANSACTION
+              gas = (t.data.each_byte || '').reduce(0) {|sum, i| sum + (i.zero? ? G_TXDATAZERO : G_TXDATANONZERO)}
+              # gas + (t.to.empty? ? G_TXCREATE : 0) + G_TRANSACTION
+              gas + G_TRANSACTION
             end
 
             private

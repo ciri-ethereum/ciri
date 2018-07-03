@@ -54,7 +54,8 @@ RSpec.describe Ciri::EVM do
         t['pre'].each do |address, v|
           address = Ciri::Utils.to_bytes(address)
           account, storage = parse_account[address, v]
-          state.update_account(address, account)
+          state.set_balance(address, account.balance)
+          state.set_nonce(address, account.nonce)
           storage.each do |key, value|
             state.store(address, key, value)
           end

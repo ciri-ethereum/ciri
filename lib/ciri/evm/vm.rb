@@ -114,20 +114,22 @@ module Ciri
       # low_level create_contract interface
       # CREATE_CONTRACT op is based on this method
       def create_contract(value:, init:)
-        account = find_account(instruction.address)
+        caller_address = instruction.address
+        account = find_account(caller_address)
 
         # return contract address 0 represent execution failed
         return 0 unless account.balance >= value || instruction.execute_depth > 1024
 
         account.nonce += 1
+        state.set_nonce(caller_address, account.nonce)
 
         # generate contract_address
-        material = RLP.encode_simple([instruction.address.to_s, account.nonce - 1])
+        material = RLP.encode_simple([caller_address.to_s, account.nonce - 1])
         contract_address = Utils.sha3(material)[-20..-1]
 
         # initialize contract account
         contract_account = find_account(contract_address)
-        contract_account.nonce = 1
+        # contract_account.nonce = 1
 
         # execute initialize code
         create_contract_instruction = instruction.dup
@@ -139,20 +141,21 @@ module Ciri
           execute
 
           if exception
-            update_account(contract_address, Types::Account.new_empty)
+            state.touch_account(contract_address)
             contract_address = 0
           else
             # set contract code
             set_account_code(contract_address, output)
+            # minus deposit_code_fee
+            machine_state.gas_remain -= fork_config.deposit_code_fee[output]
             # transact value
             account.balance -= value
             contract_account.balance += value
+
+            state.set_balance(contract_address, contract_account.balance)
+            state.set_balance(caller_address, account.balance)
           end
         end
-
-        # update account
-        update_account(contract_address, contract_account)
-        update_account(instruction.address, account)
 
         contract_address
       end
@@ -190,13 +193,6 @@ module Ciri
         @jump_to = pc
       end
 
-      # the only method which touch state
-      # VM do not consider state revert/commit, we let it to state implementation
-      def update_account(address, account)
-        @state.update_account(address, account)
-        add_touched_account(account)
-      end
-
       def add_log_entry(topics, log_data)
         sub_state.log_series << LogEntry.new(address: instruction.address, topics: topics, data: log_data)
       end
@@ -212,8 +208,9 @@ module Ciri
         sender_account.balance -= value
         to_account.balance += value
 
-        update_account(sender, sender_account)
-        update_account(to, to_account)
+        state.set_nonce(sender, sender_account.nonce)
+        state.set_balance(sender, sender_account.balance)
+        state.set_balance(to, to_account.balance)
       end
 
       # call instruction

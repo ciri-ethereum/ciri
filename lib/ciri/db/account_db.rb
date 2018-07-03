@@ -31,12 +31,12 @@ module Ciri
 
       include Serialize
 
-      attr_reader :state
+      attr_reader :db
 
-      def initialize(state, root_hash: nil)
-        @state = state
+      def initialize(db, root_hash: nil)
+        @db = db
         root_hash ||= Trie::BLANK_NODE_HASH
-        @trie = Trie.new(db: @state, root_hash: root_hash, prune: true)
+        @trie = Trie.new(db: @db, root_hash: root_hash, prune: true)
       end
 
       def root_hash
@@ -54,7 +54,7 @@ module Ciri
         key = "\x00".b if key.empty?
 
         account = find_account address
-        trie = Trie.new(db: @state, root_hash: account.storage_root)
+        trie = Trie.new(db: @db, root_hash: account.storage_root)
         trie[key] = serialize(data).rjust(32, "\x00".b)
         account.storage_root = trie.root_hash
         update_account(address, account)
@@ -65,8 +65,20 @@ module Ciri
         key = serialize(key).gsub(/\A\0+/, ''.b)
         key = "\x00".b if key.empty?
         account = find_account address
-        trie = Trie.new(db: @state, root_hash: account.storage_root)
+        trie = Trie.new(db: @db, root_hash: account.storage_root)
         trie[key] || ''.b
+      end
+
+      def set_nonce(address, nonce)
+        account = find_account(address)
+        account.nonce = nonce
+        update_account(address, account)
+      end
+
+      def set_balance(address, balance)
+        account = find_account(address)
+        account.balance = balance
+        update_account(address, account)
       end
 
       def set_account_code(address, code)
@@ -74,11 +86,15 @@ module Ciri
         account = find_account(address)
         account.code_hash = Utils.sha3(code)
         update_account(address, account)
-        state[account.code_hash] = code
+        db[account.code_hash] = code
       end
 
       def get_account_code(address)
-        state[find_account(address).code_hash] || ''.b
+        db[find_account(address).code_hash] || ''.b
+      end
+
+      def touch_account(address)
+        update_account(address, find_account(address))
       end
 
       def find_account(address)
@@ -94,11 +110,14 @@ module Ciri
         find_account(address).empty?
       end
 
+      private
+
       def update_account(address, account)
+        # p 'update account'
+        # p Utils.to_hex(address)
+        # p account.serializable_attributes
         @trie[convert_key address] = Types::Account.rlp_encode account
       end
-
-      private
 
       def convert_key(key)
         Utils.sha3 key.to_s

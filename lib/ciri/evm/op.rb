@@ -521,8 +521,8 @@ module Ciri
 
         contract_account.balance = 0
 
-        vm.update_account(refund_address, refund_account)
-        vm.update_account(vm.instruction.address, contract_account)
+        vm.state.set_balance(refund_address, refund_account.balance)
+        vm.state.set_balance(vm.instruction.address, contract_account.balance)
 
         # register changed accounts
         vm.add_refund_account(refund_account)

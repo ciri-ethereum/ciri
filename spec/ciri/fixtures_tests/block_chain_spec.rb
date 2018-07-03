@@ -32,7 +32,7 @@ require 'ciri/db/backend/memory'
 require 'ciri/chain/transaction'
 require 'ciri/key'
 
-RSpec.describe Ciri::Chain, skip: true do
+RSpec.describe Ciri::Chain do
 
   before(:all) do
     prepare_ethereum_fixtures
@@ -79,13 +79,14 @@ RSpec.describe Ciri::Chain, skip: true do
 
       it "#{prefix} #{name}", **tags do
         db = Ciri::DB::Backend::Memory.new
-        state = Ciri::DB::AccountDB.new(db)
+        state = Ciri::EVM::State.new(db)
         # pre
         t['pre'].each do |address, v|
           address = Ciri::Types::Address.new Ciri::Utils.to_bytes(address)
 
           account, code, storage = parse_account[address, v]
-          state.update_account(address, account)
+          state.set_balance(address, account.balance)
+          state.set_nonce(address, account.nonce)
           state.set_account_code(address, code)
 
           storage.each do |key, value|
@@ -159,6 +160,6 @@ RSpec.describe Ciri::Chain, skip: true do
     end
   end if false
 
-  run_test_case[JSON.load(open 'fixtures/BlockchainTests/bcValidBlockTest/RecallSuicidedContract.json'), prefix: 'hehe', tags: {}]
+  # run_test_case[JSON.load(open 'fixtures/BlockchainTests/bcValidBlockTest/RecallSuicidedContract.json'), prefix: 'test', tags: {}]
 
 end

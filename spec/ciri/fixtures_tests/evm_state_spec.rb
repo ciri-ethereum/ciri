@@ -90,7 +90,8 @@ RSpec.describe Ciri::EVM do
                 address = Ciri::Types::Address.new Ciri::Utils.to_bytes(address)
 
                 account, code, storage = parse_account[address, v]
-                state.update_account(address, account)
+                state.set_balance(address, account.balance)
+                state.set_nonce(address, account.nonce)
                 state.set_account_code(address, code)
 
                 storage.each do |key, value|

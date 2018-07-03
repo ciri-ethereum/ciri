@@ -23,7 +23,6 @@
 
 require 'forwardable'
 require 'ciri/forks'
-require 'ciri/db/account_db'
 require_relative 'evm/op'
 require_relative 'evm/vm'
 require_relative 'types/account'
@@ -32,14 +31,12 @@ module Ciri
   class EVM
     extend Forwardable
 
-    BLOCK_REWARD = 3 * 10.pow(18) # 3 ether
-
     class InvalidTransition < StandardError
     end
 
     ExecutionResult = Struct.new(:status, :state_root, :logs, :gas_used, :gas_price, :exception, keyword_init: true)
 
-    def_delegators :@state, :find_account, :update_account, :account_dead?, :get_account_code, :state_root
+    def_delegators :@state, :find_account, :account_dead?, :get_account_code, :state_root
 
     attr_reader :state
 
@@ -68,34 +65,28 @@ module Ciri
         fee = result.gas_used * result.gas_price
         sender_account = find_account(transaction.sender)
         sender_account.balance -= fee
-        update_account(transaction.sender, sender_account)
+        state.set_balance(transaction.sender, sender_account.balance)
 
         miner_account = find_account(block.header.beneficiary)
         miner_account.balance += fee
-        update_account(block.header.beneficiary, miner_account)
+        state.set_balance(block.header.beneficiary, miner_account.balance)
 
         results << result
       end
 
       if check_gas_used && total_gas_used != block.header.gas_used
-        raise InvalidTransition.new('incorrect gas_used')
+        raise InvalidTransition.new("incorrect gas_used, actual used: #{total_gas_used} header: #{block.header.gas_used}")
       end
 
-      rewards = Hash.new(0)
-      # reward miner
-      rewards[block.header.beneficiary] += ((1 + block.ommers.count.to_f / 32) * BLOCK_REWARD).to_i
-
-      # reward ommer(uncle) block miners
-      block.ommers.each do |ommer|
-        rewards[ommer.beneficiary] += ((1 + (ommer.number - block.header.number).to_f / 8) * BLOCK_REWARD).to_i
-      end
+      fork_config = Ciri::Forks.detect_fork(header: block.header, number: block.header.number)
+      rewards = fork_config.mining_rewards[block]
 
       # apply rewards
       rewards.each do |address, value|
         if value > 0
           account = find_account(address)
           account.balance += value
-          update_account(address, account)
+          state.set_balance(address, account.balance)
         end
       end
 
@@ -148,7 +139,7 @@ module Ciri
         end
         @vm.run(ignore_exception: ignore_exception)
       end
-      gas_used = t.gas_limit - @vm.gas_remain + fork_config.transaction_fee_gas
+      gas_used = t.gas_limit - @vm.gas_remain + fork_config.intrinsic_gas_of_transaction[t]
       state_root = state.respond_to?(:root_hash) ? state.root_hash : nil
       ExecutionResult.new(status: @vm.status, state_root: state_root, logs: logs_hash, gas_used: gas_used,
                           gas_price: t.gas_price, exception: @vm.exception)

@@ -31,7 +31,8 @@ module Ciri
       :cost_of_operation,
       :cost_of_memory,
       :intrinsic_gas_of_transaction,
-      :transaction_fee_gas,
+      :deposit_code_fee,
+      :mining_rewards,
       keyword_init: true
     )
 

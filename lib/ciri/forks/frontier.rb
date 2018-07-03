@@ -27,15 +27,30 @@ module Ciri
   module Forks
     module Frontier
 
-      class << self
-        def fork_config
-          ForkConfig.new(
-            cost_of_operation: proc {|vm| EVM::Forks::Frontier::Cost.cost_of_operation vm},
-            cost_of_memory: proc {|i| EVM::Forks::Frontier::Cost.cost_of_memory i},
-            intrinsic_gas_of_transaction: proc {|t| EVM::Forks::Frontier::Cost.intrinsic_gas_of_transaction t},
-            transaction_fee_gas: EVM::Forks::Frontier::Cost::G_TRANSACTION,
-          )
+      extend self
+
+      def fork_config
+        ForkConfig.new(
+          cost_of_operation: proc {|vm| EVM::Forks::Frontier::Cost.cost_of_operation vm},
+          cost_of_memory: proc {|i| EVM::Forks::Frontier::Cost.cost_of_memory i},
+          intrinsic_gas_of_transaction: proc {|t| EVM::Forks::Frontier::Cost.intrinsic_gas_of_transaction t},
+          deposit_code_fee: proc {|code| EVM::Forks::Frontier::Cost::G_CODEDEPOSIT * (code || ''.b).size},
+          mining_rewards: method(:mining_rewards).to_proc
+        )
+      end
+
+      BLOCK_REWARD = 5 * 10.pow(18) # 5 ether
+
+      def mining_rewards(block)
+        rewards = Hash.new(0)
+        # reward miner
+        rewards[block.header.beneficiary] += ((1 + block.ommers.count.to_f / 32) * BLOCK_REWARD).to_i
+
+        # reward ommer(uncle) block miners
+        block.ommers.each do |ommer|
+          rewards[ommer.beneficiary] += ((1 + (ommer.number - block.header.number).to_f / 8) * BLOCK_REWARD).to_i
         end
+        rewards
       end
 
     end

@@ -38,7 +38,7 @@ RSpec.describe Ciri::DB::AccountDB do
     address, account = account1
     account.nonce = 3
     account_db = Ciri::DB::AccountDB.new({})
-    account_db.update_account(address, account)
+    account_db.set_nonce(address, account.nonce)
     expect(account_db.find_account(address)).to eq account
   end
 

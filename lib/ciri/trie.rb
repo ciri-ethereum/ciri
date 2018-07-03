@@ -125,7 +125,7 @@ module Ciri
       new_node
     end
 
-    def get_node(node_hash, raw: false)
+    def get_node(node_hash)
       if node_hash == BLANK_NODE_HASH
         return NullNode::NULL
       elsif node_hash == NullNode::NULL

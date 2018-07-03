@@ -23,6 +23,7 @@
 
 require 'forwardable'
 require 'ciri/evm'
+require 'ciri/utils/logger'
 require_relative 'chain/header_chain'
 require_relative 'chain/block'
 require_relative 'chain/header'
@@ -35,6 +36,7 @@ module Ciri
   # Chain manipulate logic
   # store via rocksdb
   class Chain
+    include Utils::Logger
 
     class Error < StandardError
     end
@@ -100,6 +102,8 @@ module Ciri
 
       # verify state root
       if @evm.state_root != block.header.state_root
+        error("incorrect state_root, evm: #{Utils.to_hex @evm.state_root}, header: #{Utils.to_hex block.header.state_root
+        }")
         raise InvalidBlockError.new("incorrect state_root")
       end
 
