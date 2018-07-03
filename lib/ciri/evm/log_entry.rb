@@ -31,7 +31,7 @@ module Ciri
 
     class LogEntry
       include RLP::Serializable
-      schema [{address: Types::Address}, {topics: [Types::U256]}, :data]
+      schema [{address: Types::Address}, {topics: [Types::Int32]}, :data]
 
       def to_blooms
         [address.to_s, *topics.map {|t| Utils.big_endian_encode(t, size: 32)}]

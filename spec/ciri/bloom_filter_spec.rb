@@ -36,7 +36,7 @@ RSpec.describe Ciri::BloomFilter do
 
     bloom_filter = Ciri::BloomFilter.from_iterable(log_entry.to_blooms)
     topics.each do |topic|
-      expect(bloom_filter.include? Ciri::Types::U256.new(topic).to_bytes).to be_truthy
+      expect(bloom_filter.include? Ciri::Types::Int32.new(topic).to_bytes).to be_truthy
     end
   end
 

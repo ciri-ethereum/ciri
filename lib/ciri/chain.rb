@@ -112,7 +112,7 @@ module Ciri
       # verify receipts root
       trie = Trie.new
       receipts.each_with_index do |r, i|
-        trie[RLP.encode(i), RLP.encode(r)]
+        trie[RLP.encode(i)] = RLP.encode(r)
       end
 
       if trie.root_hash != block.header.receipts_root
@@ -122,7 +122,7 @@ module Ciri
       # verify state root
       trie = Trie.new
       block.transactions.each_with_index do |t, i|
-        trie[RLP.encode(i), RLP.encode(t)]
+        trie[RLP.encode(i)] = RLP.encode(t)
       end
 
       if trie.transactions_root != trie.root_hash

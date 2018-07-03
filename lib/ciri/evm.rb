@@ -71,6 +71,8 @@ module Ciri
         miner_account.balance += fee
         state.set_balance(block.header.beneficiary, miner_account.balance)
 
+        # update actually state_root(after calculate fee)
+        result.state_root = state.state_root
         results << result
       end
 
@@ -140,8 +142,7 @@ module Ciri
         @vm.run(ignore_exception: ignore_exception)
       end
       gas_used = t.gas_limit - @vm.gas_remain + fork_config.intrinsic_gas_of_transaction[t]
-      state_root = state.respond_to?(:root_hash) ? state.root_hash : nil
-      ExecutionResult.new(status: @vm.status, state_root: state_root, logs: logs_hash, gas_used: gas_used,
+      ExecutionResult.new(status: @vm.status, state_root: state_root, logs: @vm.sub_state.log_series, gas_used: gas_used,
                           gas_price: t.gas_price, exception: @vm.exception)
     end
 

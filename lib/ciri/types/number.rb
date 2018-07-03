@@ -53,7 +53,7 @@ module Ciri
       alias to_bytes serialized
 
       def bytes_size
-        self.class.size / 8
+        self.class.size
       end
 
       def to_i
@@ -61,7 +61,11 @@ module Ciri
       end
     end
 
-    class U256 < Number
+    class Int32 < Number
+      @size = 32
+    end
+
+    class Int256 < Number
       @size = 256
     end
 

@@ -22,6 +22,8 @@
 
 
 require 'ciri/rlp'
+require 'ciri/bloom_filter'
+require 'ciri/types/number'
 
 module Ciri
   class Chain
@@ -33,7 +35,7 @@ module Ciri
       schema [
                :state_root,
                {gas_used: Integer},
-               {bloom: Integer},
+               {bloom: Types::Int256},
                :logs,
              ]
 
