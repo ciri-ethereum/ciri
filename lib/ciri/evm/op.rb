@@ -512,7 +512,6 @@ module Ciri
         refund_address = vm.pop(Address)
         refund_account = vm.find_account(refund_address)
 
-        vm.sub_state.suicide_accounts << vm.instruction.address
         contract_account = vm.find_account vm.instruction.address
 
         if refund_address != vm.instruction.address
@@ -525,8 +524,8 @@ module Ciri
         vm.state.set_balance(vm.instruction.address, contract_account.balance)
 
         # register changed accounts
-        vm.add_refund_account(refund_account)
-        vm.add_suicide_account(contract_account)
+        vm.add_refund_account(refund_address)
+        vm.add_suicide_account(vm.instruction.address)
       end
 
     end

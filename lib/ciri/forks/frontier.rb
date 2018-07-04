@@ -35,8 +35,13 @@ module Ciri
           cost_of_memory: proc {|i| EVM::Forks::Frontier::Cost.cost_of_memory i},
           intrinsic_gas_of_transaction: proc {|t| EVM::Forks::Frontier::Cost.intrinsic_gas_of_transaction t},
           deposit_code_fee: proc {|code| EVM::Forks::Frontier::Cost::G_CODEDEPOSIT * (code || ''.b).size},
-          mining_rewards: method(:mining_rewards).to_proc
+          mining_rewards: method(:mining_rewards).to_proc,
+          refund_gas: method(:refund_gas).to_proc
         )
+      end
+
+      def refund_gas(t, vm)
+        vm.sub_state.suicide_accounts.size * EVM::Forks::Frontier::Cost::R_SELFDESTRUCT
       end
 
       BLOCK_REWARD = 5 * 10.pow(18) # 5 ether

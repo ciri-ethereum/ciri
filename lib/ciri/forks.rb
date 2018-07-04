@@ -33,6 +33,7 @@ module Ciri
       :intrinsic_gas_of_transaction,
       :deposit_code_fee,
       :mining_rewards,
+      :refund_gas,
       keyword_init: true
     )
 

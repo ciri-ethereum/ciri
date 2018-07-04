@@ -81,6 +81,13 @@ module Ciri
         update_account(address, account)
       end
 
+      def add_balance(address, value)
+        account = find_account(address)
+        account.balance += value
+        raise "value can't be negative" if account.balance < 0
+        update_account(address, account)
+      end
+
       def set_account_code(address, code)
         code ||= ''.b
         account = find_account(address)
@@ -104,6 +111,10 @@ module Ciri
         else
           Types::Account.rlp_decode(rlp_encoded_account)
         end
+      end
+
+      def delete_account(address)
+        @trie.delete(convert_key address)
       end
 
       def account_dead?(address)

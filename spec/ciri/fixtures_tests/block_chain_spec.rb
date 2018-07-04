@@ -164,6 +164,6 @@ RSpec.describe Ciri::Chain do
     end
   end if false
 
-  # run_test_case[JSON.load(open 'fixtures/BlockchainTests/bcValidBlockTest/RecallSuicidedContract.json'), prefix: 'test', tags: {}]
+  run_test_case[JSON.load(open 'fixtures/BlockchainTests/bcValidBlockTest/RecallSuicidedContract.json'), prefix: 'test', tags: {}]
 
 end

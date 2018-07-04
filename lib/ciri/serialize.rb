@@ -45,7 +45,7 @@ module Ciri
       elsif type == Types::Address && !item.is_a?(Types::Address)
         # check if address represent in Integer
         item = Utils.big_endian_encode(item) if item.is_a?(Integer)
-        Types::Address.new(item.size >= 20 ? item[-20..-1] : ''.b)
+        Types::Address.new(item.size >= 20 ? item[-20..-1] : "\x00".b * 20)
       elsif type.nil?
         # get serialized word
         serialize(item).rjust(32, "\x00".b)

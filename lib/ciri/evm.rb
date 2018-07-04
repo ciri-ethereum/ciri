@@ -31,7 +31,13 @@ module Ciri
   class EVM
     extend Forwardable
 
-    class InvalidTransition < StandardError
+    class Error < StandardError
+    end
+
+    class InvalidTransition < Error
+    end
+
+    class InvalidTransaction < Error
     end
 
     ExecutionResult = Struct.new(:status, :state_root, :logs, :gas_used, :gas_price, :exception, keyword_init: true)
@@ -63,9 +69,6 @@ module Ciri
 
         # calculate fee
         fee = result.gas_used * result.gas_price
-        sender_account = find_account(transaction.sender)
-        sender_account.balance -= fee
-        state.set_balance(transaction.sender, sender_account.balance)
 
         miner_account = find_account(block.header.beneficiary)
         miner_account.balance += fee
@@ -99,6 +102,16 @@ module Ciri
     # @param t Transaction
     # @param header Chain::Header
     def execute_transaction(t, header: nil, block_info: nil, ignore_exception: false)
+      unless state.find_account(t.sender).balance >= t.gas_price * t.gas_limit + t.value
+        raise InvalidTransaction.new('account balance not enough')
+      end
+
+      # remove gas fee from account balance
+      state.add_balance(t.sender, -1 * t.gas_limit * t.gas_price)
+      fork_config = Ciri::Forks.detect_fork(header: header, number: block_info&.number)
+
+      gas_limit = t.gas_limit - fork_config.intrinsic_gas_of_transaction[t]
+
       instruction = Instruction.new(
         origin: t.sender,
         price: t.gas_price,
@@ -117,11 +130,9 @@ module Ciri
         instruction.data = t.data
       end
 
-      fork_config = Ciri::Forks.detect_fork(header: header, number: block_info&.number)
-
       @vm = VM.spawn(
         state: state,
-        gas_limit: t.gas_limit,
+        gas_limit: gas_limit,
         instruction: instruction,
         header: header,
         block_info: block_info,
@@ -141,8 +152,20 @@ module Ciri
         end
         @vm.run(ignore_exception: ignore_exception)
       end
-      gas_used = t.gas_limit - @vm.gas_remain + fork_config.intrinsic_gas_of_transaction[t]
-      ExecutionResult.new(status: @vm.status, state_root: state_root, logs: @vm.sub_state.log_series, gas_used: gas_used,
+
+      # refund gas
+      refund_gas = fork_config.refund_gas[t, @vm]
+      gas_used = t.gas_limit - @vm.gas_remain
+      refund_gas = [refund_gas, gas_used / 2].min
+      state.add_balance(t.sender, (refund_gas + @vm.gas_remain) * t.gas_price)
+
+      # destroy accounts
+      @vm.sub_state.suicide_accounts.each do |address|
+        state.set_balance(address, 0)
+        state.delete_account(address)
+      end
+
+      ExecutionResult.new(status: @vm.status, state_root: state_root, logs: @vm.sub_state.log_series, gas_used: gas_used - refund_gas,
                           gas_price: t.gas_price, exception: @vm.exception)
     end
 

@@ -61,7 +61,7 @@ module Ciri
       end
 
       def empty?
-        @address.empty?
+        @address.empty? || @address.each_byte.reduce(0, :+).zero?
       end
 
       def validate
