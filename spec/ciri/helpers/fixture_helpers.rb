@@ -72,7 +72,7 @@ module FixtureHelpers
       data[k] = Ciri::Utils.to_bytes(data[k]) if data.has_key?(k)
     end
     %i{difficulty gas_used gas_limit number timestamp}.each do |k|
-      data[k] = Ciri::Utils.hex_to_number(data[k]) if data.has_key?(k)
+      data[k] = Ciri::Utils.hex_to_number(data[k]) if data.has_key?(k) && !data[k].is_a?(Integer)
     end
     data = data.select {|k, v| Ciri::Chain::Header.schema.keys.include? k}.to_h
     Ciri::Chain::Header.new(**data)
