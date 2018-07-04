@@ -22,6 +22,7 @@
 
 
 require 'ciri/utils/logger'
+require_relative 'errors'
 require_relative 'machine_state'
 require_relative 'instruction'
 require_relative 'sub_state'
@@ -40,19 +41,6 @@ module Ciri
     # VM: core logic of EVM
     # other logic of EVM (include transaction logic) in EVM module.
     class VM
-
-      class VMError < StandardError
-      end
-      class InvalidOpCodeError < VMError
-      end
-      class GasNotEnoughError < VMError
-      end
-      class StackError < VMError
-      end
-      class InvalidJumpError < VMError
-      end
-      class ReturnError < VMError
-      end
 
       class << self
         # this method provide a simpler interface to create VM and execute code

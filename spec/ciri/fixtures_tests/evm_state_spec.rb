@@ -107,7 +107,7 @@ RSpec.describe Ciri::EVM do
               transaction.sender
 
               evm = Ciri::EVM.new(state: state)
-              evm.execute_transaction(transaction, block_info: block_info, ignore_exception: true)
+              evm.execute_transaction(transaction, block_info: block_info, ignore_exception: true) rescue nil
 
               if config['logs']
                 expect(Ciri::Utils.to_hex evm.logs_hash).to eq config['logs']

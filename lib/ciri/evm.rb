@@ -25,20 +25,12 @@ require 'forwardable'
 require 'ciri/forks'
 require_relative 'evm/op'
 require_relative 'evm/vm'
+require_relative 'evm/errors'
 require_relative 'types/account'
 
 module Ciri
   class EVM
     extend Forwardable
-
-    class Error < StandardError
-    end
-
-    class InvalidTransition < Error
-    end
-
-    class InvalidTransaction < Error
-    end
 
     ExecutionResult = Struct.new(:status, :state_root, :logs, :gas_used, :gas_price, :exception, keyword_init: true)
 
@@ -146,7 +138,7 @@ module Ciri
         # transact ether
         begin
           @vm.transact(sender: t.sender, value: t.value, to: t.to)
-        rescue VM::VMError
+        rescue VMError
           raise unless ignore_exception
           return nil
         end
@@ -170,8 +162,20 @@ module Ciri
     end
 
     def logs_hash
-      return nil unless @vm
-      Utils.sha3(RLP.encode_simple(@vm.sub_state.log_series))
+      # return nil unless @vm
+      Utils.sha3(RLP.encode_simple(vm.sub_state.log_series))
+    end
+
+    private
+
+    def vm
+      @vm ||= VM.spawn(
+        state: state,
+        gas_limit: 0,
+        instruction: nil,
+        block_info: BlockInfo.new,
+        fork_config: nil
+      )
     end
 
   end
