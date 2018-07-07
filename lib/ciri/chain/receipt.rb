@@ -41,7 +41,7 @@ module Ciri
 
       def initialize(state_root:, gas_used:, logs:, bloom: nil)
         bloom ||= begin
-          blooms = logs.reduce([]) {|log| log.to_blooms}
+          blooms = logs.reduce([]) {|list, log| list.append *log.to_blooms}
           BloomFilter.from_iterable(blooms).to_i
         end
         super(state_root: state_root, gas_used: gas_used, logs: logs, bloom: bloom)

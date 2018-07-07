@@ -137,12 +137,12 @@ module Ciri
       else
         # transact ether
         begin
-          @vm.transact(sender: t.sender, value: t.value, to: t.to)
+          @vm.call_message(sender: t.sender, value: t.value, receipt: t.to, data: t.data)
         rescue VMError
           raise unless ignore_exception
           return nil
         end
-        @vm.run(ignore_exception: ignore_exception)
+        raise @vm.exception if !ignore_exception && @vm.exception
       end
 
       # refund gas

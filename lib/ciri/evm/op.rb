@@ -502,7 +502,13 @@ module Ciri
       end
 
       STATICCALL = 0xfa
-      REVERT = 0xfd
+
+      # TODO REVERT need to be implement in forks
+      def_op :REVERT, -0xfd, 2, 0 do |vm|
+        index, size = vm.pop_list(2, Integer)
+        vm.output = vm.memory_fetch(index, size)
+        vm.extend_memory(index, size)
+      end
 
       def_op :INVALID, 0xfe, 0, 0 do |vm|
         raise 'should not invoke INVALID'

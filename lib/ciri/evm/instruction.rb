@@ -37,7 +37,9 @@ module Ciri
       end
 
       def get_op(pos)
-        return OP::INVALID if pos >= (bytes_code || ''.b).size
+        code_size = (bytes_code || ''.b).size
+        return OP::STOP if pos == code_size
+        return OP::INVALID if pos >= code_size
         bytes_code[pos].ord
       end
 

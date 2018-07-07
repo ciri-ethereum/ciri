@@ -24,12 +24,14 @@
 require 'ciri/trie'
 require 'ciri/types/account'
 require 'ciri/serialize'
+require 'ciri/utils/logger'
 
 module Ciri
   module DB
     class AccountDB
 
       include Serialize
+      include Utils::Logger
 
       attr_reader :db
 
@@ -72,6 +74,12 @@ module Ciri
       def set_nonce(address, nonce)
         account = find_account(address)
         account.nonce = nonce
+        update_account(address, account)
+      end
+
+      def increment_nonce(address, value = 1)
+        account = find_account(address)
+        account.nonce += value
         update_account(address, account)
       end
 
@@ -124,9 +132,9 @@ module Ciri
       private
 
       def update_account(address, account)
-        # p 'update account'
-        # p Utils.to_hex(address)
-        # p account.serializable_attributes
+        debug 'update account'
+        debug Utils.to_hex(address)
+        debug account.serializable_attributes
         @trie[convert_key address] = Types::Account.rlp_encode account
       end
 

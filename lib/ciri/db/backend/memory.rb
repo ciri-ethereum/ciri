@@ -52,6 +52,11 @@ module Ciri
           @db = {}
         end
 
+        def initialize_copy(orig)
+          super
+          @db = orig.instance_variable_get(:@db).dup
+        end
+
         def_delegators :@db, :[], :[]=, :fetch, :delete, :include?
 
         def get(key)

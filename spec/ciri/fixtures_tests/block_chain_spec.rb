@@ -79,7 +79,7 @@ RSpec.describe Ciri::Chain do
       tags2 = tags.dup
 
       # TODO only run Frontier test for now
-      tags2[:skip] = true unless name.include?("Frontier")
+      next unless name.include?("Frontier")
 
       it "#{prefix} #{name}", **tags2 do
         db = Ciri::DB::Backend::Memory.new
@@ -137,12 +137,14 @@ RSpec.describe Ciri::Chain do
   slow_topics = %w{
   }.map {|f| ["fixtures/BlockchainTests/#{f}", true]}.to_h
 
-  skip_topics = %w{
+  white_list_topics = %w{
+    bcBlockGasLimitTest
+    bcValidBlockTest
   }.map {|f| ["fixtures/BlockchainTests/#{f}", true]}.to_h
 
   Dir.glob("fixtures/BlockchainTests/*").each do |topic|
     # skip topics
-    if skip_topics.include? topic
+    unless white_list_topics.include? topic
       skip topic
       next
     end
@@ -164,6 +166,6 @@ RSpec.describe Ciri::Chain do
     end
   end if false
 
-  run_test_case[JSON.load(open 'fixtures/BlockchainTests/bcValidBlockTest/RecallSuicidedContract.json'), prefix: 'test', tags: {}]
+  run_test_case[JSON.load(open 'fixtures/BlockchainTests/bcValidBlockTest/timeDiff14.json'), prefix: 'test', tags: {}]
 
 end

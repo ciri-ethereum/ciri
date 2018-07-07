@@ -30,12 +30,26 @@ module Ciri
 
       extend Forwardable
 
-      def_delegators :@account_db, :set_nonce, :set_balance, :add_balance, :touch_account, :find_account,
-                     :delete_account, :account_dead?, :store, :fetch, :set_account_code, :get_account_code
+      def_delegators :@account_db, :set_nonce, :increment_nonce, :set_balance, :add_balance, :touch_account,
+                     :find_account, :delete_account, :account_dead?, :store, :fetch, :set_account_code, :get_account_code
 
       def initialize(db, state_root: nil)
         @db = db
         @account_db = DB::AccountDB.new(db, root_hash: state_root)
+      end
+
+      def snapshot
+        [state_root, @db.dup]
+      end
+
+      def revert(snapshot)
+        state_root, db = snapshot
+        @db = db
+        @account_db = DB::AccountDB.new(db, root_hash: state_root)
+      end
+
+      def commit(snapshot)
+        true
       end
 
       def state_root

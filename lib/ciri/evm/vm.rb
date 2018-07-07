@@ -46,7 +46,7 @@ module Ciri
         # this method provide a simpler interface to create VM and execute code
         # VM.spawn(...) == VM.new(...)
         # @return VM
-        def spawn(state:, gas_limit:, header: nil, block_info: nil, instruction:, fork_config:)
+        def spawn(state:, gas_limit:, header: nil, block_info: nil, instruction: EVM::Instruction.new, fork_config:)
           ms = MachineState.new(gas_remain: gas_limit, pc: 0, stack: [], memory: "\x00".b * 256, memory_item: 0)
 
           block_info = block_info || header && BlockInfo.new(
@@ -150,9 +150,15 @@ module Ciri
 
       # low level call message interface
       # CALL, CALLCODE, DELEGATECALL ops is base on this method
-      def call_message(sender:, value:, receipt:, data:, code_address:)
+      def call_message(sender:, value:, receipt:, data:, code_address: receipt)
         # return status code 0 represent execution failed
         return [0, ''.b] unless value <= find_account(sender).balance && instruction.execute_depth <= 1024
+
+        state.increment_nonce(sender)
+
+        snapshot = state.snapshot
+
+        transact(sender: sender, value: value, to: receipt)
 
         message_call_instruction = instruction.dup
         message_call_instruction.address = receipt
@@ -164,9 +170,15 @@ module Ciri
         message_call_instruction.data = data
         message_call_instruction.bytes_code = get_account_code(code_address)
 
-        transact(sender: sender, value: value, to: receipt)
         call_instruction(message_call_instruction) do
           execute
+
+          if exception
+            state.revert(snapshot)
+          else
+            state.commit(snapshot)
+          end
+
           [status, output || ''.b]
         end
       end
@@ -192,7 +204,6 @@ module Ciri
 
         raise VMError.new("balance not enough") if sender_account.balance < value
 
-        sender_account.nonce += 1
         sender_account.balance -= value
         to_account.balance += value
 
@@ -223,13 +234,12 @@ module Ciri
       def execute
         loop do
           if (@exception ||= check_exception(@state, machine_state, instruction))
-            debug("exception: #{@exception}")
+            debug("exception: #{@exception}, burn gas #{machine_state.gas_remain} to zero")
+            machine_state.gas_remain = 0
             return [EMPTY_SET, machine_state, SubState::EMPTY, instruction, EMPTY_SET]
           elsif get_op(machine_state.pc) == OP::REVERT
             o = halt
-            gas_cost = fork_config.cost_of_operation[self]
-            machine_state.gas_remain -= gas_cost
-            return [EMPTY_SET, machine_state, sub_state, instruction, o]
+            return [EMPTY_SET, machine_state, SubState::EMPTY, instruction, o]
           elsif (o = halt) != EMPTY_SET
             return [@state, machine_state, sub_state, instruction, o]
           else
