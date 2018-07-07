@@ -179,7 +179,7 @@ module Ciri
             state.commit(snapshot)
           end
 
-          [status, output || ''.b]
+          [status, output || ''.b, exception]
         end
       end
 

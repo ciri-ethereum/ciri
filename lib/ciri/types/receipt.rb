@@ -26,7 +26,7 @@ require 'ciri/bloom_filter'
 require 'ciri/types/number'
 
 module Ciri
-  class Chain
+  module Types
 
     class Receipt
 

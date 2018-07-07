@@ -28,7 +28,7 @@ require_relative 'chain/header_chain'
 require_relative 'chain/block'
 require_relative 'chain/header'
 require_relative 'chain/transaction'
-require_relative 'chain/receipt'
+require_relative 'types/receipt'
 require_relative 'pow'
 
 module Ciri
@@ -86,7 +86,7 @@ module Ciri
 
       # valid transactions and gas
       begin
-        results = @evm.transition(block)
+        receipts = @evm.transition(block)
       rescue EVM::InvalidTransition => e
         raise InvalidBlockError.new(e.message)
       end
@@ -97,8 +97,6 @@ module Ciri
         }")
         raise InvalidBlockError.new("incorrect state_root")
       end
-
-      receipts = results.map {|r| Receipt.new(state_root: r.state_root, gas_used: r.gas_used, logs: r.logs)}
 
       # verify receipts root
       trie = Trie.new

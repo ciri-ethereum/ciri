@@ -27,6 +27,7 @@ require_relative 'evm/op'
 require_relative 'evm/vm'
 require_relative 'evm/errors'
 require_relative 'types/account'
+require_relative 'types/receipt'
 
 module Ciri
   class EVM
@@ -44,7 +45,7 @@ module Ciri
 
     # transition block
     def transition(block, check_gas_limit: true, check_gas_used: true)
-      results = []
+      receipts = []
 
       total_gas_used = 0
       # execute transactions, we don't need to valid transactions, it should be done before evm(in Chain module).
@@ -68,7 +69,8 @@ module Ciri
 
         # update actually state_root(after calculate fee)
         result.state_root = state.state_root
-        results << result
+
+        receipts << Types::Receipt.new(state_root: result.state_root, gas_used: total_gas_used, logs: result.logs)
       end
 
       if check_gas_used && total_gas_used != block.header.gas_used
@@ -87,7 +89,7 @@ module Ciri
         end
       end
 
-      results
+      receipts
     end
 
     # execute transaction
@@ -137,12 +139,12 @@ module Ciri
       else
         # transact ether
         begin
-          @vm.call_message(sender: t.sender, value: t.value, receipt: t.to, data: t.data)
+          _, _, exception = @vm.call_message(sender: t.sender, value: t.value, receipt: t.to, data: t.data)
         rescue VMError
           raise unless ignore_exception
           return nil
         end
-        raise @vm.exception if !ignore_exception && @vm.exception
+        raise exception if !ignore_exception && exception
       end
 
       # refund gas

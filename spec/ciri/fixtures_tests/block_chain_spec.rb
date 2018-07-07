@@ -122,9 +122,19 @@ RSpec.describe Ciri::Chain do
 
           # check status
           block = chain.get_block(block.get_hash)
-          expect(block.header).to eq fixture_to_block_header(b['blockHeader'])
-          expect(block.transactions).to eq b['transactions'].map {|t| fixture_to_transaction(t)}
-          expect(block.ommers).to eq b['uncleHeaders'].map {|h| fixture_to_block_header(h)}
+
+          if b['blockHeader']
+            expect(block.header).to eq fixture_to_block_header(b['blockHeader'])
+          end
+
+          if b['transactions']
+            expect(block.transactions).to eq b['transactions'].map {|t| fixture_to_transaction(t)}
+          end
+
+          if b['uncleHeaders']
+            expect(block.ommers).to eq b['uncleHeaders'].map {|h| fixture_to_block_header(h)}
+          end
+
         end
       end
 
@@ -139,7 +149,6 @@ RSpec.describe Ciri::Chain do
 
   white_list_topics = %w{
     bcBlockGasLimitTest
-    bcValidBlockTest
   }.map {|f| ["fixtures/BlockchainTests/#{f}", true]}.to_h
 
   Dir.glob("fixtures/BlockchainTests/*").each do |topic|
@@ -164,8 +173,8 @@ RSpec.describe Ciri::Chain do
 
       run_test_case[JSON.load(open t), prefix: topic, tags: tags]
     end
-  end if false
+  end if true
 
-  run_test_case[JSON.load(open 'fixtures/BlockchainTests/bcValidBlockTest/timeDiff14.json'), prefix: 'test', tags: {}]
+  # run_test_case[JSON.load(open 'fixtures/BlockchainTests/bcValidBlockTest/SimpleTx3.json'), prefix: 'test', tags: {}]
 
 end
