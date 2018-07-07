@@ -21,50 +21,35 @@
 # THE SOFTWARE.
 
 
-require_relative 'base'
-require_relative 'frontier/cost'
-
 module Ciri
   module Forks
-    module Frontier
-      class Config < Base
 
-        BLOCK_REWARD = 5 * 10.pow(18) # 5 ether
+    class Base
+      # gas methods
+      def gas_of_operation(vm)
+        raise NotImplementedError
+      end
 
-        # gas methods
-        def gas_of_operation(vm)
-          Cost.cost_of_operation vm
-        end
+      def gas_of_memory(word_count)
+        raise NotImplementedError
+      end
 
-        def gas_of_memory(word_count)
-          Cost.cost_of_memory word_count
-        end
+      def intrinsic_gas_of_transaction(transaction)
+        raise NotImplementedError
+      end
 
-        def intrinsic_gas_of_transaction(transaction)
-          Cost.intrinsic_gas_of_transaction transaction
-        end
+      def calculate_deposit_code_gas(code_bytes)
+        raise NotImplementedError
+      end
 
-        def calculate_deposit_code_gas(code_bytes)
-          Cost::G_CODEDEPOSIT * (code_bytes || ''.b).size
-        end
+      def mining_rewards_of_block(block)
+        raise NotImplementedError
+      end
 
-        def calculate_refund_gas(vm)
-          vm.sub_state.suicide_accounts.size * Cost::R_SELFDESTRUCT
-        end
-
-        def mining_rewards_of_block(block)
-          rewards = Hash.new(0)
-          # reward miner
-          rewards[block.header.beneficiary] += ((1 + block.ommers.count.to_f / 32) * BLOCK_REWARD).to_i
-
-          # reward ommer(uncle) block miners
-          block.ommers.each do |ommer|
-            rewards[ommer.beneficiary] += ((1 + (ommer.number - block.header.number).to_f / 8) * BLOCK_REWARD).to_i
-          end
-          rewards
-        end
-
+      def calculate_refund_gas(vm)
+        raise NotImplementedError
       end
     end
+
   end
 end

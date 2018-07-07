@@ -131,7 +131,7 @@ module Ciri
         call_instruction(create_contract_instruction) do
           execute
 
-          deposit_code_gas = fork_config.deposit_code_fee[output]
+          deposit_code_gas = fork_config.calculate_deposit_code_gas(output)
 
           if deposit_code_gas > remain_gas
             # deposit_code_gas not enough
@@ -270,8 +270,8 @@ module Ciri
 
         raise "can't find operation #{w}, pc #{ms.pc}" unless operation
 
-        op_cost = fork_config.cost_of_operation[self]
-        old_memory_cost = fork_config.cost_of_memory[ms.memory_item]
+        op_cost = fork_config.gas_of_operation(self)
+        old_memory_cost = fork_config.gas_of_memory(ms.memory_item)
         ms.consume_gas op_cost
 
         prev_sub_state = sub_state.dup
@@ -279,7 +279,7 @@ module Ciri
         # call operation
         operation.call(self)
         # calculate gas_cost
-        new_memory_cost = fork_config.cost_of_memory[ms.memory_item]
+        new_memory_cost = fork_config.gas_of_memory(ms.memory_item)
         memory_gas_cost = new_memory_cost - old_memory_cost
 
         if ms.remain_gas >= memory_gas_cost
@@ -332,7 +332,7 @@ module Ciri
           InvalidOpCodeError.new "can't find op code #{w}"
         when ms.stack.size < (consume = OP.input_count(w))
           StackError.new "stack not enough: stack:#{ms.stack.size} next consume: #{consume}"
-        when ms.remain_gas < (gas_cost = fork_config.cost_of_operation[self])
+        when ms.remain_gas < (gas_cost = fork_config.gas_of_operation(self))
           GasNotEnoughError.new "gas not enough: gas remain:#{ms.remain_gas} gas cost: #{gas_cost}"
         when w == OP::JUMP && instruction.destinations.include?(ms.get_stack(0, Integer))
           InvalidJumpError.new "invalid jump dest #{ms.get_stack(0, Integer)}"

@@ -83,7 +83,7 @@ RSpec.describe Ciri::EVM do
           timestamp: env['currentTimestamp'],
         )
 
-        fork_config = Ciri::Forks::Frontier.fork_config
+        fork_config = Ciri::Forks::Frontier::Config.new
         vm = Ciri::EVM::VM.new(state: state, machine_state: ms, instruction: instruction, block_info: block_info,
                                fork_config: fork_config, burn_gas_on_exception: false)
 

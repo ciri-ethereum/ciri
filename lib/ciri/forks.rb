@@ -26,20 +26,9 @@ require_relative 'forks/frontier'
 module Ciri
   module Forks
 
-    # Fork configure
-    ForkConfig = Struct.new(
-      :cost_of_operation,
-      :cost_of_memory,
-      :intrinsic_gas_of_transaction,
-      :deposit_code_fee,
-      :mining_rewards,
-      :refund_gas,
-      keyword_init: true
-    )
-
     def self.detect_fork(header: nil, number: nil)
       number ||= header.number
-      Frontier.fork_config
+      Frontier::Config.new
     end
 
   end

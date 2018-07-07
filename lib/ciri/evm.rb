@@ -78,7 +78,7 @@ module Ciri
       end
 
       fork_config = Ciri::Forks.detect_fork(header: block.header, number: block.header.number)
-      rewards = fork_config.mining_rewards[block]
+      rewards = fork_config.mining_rewards_of_block(block)
 
       # apply rewards
       rewards.each do |address, value|
@@ -104,7 +104,7 @@ module Ciri
       state.add_balance(t.sender, -1 * t.gas_limit * t.gas_price)
       fork_config = Ciri::Forks.detect_fork(header: header, number: block_info&.number)
 
-      gas_limit = t.gas_limit - fork_config.intrinsic_gas_of_transaction[t]
+      gas_limit = t.gas_limit - fork_config.intrinsic_gas_of_transaction(t)
 
       instruction = Instruction.new(
         origin: t.sender,
@@ -149,7 +149,7 @@ module Ciri
       raise exception if !ignore_exception && exception
 
       # refund gas
-      refund_gas = fork_config.refund_gas[t, @vm]
+      refund_gas = fork_config.calculate_refund_gas(@vm)
       gas_used = t.gas_limit - @vm.remain_gas
       refund_gas = [refund_gas, gas_used / 2].min
       state.add_balance(t.sender, (refund_gas + @vm.remain_gas) * t.gas_price)
