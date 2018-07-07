@@ -47,7 +47,7 @@ module Ciri
         # VM.spawn(...) == VM.new(...)
         # @return VM
         def spawn(state:, gas_limit:, header: nil, block_info: nil, instruction: EVM::Instruction.new, fork_config:)
-          ms = MachineState.new(gas_remain: gas_limit, pc: 0, stack: [], memory: "\x00".b * 256, memory_item: 0)
+          ms = MachineState.new(remain_gas: gas_limit, pc: 0, stack: [], memory: "\x00".b * 256, memory_item: 0)
 
           block_info = block_info || header && BlockInfo.new(
             coinbase: header.beneficiary,
@@ -74,8 +74,8 @@ module Ciri
       # helper methods
       include Utils::Logger
 
-      def_delegators :@machine_state, :stack, :pc, :pop, :push, :pop_list, :get_stack,
-                     :memory_item, :memory_item=, :memory_store, :memory_fetch, :extend_memory, :gas_remain
+      def_delegators :@machine_state, :stack, :pc, :pop, :push, :pop_list, :get_stack, :memory_item, :memory_item=,
+                     :memory_store, :memory_fetch, :extend_memory, :remain_gas, :consume_gas
       def_delegators :@instruction, :get_op, :get_code, :next_valid_instruction_pos, :get_data, :data, :sender
       def_delegators :@sub_state, :add_refund_account, :add_touched_account, :add_suicide_account
       def_delegators :@state, :find_account, :account_dead?, :store, :fetch, :set_account_code, :get_account_code
@@ -83,7 +83,8 @@ module Ciri
       attr_reader :state, :machine_state, :instruction, :sub_state, :block_info, :fork_config
       attr_accessor :output, :exception
 
-      def initialize(state:, machine_state:, sub_state: nil, instruction:, block_info:, fork_config:)
+      def initialize(state:, machine_state:, sub_state: nil, instruction:, block_info:,
+                     fork_config:, burn_gas_on_exception: true)
         @state = state
         @machine_state = machine_state
         @instruction = instruction
@@ -91,6 +92,7 @@ module Ciri
         @output = nil
         @block_info = block_info
         @fork_config = fork_config
+        @burn_gas_on_exception = burn_gas_on_exception
       end
 
       # run vm
@@ -108,11 +110,11 @@ module Ciri
         # return contract address 0 represent execution failed
         return 0 unless account.balance >= value || instruction.execute_depth > 1024
 
-        account.nonce += 1
-        state.set_nonce(caller_address, account.nonce)
+        state.increment_nonce(caller_address)
+        snapshot = state.snapshot
 
         # generate contract_address
-        material = RLP.encode_simple([caller_address.to_s, account.nonce - 1])
+        material = RLP.encode_simple([caller_address.to_s, account.nonce])
         contract_address = Utils.sha3(material)[-20..-1]
 
         # initialize contract account
@@ -125,27 +127,34 @@ module Ciri
         create_contract_instruction.execute_depth += 1
         create_contract_instruction.address = contract_address
 
+        # TODO refactoring: Maybe should use call_message to execute data
         call_instruction(create_contract_instruction) do
           execute
 
-          if exception
+          deposit_code_gas = fork_config.deposit_code_fee[output]
+
+          if deposit_code_gas > remain_gas
+            # deposit_code_gas not enough
+            contract_address = 0
+          elsif exception
             state.touch_account(contract_address)
             contract_address = 0
+            state.revert(snapshot)
           else
             # set contract code
             set_account_code(contract_address, output)
             # minus deposit_code_fee
-            machine_state.gas_remain -= fork_config.deposit_code_fee[output]
+            machine_state.consume_gas deposit_code_gas
             # transact value
             account.balance -= value
             contract_account.balance += value
 
             state.set_balance(contract_address, contract_account.balance)
             state.set_balance(caller_address, account.balance)
+            state.commit(snapshot)
           end
+          [contract_address, exception]
         end
-
-        contract_address
       end
 
       # low level call message interface
@@ -234,8 +243,10 @@ module Ciri
       def execute
         loop do
           if (@exception ||= check_exception(@state, machine_state, instruction))
-            debug("exception: #{@exception}, burn gas #{machine_state.gas_remain} to zero")
-            machine_state.gas_remain = 0
+            if @burn_gas_on_exception
+              debug("exception: #{@exception}, burn gas #{machine_state.remain_gas} to zero")
+              machine_state.consume_gas machine_state.remain_gas
+            end
             return [EMPTY_SET, machine_state, SubState::EMPTY, instruction, EMPTY_SET]
           elsif get_op(machine_state.pc) == OP::REVERT
             o = halt
@@ -261,7 +272,7 @@ module Ciri
 
         op_cost = fork_config.cost_of_operation[self]
         old_memory_cost = fork_config.cost_of_memory[ms.memory_item]
-        ms.gas_remain -= op_cost
+        ms.consume_gas op_cost
 
         prev_sub_state = sub_state.dup
 
@@ -271,11 +282,11 @@ module Ciri
         new_memory_cost = fork_config.cost_of_memory[ms.memory_item]
         memory_gas_cost = new_memory_cost - old_memory_cost
 
-        if ms.gas_remain >= memory_gas_cost
-          ms.gas_remain -= memory_gas_cost
+        if ms.remain_gas >= memory_gas_cost
+          ms.consume_gas memory_gas_cost
         else
           # memory gas_not_enough
-          @exception = GasNotEnoughError.new "gas not enough: gas remain:#{ms.gas_remain} gas cost: #{memory_gas_cost}"
+          @exception = GasNotEnoughError.new "gas not enough: gas remain:#{ms.remain_gas} gas cost: #{memory_gas_cost}"
         end
 
         # revert sub_state and return if exception occur
@@ -321,8 +332,8 @@ module Ciri
           InvalidOpCodeError.new "can't find op code #{w}"
         when ms.stack.size < (consume = OP.input_count(w))
           StackError.new "stack not enough: stack:#{ms.stack.size} next consume: #{consume}"
-        when ms.gas_remain < (gas_cost = fork_config.cost_of_operation[self])
-          GasNotEnoughError.new "gas not enough: gas remain:#{ms.gas_remain} gas cost: #{gas_cost}"
+        when ms.remain_gas < (gas_cost = fork_config.cost_of_operation[self])
+          GasNotEnoughError.new "gas not enough: gas remain:#{ms.remain_gas} gas cost: #{gas_cost}"
         when w == OP::JUMP && instruction.destinations.include?(ms.get_stack(0, Integer))
           InvalidJumpError.new "invalid jump dest #{ms.get_stack(0, Integer)}"
         when w == OP::JUMPI && ms.get_stack(1, Integer) != 0 && instruction.destinations.include?(ms.get_stack(0, Integer))

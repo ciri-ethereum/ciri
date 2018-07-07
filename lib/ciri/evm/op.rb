@@ -338,13 +338,13 @@ module Ciri
       end
 
       def_op :SLOAD, 0x54, 1, 1 do |vm|
-        key = vm.pop
+        key = vm.pop(Integer)
         vm.push vm.fetch(vm.instruction.address, key)
       end
 
       def_op :SSTORE, 0x55, 2, 0 do |vm|
-        key = vm.pop
-        value = vm.pop
+        key = vm.pop(Integer)
+        value = vm.pop(Integer)
 
         vm.store(vm.instruction.address, key, value)
       end
@@ -372,7 +372,7 @@ module Ciri
       end
 
       def_op :GAS, 0x5a, 0, 1 do |vm|
-        vm.push vm.machine_state.gas_remain
+        vm.push vm.machine_state.remain_gas
       end
 
       def_op :JUMPDEST, 0x5b, 0, 0
@@ -433,7 +433,7 @@ module Ciri
         init = vm.memory_fetch(mem_pos, size)
         vm.extend_memory(mem_pos, size)
 
-        contract_address = vm.create_contract(value: value, init: init)
+        contract_address, _ = vm.create_contract(value: value, init: init)
         vm.push contract_address
       end
 

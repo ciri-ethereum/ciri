@@ -72,7 +72,7 @@ RSpec.describe Ciri::EVM do
         data = Ciri::Utils.to_bytes(t['exec']['data'])
         env = t['env'] && t['env'].map {|k, v| [k, Ciri::Utils.to_bytes(v)]}.to_h
 
-        ms = Ciri::EVM::MachineState.new(gas_remain: gas, pc: 0, stack: [], memory: "\x00".b * 256, memory_item: 0)
+        ms = Ciri::EVM::MachineState.new(remain_gas: gas, pc: 0, stack: [], memory: "\x00".b * 256, memory_item: 0)
         instruction = Ciri::EVM::Instruction.new(address: address, origin: origin, price: gas_price, sender: caller,
                                                  bytes_code: code, value: value, data: data)
         block_info = env && Ciri::EVM::BlockInfo.new(
@@ -84,8 +84,8 @@ RSpec.describe Ciri::EVM do
         )
 
         fork_config = Ciri::Forks::Frontier.fork_config
-        vm = Ciri::EVM::VM.new(state: state, machine_state: ms,
-                               instruction: instruction, block_info: block_info, fork_config: fork_config)
+        vm = Ciri::EVM::VM.new(state: state, machine_state: ms, instruction: instruction, block_info: block_info,
+                               fork_config: fork_config, burn_gas_on_exception: false)
 
         # ignore exception
         vm.run(ignore_exception: true)
@@ -98,8 +98,8 @@ RSpec.describe Ciri::EVM do
           expect(vm_output).to eq output
         end
 
-        gas_remain = t['gas'].yield_self {|gas_remain| gas_remain && Ciri::Utils.big_endian_decode(Ciri::Utils.to_bytes(gas_remain))}
-        expect(vm.machine_state.gas_remain).to eq gas_remain if gas_remain
+        remain_gas = t['gas'].yield_self {|remain_gas| remain_gas && Ciri::Utils.big_endian_decode(Ciri::Utils.to_bytes(remain_gas))}
+        expect(vm.machine_state.remain_gas).to eq remain_gas if remain_gas
 
         state = vm.state
         t['post'].each do |address, v|

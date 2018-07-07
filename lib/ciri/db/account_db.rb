@@ -45,30 +45,27 @@ module Ciri
         @trie.root_hash
       end
 
-      def store(address, key, data)
-        data_is_blank = Ciri::Utils.blank_bytes?(data)
-        # key_is_blank = Ciri::Utils.blank_binary?(key)
-
-        return unless data && !data_is_blank
-
-        # remove unnecessary null byte from key
-        key = serialize(key).gsub(/\A\0+/, ''.b)
-        key = "\x00".b if key.empty?
-
+      def store(address, key, value)
         account = find_account address
         trie = Trie.new(db: @db, root_hash: account.storage_root)
-        trie[key] = serialize(data).rjust(32, "\x00".b)
+
+        converted_key = convert_key Utils.big_endian_encode(key, size: 32)
+
+        if value && value != 0
+          trie[converted_key] = RLP.encode(value)
+        else
+          trie.delete(converted_key)
+        end
         account.storage_root = trie.root_hash
         update_account(address, account)
       end
 
       def fetch(address, key)
         # remove unnecessary null byte from key
-        key = serialize(key).gsub(/\A\0+/, ''.b)
-        key = "\x00".b if key.empty?
+        converted_key = convert_key Utils.big_endian_encode(key, size: 32)
         account = find_account address
         trie = Trie.new(db: @db, root_hash: account.storage_root)
-        trie[key] || ''.b
+        trie[converted_key] || ''.b
       end
 
       def set_nonce(address, nonce)

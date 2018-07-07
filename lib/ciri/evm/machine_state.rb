@@ -22,12 +22,31 @@
 
 
 require 'ciri/serialize'
+require 'ciri/evm/errors'
 
 module Ciri
   class EVM
 
     # represent current vm status, include stack, memory..
-    MachineState = Struct.new(:gas_remain, :pc, :memory, :memory_item, :stack, :output, keyword_init: true) do
+    class MachineState
+
+      attr_reader :remain_gas, :memory, :stack
+      attr_accessor :pc, :output, :memory_item
+
+      def initialize(remain_gas:, pc:, memory:, memory_item:, stack:, output: ''.b)
+        raise ArgumentError.new("remain_gas must more than 0") if remain_gas < 0
+        @remain_gas = remain_gas
+        @pc = pc
+        @memory = memory
+        @memory_item = memory_item
+        @stack = stack
+        @output = output
+      end
+
+      def consume_gas(gas)
+        raise GasNotEnoughError.new("can't consume gas to negative, remain_gas: #{remain_gas}, consumed: #{gas}") if gas > remain_gas
+        @remain_gas -= gas
+      end
 
       # fetch a list of items from stack
       def pop_list(count, type = nil)

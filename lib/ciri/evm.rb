@@ -57,7 +57,7 @@ module Ciri
           raise InvalidTransition.new('reach block gas_limit')
         end
         if check_gas_used && total_gas_used > block.header.gas_used
-          raise InvalidTransition.new('incorrect gas_used')
+          raise InvalidTransition.new("incorrect gas_used, total_gas_used: #{total_gas_used}, block gas_used: #{block.header.gas_used}")
         end
 
         # calculate fee
@@ -133,25 +133,26 @@ module Ciri
         fork_config: fork_config
       )
 
+      # transact ether
+      exception = nil
+      # begin
       if t.contract_creation?
         # contract creation
-        @vm.create_contract(value: instruction.value, init: instruction.bytes_code)
+        _, exception = @vm.create_contract(value: instruction.value, init: instruction.bytes_code)
       else
-        # transact ether
-        begin
-          _, _, exception = @vm.call_message(sender: t.sender, value: t.value, receipt: t.to, data: t.data)
-        rescue VMError
-          raise unless ignore_exception
-          return nil
-        end
-        raise exception if !ignore_exception && exception
+        _, _, exception = @vm.call_message(sender: t.sender, value: t.value, receipt: t.to, data: t.data)
       end
+      # rescue ArgumentError => e
+      #   raise unless ignore_exception
+      #   exception = e
+      # end
+      raise exception if !ignore_exception && exception
 
       # refund gas
       refund_gas = fork_config.refund_gas[t, @vm]
-      gas_used = t.gas_limit - @vm.gas_remain
+      gas_used = t.gas_limit - @vm.remain_gas
       refund_gas = [refund_gas, gas_used / 2].min
-      state.add_balance(t.sender, (refund_gas + @vm.gas_remain) * t.gas_price)
+      state.add_balance(t.sender, (refund_gas + @vm.remain_gas) * t.gas_price)
 
       # destroy accounts
       @vm.sub_state.suicide_accounts.each do |address|

@@ -161,13 +161,13 @@ module Ciri
               ms = vm.machine_state
               instruction = vm.instruction
 
-              key = ms.stack[0]
-              value = ms.stack[1]
+              key = ms.get_stack(0, Integer)
+              value = ms.get_stack(1, Integer)
 
-              value_exists = !Ciri::Utils.blank_bytes?(value)
-              has_key = !vm.fetch(instruction.address, key).empty?
+              stored_is_empty = vm.fetch(instruction.address, key).empty?
+              value_is_non_zero = value && !value.zero?
 
-              if value_exists && !has_key
+              if value_is_non_zero && stored_is_empty
                 G_SSET
               else
                 G_RESET

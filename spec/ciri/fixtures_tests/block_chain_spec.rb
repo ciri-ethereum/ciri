@@ -149,6 +149,7 @@ RSpec.describe Ciri::Chain do
 
   white_list_topics = %w{
     bcBlockGasLimitTest
+    bcValidBlockTest
   }.map {|f| ["fixtures/BlockchainTests/#{f}", true]}.to_h
 
   Dir.glob("fixtures/BlockchainTests/*").each do |topic|
@@ -175,6 +176,6 @@ RSpec.describe Ciri::Chain do
     end
   end if true
 
-  # run_test_case[JSON.load(open 'fixtures/BlockchainTests/bcValidBlockTest/SimpleTx3.json'), prefix: 'test', tags: {}]
+    # run_test_case[JSON.load(open 'fixtures/BlockchainTests/bcValidBlockTest/dataTx2.json'), prefix: 'test', tags: {}]
 
 end
