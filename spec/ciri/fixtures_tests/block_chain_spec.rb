@@ -150,6 +150,10 @@ RSpec.describe Ciri::Chain do
   white_list_topics = %w{
     bcBlockGasLimitTest
     bcValidBlockTest
+    bcForgedTest
+    bcInvalidHeaderTest
+    bcStateTest
+    bcValidBlockTest
   }.map {|f| ["fixtures/BlockchainTests/#{f}", true]}.to_h
 
   Dir.glob("fixtures/BlockchainTests/*").each do |topic|
@@ -165,7 +169,7 @@ RSpec.describe Ciri::Chain do
       tags[:slow_tests] = true
     end
 
-    Dir.glob("#{topic}/*.json").each do |t|
+    Dir.glob("#{topic}/**/*.json").each do |t|
       tags = tags.dup
       # tag slow test cases
       if slow_cases.include?(t)
