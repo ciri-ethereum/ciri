@@ -39,7 +39,7 @@ RSpec.describe Ciri::EVM do
     balance = Ciri::Utils.big_endian_decode Ciri::Utils.to_bytes(v["balance"])
     nonce = Ciri::Utils.big_endian_decode Ciri::Utils.to_bytes(v["nonce"])
     storage = v["storage"].map do |k, v|
-      [Ciri::Utils.to_bytes(k), Ciri::Utils.to_bytes(v).rjust(32, "\x00".b)]
+      [Ciri::Utils.hex_to_number(k), Ciri::Utils.hex_to_number(v)]
     end.to_h
     [Ciri::Types::Account.new(balance: balance, nonce: nonce), storage]
   end

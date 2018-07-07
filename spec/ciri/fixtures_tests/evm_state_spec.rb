@@ -42,7 +42,7 @@ RSpec.describe Ciri::EVM do
     nonce = Ciri::Utils.hex_to_number(v["nonce"])
     code = Ciri::Utils.to_bytes(v["code"])
     storage = v["storage"].map do |k, v|
-      [Ciri::Utils.to_bytes(k), Ciri::Utils.to_bytes(v).rjust(32, "\x00".b)]
+      [Ciri::Utils.hex_to_number(k), Ciri::Utils.hex_to_number(v)]
     end.to_h
     [Ciri::Types::Account.new(balance: balance, nonce: nonce), code, storage]
   end

@@ -46,8 +46,8 @@ RSpec.describe Ciri::DB::AccountDB do
     address, account = account1
 
     account_db = Ciri::DB::AccountDB.new({})
-    account_db.store(address, "hello", "nihao")
-    expect(account_db.fetch(address, "hello")).to eq "nihao".rjust(32, "\x00")
+    account_db.store(address, 42, 1530984410)
+    expect(account_db.fetch(address, 42)).to eq 1530984410
   end
 
 end

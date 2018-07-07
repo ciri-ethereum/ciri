@@ -65,7 +65,8 @@ module Ciri
         converted_key = convert_key Utils.big_endian_encode(key, size: 32)
         account = find_account address
         trie = Trie.new(db: @db, root_hash: account.storage_root)
-        trie[converted_key] || ''.b
+        value = trie[converted_key]
+        value.empty? ? 0 : RLP.decode(value, Integer)
       end
 
       def set_nonce(address, nonce)
