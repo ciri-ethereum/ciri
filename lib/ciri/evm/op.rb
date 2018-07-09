@@ -206,7 +206,7 @@ module Ciri
       # 20s: sha3
       def_op :SHA3, 0x20, 2, 1 do |vm|
         pos, size = vm.pop_list(2, Integer)
-        hashed = Ciri::Utils.sha3 vm.memory_fetch(pos, size)
+        hashed = Ciri::Utils.keccak vm.memory_fetch(pos, size)
         vm.extend_memory(pos, size)
         vm.push hashed
       end

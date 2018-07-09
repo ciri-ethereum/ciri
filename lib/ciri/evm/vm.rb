@@ -115,7 +115,7 @@ module Ciri
 
         # generate contract_address
         material = RLP.encode_simple([caller_address.to_s, account.nonce])
-        contract_address = Utils.sha3(material)[-20..-1]
+        contract_address = Utils.keccak(material)[-20..-1]
 
         # initialize contract account
         contract_account = find_account(contract_address)

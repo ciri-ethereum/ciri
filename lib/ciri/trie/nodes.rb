@@ -180,7 +180,7 @@ module Ciri
         end
       end
 
-      BLANK_NODE_HASH = Utils.sha3(RLP.encode(''.b)).freeze
+      BLANK_NODE_HASH = Utils.keccak(RLP.encode(''.b)).freeze
 
     end
   end

@@ -38,7 +38,7 @@ RSpec.describe Ciri::Crypto do
   context 'ecdsa recover' do
     it 'self consistent' do
       key = Ciri::Key.random
-      msg = Ciri::Utils.sha3 "hello world"
+      msg = Ciri::Utils.keccak "hello world"
       signature = key.ecdsa_signature(msg)
       expect(Ciri::Key.ecdsa_recover(msg, signature).raw_public_key).to eq key.raw_public_key
     end

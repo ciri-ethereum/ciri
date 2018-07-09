@@ -10,8 +10,8 @@ module Ciri
       include Utils::Number
 
 
-      def sha3(*data)
-        s = Digest::SHA3.new(256)
+      def keccak(*data, bits: 256)
+        s = Digest::SHA3.new(bits)
         data.each {|i| s.update(i)}
         s.digest
       end
@@ -78,6 +78,6 @@ module Ciri
 
     end
 
-    BLANK_SHA3 = Utils.sha3(''.b).freeze
+    BLANK_SHA3 = Utils.keccak(''.b).freeze
   end
 end

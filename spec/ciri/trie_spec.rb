@@ -60,8 +60,8 @@ RSpec.describe Ciri::Trie do
     end
 
     it 'proof empty' do
-      state_root = Ciri::Utils.sha3('state root'.b)
-      key = Ciri::Utils.sha3('some key'.b)
+      state_root = Ciri::Utils.keccak('state root'.b)
+      key = Ciri::Utils.keccak('some key'.b)
       proof = []
       expect {Ciri::Trie.proof(state_root, key, proof)}.to raise_error(Ciri::Trie::BadProofError)
     end

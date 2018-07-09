@@ -166,7 +166,7 @@ module Ciri
 
     def logs_hash
       # return nil unless @vm
-      Utils.sha3(RLP.encode_simple(vm.sub_state.log_series))
+      Utils.keccak(RLP.encode_simple(vm.sub_state.log_series))
     end
 
     private

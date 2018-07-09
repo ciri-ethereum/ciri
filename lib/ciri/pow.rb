@@ -49,7 +49,7 @@ module Ciri
     def get_cache(block_number)
       epoch = block_number / Ethash::EPOCH_LENGTH
       while @cache_seeds.size <= epoch
-        @cache_seeds.append(Utils.sha3(@cache_seeds[-1]))
+        @cache_seeds.append(Utils.keccak(@cache_seeds[-1]))
       end
 
       seed = @cache_seeds[epoch]

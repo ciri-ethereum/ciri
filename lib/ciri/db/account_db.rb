@@ -97,7 +97,7 @@ module Ciri
       def set_account_code(address, code)
         code ||= ''.b
         account = find_account(address)
-        account.code_hash = Utils.sha3(code)
+        account.code_hash = Utils.keccak(code)
         update_account(address, account)
         db[account.code_hash] = code
       end
@@ -137,7 +137,7 @@ module Ciri
       end
 
       def convert_key(key)
-        Utils.sha3 key.to_s
+        Utils.keccak key.to_s
       end
 
     end

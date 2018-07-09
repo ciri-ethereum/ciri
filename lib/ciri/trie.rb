@@ -261,7 +261,7 @@ module Ciri
         @root_hash = BLANK_NODE_HASH
       else
         encoded_root_node = RLP.encode_simple(root_node)
-        new_root_hash = Utils.sha3(encoded_root_node)
+        new_root_hash = Utils.keccak(encoded_root_node)
         @db[new_root_hash] = encoded_root_node
         @root_hash = new_root_hash
       end
@@ -271,7 +271,7 @@ module Ciri
       return [node, nil] if node.null?
       encoded_node = RLP.encode_simple(node)
       return [node, nil] if encoded_node.size < 32
-      encoded_node_hash = Utils.sha3(encoded_node)
+      encoded_node_hash = Utils.keccak(encoded_node)
       [encoded_node_hash, encoded_node]
     end
 

@@ -56,7 +56,7 @@ module Ciri
       # @return address String
       def sender
         @sender ||= begin
-          address = Types::Address.new(Utils.sha3(Crypto.ecdsa_recover(sign_hash(chain_id), signature)[1..-1])[-20..-1])
+          address = Types::Address.new(Utils.keccak(Crypto.ecdsa_recover(sign_hash(chain_id), signature)[1..-1])[-20..-1])
           address.validate
           address
         end
@@ -93,11 +93,11 @@ module Ciri
         if chain_id
           list += [chain_id, ''.b, ''.b]
         end
-        Utils.sha3(RLP.encode_simple list)
+        Utils.keccak(RLP.encode_simple list)
       end
 
       def get_hash
-        Utils.sha3 rlp_encode
+        Utils.keccak rlp_encode
       end
 
       # validate transaction

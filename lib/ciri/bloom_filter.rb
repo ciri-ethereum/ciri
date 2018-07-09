@@ -66,7 +66,7 @@ module Ciri
     private
 
     def get_bloom_bits(value)
-      value_hash = Utils.sha3(value)
+      value_hash = Utils.keccak(value)
       get_chunks_for_bloom(value_hash).map {|v| chunk_to_bloom_bits(v)}
     end
 

@@ -99,9 +99,9 @@ module Ciri
 
         def extract_secrets(auth_packet, auth_ack_packet, initiator:)
           secret = dh_compute_key(random_key, remote_random_key)
-          shared_secret = Ciri::Utils.sha3(secret, Ciri::Utils.sha3(receiver_nonce, initiator_nonce))
-          aes_secret = Ciri::Utils.sha3(secret, shared_secret)
-          mac = Ciri::Utils.sha3(secret, aes_secret)
+          shared_secret = Ciri::Utils.keccak(secret, Ciri::Utils.keccak(receiver_nonce, initiator_nonce))
+          aes_secret = Ciri::Utils.keccak(secret, shared_secret)
+          mac = Ciri::Utils.keccak(secret, aes_secret)
           secrets = Secrets.new(remote_id: remote_id, aes: aes_secret, mac: mac)
 
           # initial secrets macs
