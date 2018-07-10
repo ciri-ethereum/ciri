@@ -21,18 +21,12 @@
 # THE SOFTWARE.
 
 require 'spec_helper'
-require 'ciri/db/backend/rocks'
+require 'ciri/db/backend/memory'
 require 'ciri/chain'
 require 'ciri/utils'
 
 RSpec.describe Ciri::Chain do
-  let(:tmp_dir) {Dir.mktmpdir}
-  let(:store) {Ciri::DB::Backend::Rocks.new tmp_dir}
-
-  after do
-    store.close
-    FileUtils.remove_entry tmp_dir
-  end
+  let(:store) {Ciri::DB::Backend::Memory.new}
 
   context Ciri::Chain::HeaderChain do
     let(:header_chain) {Ciri::Chain::HeaderChain.new(store)}
@@ -108,7 +102,7 @@ RSpec.describe Ciri::Chain do
     end
 
     it 'insert blocks' do
-      chain.insert_blocks(blocks[1..2])
+      chain.insert_blocks(blocks[1..2], validate: false)
 
       expect(chain.get_block_by_number(1)).to eq blocks[1]
       expect(chain.get_block_by_number(2)).to eq blocks[2]
@@ -128,7 +122,7 @@ RSpec.describe Ciri::Chain do
 
       it 'forked blocks should reorg current chain' do
         # initial main chain
-        chain.insert_blocks(main_chain_blocks[1..-1])
+        chain.insert_blocks(main_chain_blocks[1..-1], validate: false)
 
         td = chain.total_difficulty
         current_block = chain.current_block
@@ -139,7 +133,7 @@ RSpec.describe Ciri::Chain do
         end
 
         # receive forked chain
-        chain.insert_blocks(forked_chain_blocks[1..-1])
+        chain.insert_blocks(forked_chain_blocks[1..-1], validate: false)
 
         expect(chain.total_difficulty).to be > td
         expect(chain.current_block).to_not eq current_block

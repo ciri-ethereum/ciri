@@ -23,6 +23,7 @@
 
 require 'forwardable'
 require 'ciri/evm'
+require 'ciri/evm/state'
 require 'ciri/utils/logger'
 require_relative 'chain/header_chain'
 require_relative 'chain/block'
@@ -55,18 +56,18 @@ module Ciri
 
     attr_reader :genesis, :network_id, :store, :header_chain
 
-    def initialize(store, genesis:, network_id:, evm: nil, byzantium_block: nil, homestead_block: nil)
+    def initialize(store, genesis:, network_id:, byzantium_block: nil, homestead_block: nil)
       @store = store
       @header_chain = HeaderChain.new(store, byzantium_block: byzantium_block, homestead_block: homestead_block)
       @genesis = genesis
       @network_id = network_id
-      @evm = evm
       load_or_init_store
     end
 
     # run block
-    def import_block(block)
-      validate_block(block)
+    def import_block(block, validate: true)
+      debug("import block #{block.header.number}")
+      validate_block(block) if validate
       write_block(block)
 
       # update state
@@ -84,16 +85,19 @@ module Ciri
         end
       end
 
+      parent_header = @header_chain.get_header(block.header.parent_hash)
+      state = EVM::State.new(store, state_root: parent_header.state_root)
+      evm = EVM.new(state: state)
       # valid transactions and gas
       begin
-        receipts = @evm.transition(block)
+        receipts = evm.transition(block)
       rescue EVM::InvalidTransition => e
         raise InvalidBlockError.new(e.message)
       end
 
       # verify state root
-      if @evm.state_root != block.header.state_root
-        error("incorrect state_root, evm: #{Utils.to_hex @evm.state_root}, header: #{Utils.to_hex block.header.state_root} height: #{block.header.number}")
+      if evm.state_root != block.header.state_root
+        error("incorrect state_root, evm: #{Utils.to_hex evm.state_root}, header: #{Utils.to_hex block.header.state_root} height: #{block.header.number}")
         raise InvalidBlockError.new("incorrect state_root")
       end
 
@@ -132,7 +136,7 @@ module Ciri
 
     # insert blocks in order
     # blocks must be ordered from lower height to higher height
-    def insert_blocks(blocks)
+    def insert_blocks(blocks, validate: true)
       prev_block = blocks[0]
       blocks[1..-1].each do |block|
         unless block.number == prev_block.number + 1 && block.parent_hash == prev_block.get_hash
@@ -141,7 +145,7 @@ module Ciri
       end
 
       blocks.each do |block|
-        write_block block
+        import_block(block, validate: validate)
       end
     end
 

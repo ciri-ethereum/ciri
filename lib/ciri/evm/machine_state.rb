@@ -89,8 +89,10 @@ module Ciri
 
       # extend vm memory, used for memory_gas calculation
       def extend_memory(pos, size)
-        if size != 0 && (i = Utils.ceil_div(pos + size, 32)) > memory_item
-          self.memory_item = i
+        if size != 0 && (new_item = Utils.ceil_div(pos + size, 32)) > memory_item
+          self.memory_item = new_item
+          new_size = new_item * 32
+          self.memory << "\x00".b * new_size
         end
       end
 

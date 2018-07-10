@@ -246,8 +246,8 @@ module Ciri
       def_op :CALLDATACOPY, 0x37, 3, 0 do |vm|
         mem_pos, data_pos, size = vm.pop_list(3, Integer)
         data = vm.get_data(data_pos, size)
-        vm.memory_store(mem_pos, size, data)
         vm.extend_memory(mem_pos, size)
+        vm.memory_store(mem_pos, size, data)
       end
 
       def_op :CODESIZE, 0x38, 0, 1 do |vm|
@@ -257,6 +257,7 @@ module Ciri
       def_op :CODECOPY, 0x39, 3, 0 do |vm|
         mem_pos, code_pos, size = vm.pop_list(3, Integer)
         data = vm.get_code(code_pos, size)
+        vm.extend_memory(mem_pos, size)
         vm.memory_store(mem_pos, size, data)
       end
 
@@ -283,6 +284,7 @@ module Ciri
                else
                  code[data_pos..data_end_pos]
                end
+        vm.extend_memory(mem_pos, size)
         vm.memory_store(mem_pos, size, data)
       end
 
@@ -326,15 +328,15 @@ module Ciri
       def_op :MSTORE, 0x52, 2, 0 do |vm|
         index = vm.pop(Integer)
         data = vm.pop
-        vm.memory_store(index, 32, data)
         vm.extend_memory(index, 32)
+        vm.memory_store(index, 32, data)
       end
 
       def_op :MSTORE8, 0x53, 2, 0 do |vm|
         index = vm.pop(Integer)
         data = vm.pop(Integer)
-        vm.memory_store(index, 1, data % 256)
         vm.extend_memory(index, 8)
+        vm.memory_store(index, 1, data % 256)
       end
 
       def_op :SLOAD, 0x54, 1, 1 do |vm|
@@ -451,8 +453,8 @@ module Ciri
                                          data: data, receipt: target, code_address: target)
 
         output_size = [output_mem_size, output.size].min
-        vm.memory_store(output_mem_pos, output_size, output)
         vm.extend_memory(output_mem_pos, output_size)
+        vm.memory_store(output_mem_pos, output_size, output)
         vm.push status
       end
 
@@ -465,22 +467,22 @@ module Ciri
         input_mem_pos, input_size = vm.pop_list(2, Integer)
         output_mem_pos, output_mem_size = vm.pop_list(2, Integer)
 
-        data = vm.memory_fetch(input_mem_pos, input_size)
         vm.extend_memory(input_mem_pos, input_size)
+        data = vm.memory_fetch(input_mem_pos, input_size)
 
         status, output = vm.call_message(sender: vm.instruction.address, value: value,
                                          data: data, receipt: vm.instruction.address, code_address: target)
 
         output_size = [output_mem_size, output.size].min
-        vm.memory_store(output_mem_pos, output_size, output)
         vm.extend_memory(output_mem_pos, output_size)
+        vm.memory_store(output_mem_pos, output_size, output)
         vm.push status
       end
 
       def_op :RETURN, 0xf3, 2, 0 do |vm|
         index, size = vm.pop_list(2, Integer)
-        vm.output = vm.memory_fetch(index, size)
         vm.extend_memory(index, size)
+        vm.output = vm.memory_fetch(index, size)
       end
 
       def_op :DELEGATECALL, 0xf4, 6, 1 do |vm|
@@ -496,8 +498,8 @@ module Ciri
                                          data: data, receipt: vm.instruction.address, code_address: target)
 
         output_size = [output_mem_size, output.size].min
-        vm.memory_store(output_mem_pos, output_size, output)
         vm.extend_memory(output_mem_pos, output_size)
+        vm.memory_store(output_mem_pos, output_size, output)
         vm.push status
       end
 

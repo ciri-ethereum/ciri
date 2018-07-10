@@ -38,7 +38,7 @@ module Ciri
       def initialize(db, root_hash: nil)
         @db = db
         root_hash ||= Trie::BLANK_NODE_HASH
-        @trie = Trie.new(db: @db, root_hash: root_hash, prune: true)
+        @trie = Trie.new(db: @db, root_hash: root_hash, prune: false)
       end
 
       def root_hash

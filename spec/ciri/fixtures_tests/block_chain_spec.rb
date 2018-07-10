@@ -98,14 +98,13 @@ RSpec.describe Ciri::Chain do
           end
         end
 
-        evm = Ciri::EVM.new(state: state)
         genesis = if t['genesisRLP']
                     Ciri::Chain::Block.rlp_decode(Ciri::Utils.to_bytes t['genesisRLP'])
                   elsif t['genesisBlockHeader']
                     Ciri::Chain::Block.new(header: parse_header[t['genesisBlockHeader']], transactions: [], ommers: [])
                   end
-        store = Ciri::DB::Backend::Memory.new
-        chain = Ciri::Chain.new(store, genesis: genesis, network_id: 0, evm: evm)
+
+        chain = Ciri::Chain.new(db, genesis: genesis, network_id: 0)
 
         # run block
         t['blocks'].each do |b|
@@ -153,7 +152,7 @@ RSpec.describe Ciri::Chain do
     bcForgedTest
     bcInvalidHeaderTest
     bcStateTest
-    bcValidBlockTest
+    bcGasPricerTest
   }.map {|f| ["fixtures/BlockchainTests/#{f}", true]}.to_h
 
   Dir.glob("fixtures/BlockchainTests/*").each do |topic|
@@ -180,6 +179,6 @@ RSpec.describe Ciri::Chain do
     end
   end if true
 
-    # run_test_case[JSON.load(open 'fixtures/BlockchainTests/bcValidBlockTest/dataTx2.json'), prefix: 'test', tags: {}]
+    # run_test_case[JSON.load(open 'fixtures/BlockchainTests/bcGasPricerTest/RPC_API_Test.json'), prefix: 'test', tags: {}]
 
 end
