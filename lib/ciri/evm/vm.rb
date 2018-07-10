@@ -275,8 +275,6 @@ module Ciri
         old_memory_cost = fork_config.gas_of_memory(ms.memory_item)
         ms.consume_gas op_cost
 
-        prev_sub_state = sub_state.dup
-
         # call operation
         begin
           operation.call(self)
@@ -286,7 +284,7 @@ module Ciri
 
         # revert sub_state and return if exception occur
         if exception
-          @sub_state = prev_sub_state
+          @sub_state = SubState::EMPTY
           return
         end
 

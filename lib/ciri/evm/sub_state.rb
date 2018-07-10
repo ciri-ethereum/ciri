@@ -27,8 +27,6 @@ module Ciri
     # sub state contained changed accounts and log_series
     class SubState
 
-      EMPTY = SubState.new.freeze
-
       attr_reader :suicide_accounts, :log_series, :touched_accounts, :refunds
 
       def initialize(suicide_accounts: [], log_series: [], touched_accounts: [], refunds: [])
@@ -37,6 +35,8 @@ module Ciri
         @touched_accounts = Set.new(touched_accounts)
         @refunds = Set.new(refunds)
       end
+
+      EMPTY = SubState.new.freeze
 
       # support safety copy
       def initialize_copy(orig)
