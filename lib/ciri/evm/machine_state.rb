@@ -33,7 +33,7 @@ module Ciri
       attr_reader :remain_gas, :memory, :stack
       attr_accessor :pc, :output, :memory_item
 
-      def initialize(remain_gas:, pc:, memory:, memory_item:, stack:, output: ''.b)
+      def initialize(remain_gas:, pc:, memory:, memory_item:, stack:, output: ''.b, fork_config:)
         raise ArgumentError.new("remain_gas must more than 0") if remain_gas < 0
         @remain_gas = remain_gas
         @pc = pc
@@ -41,6 +41,7 @@ module Ciri
         @memory_item = memory_item
         @stack = stack
         @output = output
+        @fork_config = fork_config
       end
 
       def consume_gas(gas)
@@ -90,6 +91,10 @@ module Ciri
       # extend vm memory, used for memory_gas calculation
       def extend_memory(pos, size)
         if size != 0 && (new_item = Utils.ceil_div(pos + size, 32)) > memory_item
+          old_cost_gas = @fork_config.gas_of_memory self.memory_item
+          new_cost_gas = @fork_config.gas_of_memory new_item
+          consume_gas(new_cost_gas - old_cost_gas)
+
           self.memory_item = new_item
           new_size = new_item * 32
           self.memory << "\x00".b * new_size

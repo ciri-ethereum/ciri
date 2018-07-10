@@ -72,7 +72,9 @@ RSpec.describe Ciri::EVM do
         data = Ciri::Utils.to_bytes(t['exec']['data'])
         env = t['env'] && t['env'].map {|k, v| [k, Ciri::Utils.to_bytes(v)]}.to_h
 
-        ms = Ciri::EVM::MachineState.new(remain_gas: gas, pc: 0, stack: [], memory: "\x00".b * 256, memory_item: 0)
+        fork_config = Ciri::Forks::Frontier::Config.new
+        ms = Ciri::EVM::MachineState.new(remain_gas: gas, pc: 0, stack: [], memory: "\x00".b * 256,
+                                         memory_item: 0, fork_config: fork_config)
         instruction = Ciri::EVM::Instruction.new(address: address, origin: origin, price: gas_price, sender: caller,
                                                  bytes_code: code, value: value, data: data)
         block_info = env && Ciri::EVM::BlockInfo.new(

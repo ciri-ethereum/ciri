@@ -47,7 +47,8 @@ module Ciri
         # VM.spawn(...) == VM.new(...)
         # @return VM
         def spawn(state:, gas_limit:, header: nil, block_info: nil, instruction: EVM::Instruction.new, fork_config:)
-          ms = MachineState.new(remain_gas: gas_limit, pc: 0, stack: [], memory: "\x00".b * 256, memory_item: 0)
+          ms = MachineState.new(remain_gas: gas_limit, pc: 0, stack: [], memory: "\x00".b * 256, memory_item: 0,
+                                fork_config: fork_config)
 
           block_info = block_info || header && BlockInfo.new(
             coinbase: header.beneficiary,
@@ -277,16 +278,10 @@ module Ciri
         prev_sub_state = sub_state.dup
 
         # call operation
-        operation.call(self)
-        # calculate gas_cost
-        new_memory_cost = fork_config.gas_of_memory(ms.memory_item)
-        memory_gas_cost = new_memory_cost - old_memory_cost
-
-        if ms.remain_gas >= memory_gas_cost
-          ms.consume_gas memory_gas_cost
-        else
-          # memory gas_not_enough
-          @exception = GasNotEnoughError.new "gas not enough: gas remain:#{ms.remain_gas} gas cost: #{memory_gas_cost}"
+        begin
+          operation.call(self)
+        rescue VMError => e
+          @exception = e
         end
 
         # revert sub_state and return if exception occur
@@ -295,7 +290,7 @@ module Ciri
           return
         end
 
-        debug("depth: #{instruction.execute_depth} pc: #{ms.pc} #{operation.name} gas: #{op_cost + memory_gas_cost} stack: #{stack.size} logs: #{sub_state.log_series.size}")
+        debug("depth: #{instruction.execute_depth} pc: #{ms.pc} #{operation.name} gas: #{op_cost} stack: #{stack.size} logs: #{sub_state.log_series.size}")
         ms.pc = case
                 when w == OP::JUMP
                   @jump_to
