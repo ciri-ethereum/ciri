@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-# Copyright (c) 2018, by Jiang Jinyang. <https://justjjy.com>
+# Copyright (c) 2018, by Jiang Jinyang. <https://justjjy.com>, classicalliu.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -23,67 +23,20 @@
 
 # this module include several methods translated from pydevp2p.devp2p.crypto
 
+require "ciri/crypto/version"
 require 'openssl'
 require 'ciri/utils'
 require 'secp256k1'
+
+require_relative "./crypto/errors"
+require_relative "./crypto/signature"
+require_relative "./key"
 
 module Ciri
   module Crypto
     extend self
 
     ECIES_CIPHER_NAME = 'aes-128-ctr'
-    SECP256K1N = 115792089237316195423570985008687907852837564279074904382605163141518161494337
-
-    class Error < StandardError
-    end
-    class ECIESDecryptionError < Error
-    end
-    class ECDSASignatureError < Error
-    end
-
-    class Signature
-      attr_reader :r, :s, :v
-
-      def initialize(signature: nil, vrs: nil)
-        if !!signature == !!vrs
-          raise ArgumentError.new("should pass signature_bytes or vrs, but can't provide both together")
-        end
-
-        if signature
-          unless signature.size == 65
-            raise ECDSASignatureError.new("signature size should be 65, got: #{signature.size}")
-          end
-
-          @r = Utils.big_endian_decode(signature[0...32])
-          @s = Utils.big_endian_decode(signature[32...64])
-          @v = Utils.big_endian_decode(signature[64])
-        else
-          @v, @r, @s = vrs
-
-          unless self.signature.size == 65
-            raise ECDSASignatureError.new("vrs is incorrect")
-          end
-        end
-      end
-
-      def signature
-        @signature ||= Utils.big_endian_encode(@r, "\x00".b, size: 32) +
-          Utils.big_endian_encode(@s, "\x00".b, size: 32) +
-          Utils.big_endian_encode(@v, "\x00".b)
-      end
-
-      alias to_s signature
-
-      def valid?
-        v <= 1 &&
-          r < SECP256K1N && r >= 1 &&
-          s < SECP256K1N && s >= 1
-      end
-
-      def low_s?
-        s < (SECP256K1N / 2)
-      end
-    end
 
     def ecdsa_signature(key, data)
       secp256k1_key = ensure_secp256k1_key(privkey: key)
