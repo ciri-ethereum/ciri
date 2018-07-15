@@ -23,6 +23,7 @@ Gem::Specification.new do |spec|
   # components
   spec.add_dependency 'ciri-utils', '~> 0.2.0'
   spec.add_dependency 'ciri-rlp', '~> 0.1.1'
+  spec.add_dependency 'ciri-crypto', '~> 0.1.0'
 
   spec.add_dependency 'ffi', '~> 1.9.23'
   spec.add_dependency 'lru_redux', '~> 1.1.0'
