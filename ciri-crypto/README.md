@@ -22,19 +22,21 @@ Or install it yourself as:
 
 ```ruby
   # signature
-  Ciri::Crypto.esdsa_signature(key, data)
+  Ciri::Crypto.esdsa_signature("\x00...(privkey)", "\x00...(data)")
   
   # recover
-  Ciri::Crypto.ecdsa_recover(msg, signature, return_raw_key: true)
+  Ciri::Crypto.ecdsa_recover("I\x90...(signed hash)", "f\xAA...(signature)", return_raw_key: true)
   
   # ecies encrypt
-  Ciri::Crypto.ecies_encrypt(message, raw_pubkey, shared_mac_data = '')
+  key = OpenSSL::PKey::EC.new('secp256k1')
+  key.generate_key 
+  encrypt_data = Ciri::Crypto.ecies_encrypt("hello ciri", key, shared_mac_data = '')
   
   # ecies decrypt
-  Ciri::Crypto.ecies_encrypt(data, private_key, shared_mac_data = '')
+  Ciri::Crypto.ecies_decrypt(encrypt_data, key, shared_mac_data = '')
   
   # ensure secp256k1 key 
-  Ciri::Crypto.ensure_secp256k1_key(private_key) 
+  Ciri::Crypto.ensure_secp256k1_key(privkey: "\x00...") 
 ```
 
 ## Development

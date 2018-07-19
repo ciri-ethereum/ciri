@@ -6,8 +6,8 @@ require "ciri/crypto/version"
 Gem::Specification.new do |spec|
   spec.name          = "ciri-crypto"
   spec.version       = Ciri::Crypto::VERSION
-  spec.authors       = ["classicalliu"]
-  spec.email         = ["classicalliu@gmail.com"]
+  spec.authors       = ["classicalliu", "Jiang Jinyang"]
+  spec.email         = ["classicalliu@gmail.com", "jjyruby@gmail.com"]
 
   spec.summary       = %q{Crypto module of [Ciri](https://github.com/ciri-ethereum/ciri)}
   spec.description   = %q{A Ciri crypto module}

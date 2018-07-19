@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    ciri-crypto (0.1.0)
+    ciri-crypto (0.1.1)
       bitcoin-secp256k1 (~> 0.4.0)
       ciri-utils (~> 0.2.0)
 
