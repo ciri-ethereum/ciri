@@ -10,7 +10,7 @@ PATH
       lru_redux (~> 1.1.0)
       snappy (~> 0.0.17)
     ciri-rlp (0.1.1)
-      ciri-utils (~> 0.1.0)
+      ciri-utils (~> 0.2.0)
     ciri-utils (0.2.0)
       digest-sha3 (~> 1.1.0)
 
@@ -50,4 +50,4 @@ DEPENDENCIES
   rspec (~> 3.0)
 
 BUNDLED WITH
-   1.16.1
+   1.16.2

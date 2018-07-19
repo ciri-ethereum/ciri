@@ -23,6 +23,7 @@
 
 require_relative 'nibbles'
 require 'forwardable'
+require 'ciri/utils'
 
 module Ciri
   class Trie
