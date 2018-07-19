@@ -23,7 +23,7 @@
 
 require 'openssl'
 require 'ciri/utils'
-require_relative 'crypto'
+require 'ciri/crypto'
 
 module Ciri
 

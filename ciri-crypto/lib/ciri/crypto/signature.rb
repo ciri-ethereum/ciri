@@ -21,7 +21,7 @@
 # THE SOFTWARE.
 
 require "ciri/utils"
-require_relative "./errors"
+require_relative "errors"
 
 module Ciri
   module Crypto

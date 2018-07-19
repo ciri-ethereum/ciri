@@ -10,7 +10,7 @@ PATH
       ffi (~> 1.9.23)
       lru_redux (~> 1.1.0)
       snappy (~> 0.0.17)
-    ciri-crypto (0.1.0)
+    ciri-crypto (0.1.1)
       bitcoin-secp256k1 (~> 0.4.0)
       ciri-utils (~> 0.2.0)
     ciri-rlp (0.1.1)

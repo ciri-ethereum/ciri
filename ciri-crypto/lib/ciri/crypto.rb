@@ -28,9 +28,8 @@ require 'openssl'
 require 'ciri/utils'
 require 'secp256k1'
 
-require_relative "./crypto/errors"
-require_relative "./crypto/signature"
-require_relative "./key"
+require_relative "crypto/errors"
+require_relative "crypto/signature"
 
 module Ciri
   module Crypto
