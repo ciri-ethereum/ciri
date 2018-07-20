@@ -292,7 +292,14 @@ module Ciri
       RETURNDATACOPY = 0x3e
 
       # 40s: block information
-      BLOCKHASH = 0x40
+      def_op :BLOCKHASH, 0x40, 1, 1 do |vm|
+        height = vm.pop(Integer)
+        # cause current block hash do not exists in chain
+        # here we compute distance of parent height and ancestor height
+        # and use parent_hash to find ancestor hash
+        distance = vm.block_info.number - height - 1
+        vm.push vm.state.get_ancestor_hash(vm.block_info.parent_hash, distance)
+      end
 
       def_op :COINBASE, 0x41, 0, 1 do |vm|
         vm.push vm.block_info.coinbase
@@ -450,7 +457,7 @@ module Ciri
         vm.extend_memory(input_mem_pos, input_size)
 
         status, output = vm.call_message(sender: vm.instruction.address, value: value,
-                                         data: data, receipt: target, code_address: target)
+                                         data: data, target: target, code_address: target)
 
         output_size = [output_mem_size, output.size].min
         vm.extend_memory(output_mem_pos, output_size)
@@ -471,7 +478,7 @@ module Ciri
         data = vm.memory_fetch(input_mem_pos, input_size)
 
         status, output = vm.call_message(sender: vm.instruction.address, value: value,
-                                         data: data, receipt: vm.instruction.address, code_address: target)
+                                         data: data, target: vm.instruction.address, code_address: target)
 
         output_size = [output_mem_size, output.size].min
         vm.extend_memory(output_mem_pos, output_size)
@@ -495,7 +502,7 @@ module Ciri
         vm.extend_memory(input_mem_pos, input_size)
 
         status, output = vm.call_message(sender: vm.instruction.sender, value: vm.instruction.value,
-                                         data: data, receipt: vm.instruction.address, code_address: target)
+                                         data: data, target: vm.instruction.address, code_address: target)
 
         output_size = [output_mem_size, output.size].min
         vm.extend_memory(output_mem_pos, output_size)

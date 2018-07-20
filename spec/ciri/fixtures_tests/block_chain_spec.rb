@@ -146,18 +146,20 @@ RSpec.describe Ciri::Chain do
   slow_topics = %w{
   }.map {|f| ["fixtures/BlockchainTests/#{f}", true]}.to_h
 
-  white_list_topics = %w{
-    bcBlockGasLimitTest
-    bcValidBlockTest
-    bcForgedTest
-    bcInvalidHeaderTest
-    bcStateTest
-    bcGasPricerTest
+  broken_topics = %w{
+    TransitionTests
+    bcExploitTest
+    bcStateTests
+    bcUncleHeaderValidity
+    bcWalletTest
+    bcForkStressTest
+    bcRandomBlockhashTest
+    GeneralStateTests
   }.map {|f| ["fixtures/BlockchainTests/#{f}", true]}.to_h
 
   Dir.glob("fixtures/BlockchainTests/*").each do |topic|
     # skip topics
-    unless white_list_topics.include? topic
+    if broken_topics.include? topic
       skip topic
       next
     end
@@ -179,6 +181,9 @@ RSpec.describe Ciri::Chain do
     end
   end if true
 
-    # run_test_case[JSON.load(open 'fixtures/BlockchainTests/bcGasPricerTest/RPC_API_Test.json'), prefix: 'test', tags: {}]
+  # Dir.glob("fixtures/BlockchainTests/bcMultiChainTest/*").each do |topic|
+  # topic ||= nil
+  #   run_test_case[JSON.load(open topic || 'fixtures/BlockchainTests/bcMultiChainTest/ChainAtoChainB_BlockHash.json'), prefix: 'test', tags: {}]
+  # end
 
 end

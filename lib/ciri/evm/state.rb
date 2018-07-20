@@ -33,9 +33,22 @@ module Ciri
       def_delegators :@account_db, :set_nonce, :increment_nonce, :set_balance, :add_balance, :touch_account,
                      :find_account, :delete_account, :account_dead?, :store, :fetch, :set_account_code, :get_account_code
 
-      def initialize(db, state_root: nil)
+      def initialize(db, state_root: nil, chain: nil)
         @db = db
         @account_db = DB::AccountDB.new(db, root_hash: state_root)
+        @chain = chain
+      end
+
+      # get ancestor hash
+      def get_ancestor_hash(current_hash, ancestor_distance)
+        if ancestor_distance > 256 || ancestor_distance < 0
+          0
+        elsif ancestor_distance == 0
+          current_hash
+        else
+          parent_hash = @chain.get_header(current_hash).parent_hash
+          get_ancestor_hash(parent_hash, ancestor_distance - 1)
+        end
       end
 
       def snapshot

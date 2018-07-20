@@ -25,7 +25,8 @@ module Ciri
   class EVM
 
     # Block Info
-    BlockInfo = Struct.new(:coinbase, :difficulty, :gas_limit, :number, :timestamp, keyword_init: true)
+    BlockInfo = Struct.new(:coinbase, :difficulty, :gas_limit, :number, :timestamp, :block_hash, :parent_hash,
+                           keyword_init: true)
 
   end
 end
