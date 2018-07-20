@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-# Copyright (c) 2018, by Jiang Jinyang. <https://justjjy.com>
+# Copyright (c) 2018, by Jiang Jinyang. <https://justjjy.com>, classicalliu.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -22,7 +22,8 @@
 
 
 require 'openssl'
-require_relative 'crypto'
+require 'ciri/utils'
+require 'ciri/crypto'
 
 module Ciri
 

@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-# Copyright (c) 2018, by Jiang Jinyang. <https://justjjy.com>
+# Copyright (c) 2018, by Jiang Jinyang. <https://justjjy.com>, classicalliu.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -21,9 +21,9 @@
 # THE SOFTWARE.
 
 
-require 'spec_helper'
+# require 'spec_helper'
+require 'openssl'
 require 'ciri/crypto'
-require 'ciri/key'
 
 RSpec.describe Ciri::Crypto do
   it 'self consistent' do
@@ -37,10 +37,17 @@ RSpec.describe Ciri::Crypto do
 
   context 'ecdsa recover' do
     it 'self consistent' do
-      key = Ciri::Key.random
+      ec_key = OpenSSL::PKey::EC.new('secp256k1')
+      ec_key.generate_key
+
       msg = Ciri::Utils.keccak "hello world"
-      signature = key.ecdsa_signature(msg)
-      expect(Ciri::Key.ecdsa_recover(msg, signature).raw_public_key).to eq key.raw_public_key
+
+      privkey = ec_key.private_key.to_s(2)
+      signature = Ciri::Crypto.ecdsa_signature(privkey, msg)
+
+      raw_pubkey = Ciri::Crypto.ecdsa_recover(msg, signature, return_raw_key: true)
+
+      expect(raw_pubkey).to eq ec_key.public_key.to_bn.to_s(2)
     end
 
     it 'pass geth recovery test case' do

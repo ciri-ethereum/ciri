@@ -58,7 +58,7 @@ Documentation
 
 [YARD documentation](https://www.rubydoc.info/github/ciri-ethereum/ciri/master)
 
-Authors
+Contributors
 ---------------
 
-* [Jiang Jinyang](https://justjjy.com) (jjyruby@gmail.com)
+See [Contributors](https://github.com/ciri-ethereum/ciri/graphs/contributors)
