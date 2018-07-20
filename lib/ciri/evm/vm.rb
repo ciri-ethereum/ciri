@@ -55,7 +55,9 @@ module Ciri
             difficulty: header.difficulty,
             gas_limit: header.gas_limit,
             number: header.number,
-            timestamp: header.timestamp
+            timestamp: header.timestamp,
+            parent_hash: header.parent_hash,
+            block_hash: header.get_hash,
           )
 
           vm = VM.new(
@@ -160,7 +162,7 @@ module Ciri
 
       # low level call message interface
       # CALL, CALLCODE, DELEGATECALL ops is base on this method
-      def call_message(sender:, value:, receipt:, data:, code_address: receipt)
+      def call_message(sender:, value:, target:, data:, code_address: target)
         # return status code 0 represent execution failed
         return [0, ''.b] unless value <= find_account(sender).balance && instruction.execute_depth <= 1024
 
@@ -168,10 +170,10 @@ module Ciri
 
         snapshot = state.snapshot
 
-        transact(sender: sender, value: value, to: receipt)
+        transact(sender: sender, value: value, to: target)
 
         message_call_instruction = instruction.dup
-        message_call_instruction.address = receipt
+        message_call_instruction.address = target
         message_call_instruction.sender = sender
         message_call_instruction.value = value
 
@@ -272,7 +274,6 @@ module Ciri
         raise "can't find operation #{w}, pc #{ms.pc}" unless operation
 
         op_cost = fork_config.gas_of_operation(self)
-        old_memory_cost = fork_config.gas_of_memory(ms.memory_item)
         ms.consume_gas op_cost
 
         # call operation
@@ -320,9 +321,9 @@ module Ciri
         w = instruction.get_op(ms.pc)
         case
         when w == OP::INVALID
-          InvalidOpCodeError.new "can't find op code #{w}"
+          InvalidOpCodeError.new "can't find op code 0x#{w.to_s(16)}"
         when OP.input_count(w).nil?
-          InvalidOpCodeError.new "can't find op code #{w}"
+          InvalidOpCodeError.new "can't find op code 0x#{w.to_s(16)}"
         when ms.stack.size < (consume = OP.input_count(w))
           StackError.new "stack not enough: stack:#{ms.stack.size} next consume: #{consume}"
         when ms.remain_gas < (gas_cost = fork_config.gas_of_operation(self))

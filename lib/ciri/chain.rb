@@ -86,7 +86,7 @@ module Ciri
       end
 
       parent_header = @header_chain.get_header(block.header.parent_hash)
-      state = EVM::State.new(store, state_root: parent_header.state_root)
+      state = EVM::State.new(store, state_root: parent_header.state_root, chain: self)
       evm = EVM.new(state: state)
       # valid transactions and gas
       begin
@@ -185,6 +185,7 @@ module Ciri
     private
 
     def is_kin?(ommer, parent, n)
+      return false if parent.nil?
       return false if n == 0
       return true if get_header(ommer.parent_hash) == get_header(parent.header.parent_hash) &&
         ommer != parent.header &&

@@ -140,7 +140,7 @@ module Ciri
         # contract creation
         _, exception = @vm.create_contract(value: instruction.value, init: instruction.bytes_code)
       else
-        _, _, exception = @vm.call_message(sender: t.sender, value: t.value, receipt: t.to, data: t.data)
+        _, _, exception = @vm.call_message(sender: t.sender, value: t.value, target: t.to, data: t.data)
       end
       # rescue ArgumentError => e
       #   raise unless ignore_exception
