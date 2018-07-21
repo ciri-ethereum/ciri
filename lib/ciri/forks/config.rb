@@ -20,44 +20,22 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
-
 module Ciri
   module Forks
 
-    class Base
-      # gas methods
-      def gas_of_operation(vm)
-        raise NotImplementedError
+    class Config
+
+      # @schema_rule [[0, Frontier], [100, Homestead]]
+      def initialize(schema_rules)
+        @schema_rules = schema_rules
       end
 
-      def gas_of_memory(word_count)
-        raise NotImplementedError
+      def choose_fork(number)
+        @schema_rules.reverse_each.find do |start_number, _schema|
+          number >= start_number
+        end[1]
       end
 
-      def intrinsic_gas_of_transaction(transaction)
-        raise NotImplementedError
-      end
-
-      def calculate_deposit_code_gas(code_bytes)
-        raise NotImplementedError
-      end
-
-      def mining_rewards_of_block(block)
-        raise NotImplementedError
-      end
-
-      def calculate_refund_gas(vm)
-        raise NotImplementedError
-      end
-
-      # chain difficulty method
-      def difficulty_time_factor(header, parent_header)
-        raise NotImplementedError
-      end
-
-      def difficulty_virtual_height(height)
-        raise NotImplementedError
-      end
     end
 
   end

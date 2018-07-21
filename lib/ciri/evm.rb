@@ -37,10 +37,11 @@ module Ciri
 
     def_delegators :@state, :find_account, :account_dead?, :get_account_code, :state_root
 
-    attr_reader :state
+    attr_reader :state, :fork_schema
 
-    def initialize(state:)
+    def initialize(state:, fork_schema: Ciri::Forks::Frontier::Schema.new)
       @state = state
+      @fork_schema = fork_schema
     end
 
     # transition block
@@ -77,8 +78,7 @@ module Ciri
         raise InvalidTransition.new("incorrect gas_used, actual used: #{total_gas_used} header: #{block.header.gas_used}")
       end
 
-      fork_config = Ciri::Forks.detect_fork(header: block.header, number: block.header.number)
-      rewards = fork_config.mining_rewards_of_block(block)
+      rewards = fork_schema.mining_rewards_of_block(block)
 
       # apply rewards
       rewards.each do |address, value|
@@ -102,9 +102,13 @@ module Ciri
 
       # remove gas fee from account balance
       state.add_balance(t.sender, -1 * t.gas_limit * t.gas_price)
-      fork_config = Ciri::Forks.detect_fork(header: header, number: block_info&.number)
 
-      gas_limit = t.gas_limit - fork_config.intrinsic_gas_of_transaction(t)
+      intrinsic_gas = fork_schema.intrinsic_gas_of_transaction(t)
+      if intrinsic_gas > t.gas_limit
+        raise InvalidTransaction.new('intrinsic gas overflowed gas limit')
+      end
+
+      gas_limit = t.gas_limit - intrinsic_gas
 
       instruction = Instruction.new(
         origin: t.sender,
@@ -130,7 +134,7 @@ module Ciri
         instruction: instruction,
         header: header,
         block_info: block_info,
-        fork_config: fork_config
+        fork_schema: fork_schema
       )
 
       # transact ether
@@ -149,7 +153,7 @@ module Ciri
       raise exception if !ignore_exception && exception
 
       # refund gas
-      refund_gas = fork_config.calculate_refund_gas(@vm)
+      refund_gas = fork_schema.calculate_refund_gas(@vm)
       gas_used = t.gas_limit - @vm.remain_gas
       refund_gas = [refund_gas, gas_used / 2].min
       state.add_balance(t.sender, (refund_gas + @vm.remain_gas) * t.gas_price)
@@ -177,7 +181,7 @@ module Ciri
         gas_limit: 0,
         instruction: nil,
         block_info: BlockInfo.new,
-        fork_config: nil
+        fork_schema: nil
       )
     end
 

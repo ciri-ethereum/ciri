@@ -22,55 +22,28 @@
 
 
 require_relative 'base'
-require_relative 'frontier/cost'
+require_relative 'frontier'
 
 module Ciri
   module Forks
-    module Frontier
-      class Schema < Base
+    module Homestead
+      class Schema < Forks::Frontier::Schema
 
-        BLOCK_REWARD = 5 * 10.pow(18) # 5 ether
+        include Forks::Frontier::Cost
 
-        # gas methods
-        def gas_of_operation(vm)
-          Cost.cost_of_operation vm
+        def initialize(support_dao_fork:)
+          @support_dao_fork = support_dao_fork
         end
 
-        def gas_of_memory(word_count)
-          Cost.cost_of_memory word_count
-        end
-
-        def intrinsic_gas_of_transaction(transaction)
-          Cost.intrinsic_gas_of_transaction transaction
-        end
-
-        def calculate_deposit_code_gas(code_bytes)
-          Cost::G_CODEDEPOSIT * (code_bytes || ''.b).size
-        end
-
-        def calculate_refund_gas(vm)
-          vm.sub_state.suicide_accounts.size * Cost::R_SELFDESTRUCT
-        end
-
-        def mining_rewards_of_block(block)
-          rewards = Hash.new(0)
-          # reward miner
-          rewards[block.header.beneficiary] += ((1 + block.ommers.count.to_f / 32) * BLOCK_REWARD).to_i
-
-          # reward ommer(uncle) block miners
-          block.ommers.each do |ommer|
-            rewards[ommer.beneficiary] += ((1 + (ommer.number - block.header.number).to_f / 8) * BLOCK_REWARD).to_i
-          end
-          rewards
+        def intrinsic_gas_of_transaction(t)
+          gas = (t.data.each_byte || '').reduce(0) {|sum, i| sum + (i.zero? ? G_TXDATAZERO : G_TXDATANONZERO)}
+          gas + (t.to.empty? ? G_TXCREATE : 0) + G_TRANSACTION
         end
 
         # chain difficulty method
+        # https://github.com/ethereum/EIPs/blob/984cf5de90bbf5fbe7e49be227b0c2f9567e661e/EIPS/eip-2.md
         def difficulty_time_factor(header, parent_header)
-          (header.timestamp - parent_header.timestamp) < 13 ? 1 : -1
-        end
-
-        def difficulty_virtual_height(height)
-          height
+          [1 - (header.timestamp - parent_header.timestamp) / 10, -99].max
         end
 
       end
