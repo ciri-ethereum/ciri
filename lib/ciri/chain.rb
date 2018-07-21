@@ -25,6 +25,7 @@ require 'forwardable'
 require 'ciri/evm'
 require 'ciri/evm/state'
 require 'ciri/utils/logger'
+require 'ciri/forks'
 require_relative 'chain/header_chain'
 require_relative 'chain/block'
 require_relative 'chain/header'
@@ -56,11 +57,12 @@ module Ciri
 
     attr_reader :genesis, :network_id, :store, :header_chain
 
-    def initialize(store, genesis:, network_id:, byzantium_block: nil, homestead_block: nil)
+    def initialize(store, genesis:, network_id:, fork_config:)
       @store = store
-      @header_chain = HeaderChain.new(store, byzantium_block: byzantium_block, homestead_block: homestead_block)
+      @header_chain = HeaderChain.new(store, fork_config: fork_config)
       @genesis = genesis
       @network_id = network_id
+      @fork_config = fork_config
       load_or_init_store
     end
 
@@ -87,7 +89,7 @@ module Ciri
 
       parent_header = @header_chain.get_header(block.header.parent_hash)
       state = EVM::State.new(store, state_root: parent_header.state_root, chain: self)
-      evm = EVM.new(state: state)
+      evm = EVM.new(state: state, fork_schema: @fork_config.choose_fork(block.header.number))
       # valid transactions and gas
       begin
         receipts = evm.transition(block)

@@ -21,15 +21,11 @@
 # THE SOFTWARE.
 
 
+require_relative 'forks/config'
 require_relative 'forks/frontier'
+require_relative 'forks/homestead'
 
 module Ciri
   module Forks
-
-    def self.detect_fork(header: nil, number: nil)
-      number ||= header.number
-      Frontier::Config.new
-    end
-
   end
 end

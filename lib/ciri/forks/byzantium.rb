@@ -22,55 +22,25 @@
 
 
 require_relative 'base'
-require_relative 'frontier/cost'
+require_relative 'homestead'
 
 module Ciri
   module Forks
-    module Frontier
-      class Schema < Base
+    module Byzantium
+      class Schema < Forks::Frontier::Schema
 
-        BLOCK_REWARD = 5 * 10.pow(18) # 5 ether
-
-        # gas methods
-        def gas_of_operation(vm)
-          Cost.cost_of_operation vm
-        end
-
-        def gas_of_memory(word_count)
-          Cost.cost_of_memory word_count
-        end
-
-        def intrinsic_gas_of_transaction(transaction)
-          Cost.intrinsic_gas_of_transaction transaction
-        end
-
-        def calculate_deposit_code_gas(code_bytes)
-          Cost::G_CODEDEPOSIT * (code_bytes || ''.b).size
-        end
-
-        def calculate_refund_gas(vm)
-          vm.sub_state.suicide_accounts.size * Cost::R_SELFDESTRUCT
-        end
-
-        def mining_rewards_of_block(block)
-          rewards = Hash.new(0)
-          # reward miner
-          rewards[block.header.beneficiary] += ((1 + block.ommers.count.to_f / 32) * BLOCK_REWARD).to_i
-
-          # reward ommer(uncle) block miners
-          block.ommers.each do |ommer|
-            rewards[ommer.beneficiary] += ((1 + (ommer.number - block.header.number).to_f / 8) * BLOCK_REWARD).to_i
-          end
-          rewards
-        end
+        include Forks::Frontier::Cost
 
         # chain difficulty method
+        # https://github.com/ethereum/EIPs/blob/181867ae830df5419eb9982d2a24797b2dcad28f/EIPS/eip-609.md
+        # https://github.com/ethereum/EIPs/blob/984cf5de90bbf5fbe7e49be227b0c2f9567e661e/EIPS/eip-100.md
         def difficulty_time_factor(header, parent_header)
-          (header.timestamp - parent_header.timestamp) < 13 ? 1 : -1
+          y = header.ommers_hash == Utils::BLANK_SHA3 ? 1 : 2
+          [y - (header.timestamp - parent_header.timestamp) / 9, -99].max
         end
 
         def difficulty_virtual_height(height)
-          height
+          [(height - 3000000), 0].max
         end
 
       end

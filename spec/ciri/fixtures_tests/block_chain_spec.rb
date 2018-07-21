@@ -74,6 +74,55 @@ RSpec.describe Ciri::Chain do
     header
   end
 
+  extract_fork_config = proc do |fixture|
+    network = fixture['network']
+    schema_rules = case network
+                   when "Frontier"
+                     [
+                       [0, Ciri::Forks::Frontier::Schema.new],
+                     ]
+                   when "Homestead"
+                     [
+                       [0, Ciri::Forks::Homestead::Schema.new(support_dao_fork: false)],
+                     ]
+                   when "EIP150"
+                     [
+                       [0, Ciri::Forks::TangerineWhistle::Schema.new],
+                     ]
+                   when "EIP158"
+                     [
+                       [0, Ciri::Forks::SpuriousDragon::Schema.new],
+                     ]
+                   when "Byzantium"
+                     [
+                       [0, Ciri::Forks::Byzantium::Schema.new],
+                     ]
+                   when "FrontierToHomesteadAt5"
+                     [
+                       [0, Ciri::Forks::Frontier::Schema.new],
+                       [5, Ciri::Forks::Homestead::Schema.new(support_dao_fork: false)],
+                     ]
+                   when "HomesteadToEIP150At5"
+                     [
+                       [0, Ciri::Forks::Homestead::Schema.new(support_dao_fork: false)],
+                       [5, Ciri::Forks::TangerineWhistle::Schema.new],
+                     ]
+                   when "HomesteadToDaoAt5"
+                     [
+                       [0, Ciri::Forks::Homestead::Schema.new(support_dao_fork: true, dao_fork_block_number: 5)],
+                     ]
+                   when "EIP158ToByzantiumAt5"
+                     [
+                       [0, Ciri::Forks::SpuriousDragon::Schema.new],
+                       [5, Ciri::Forks::Byzantium::Schema.new],
+                     ]
+                   else
+                     raise ArgumentError.new("unknown network: #{network}")
+                   end
+
+    Ciri::Forks::Config.new(schema_rules)
+  end
+
   run_test_case = proc do |test_case, prefix: nil, tags: {}|
     test_case.each do |name, t|
       tags2 = tags.dup
@@ -104,14 +153,15 @@ RSpec.describe Ciri::Chain do
                     Ciri::Chain::Block.new(header: parse_header[t['genesisBlockHeader']], transactions: [], ommers: [])
                   end
 
-        chain = Ciri::Chain.new(db, genesis: genesis, network_id: 0)
+        fork_config = extract_fork_config.call(t)
+        chain = Ciri::Chain.new(db, genesis: genesis, network_id: 0, fork_config: fork_config)
 
         # run block
         t['blocks'].each do |b|
           begin
             block = Ciri::Chain::Block.rlp_decode Ciri::Utils.to_bytes(b['rlp'])
             chain.import_block(block)
-          rescue Ciri::Chain::InvalidBlockError, Ciri::RLP::InvalidValueError => e
+          rescue Ciri::Chain::InvalidBlockError, Ciri::RLP::InvalidValueError, Ciri::EVM::Error => e
             p e
             expect(b['blockHeader']).to be_nil
             expect(b['transactions']).to be_nil
@@ -147,7 +197,6 @@ RSpec.describe Ciri::Chain do
   }.map {|f| ["fixtures/BlockchainTests/#{f}", true]}.to_h
 
   broken_topics = %w{
-    TransitionTests
     bcExploitTest
     bcStateTests
     bcUncleHeaderValidity
@@ -183,7 +232,7 @@ RSpec.describe Ciri::Chain do
 
   # Dir.glob("fixtures/BlockchainTests/bcMultiChainTest/*").each do |topic|
   # topic ||= nil
-  #   run_test_case[JSON.load(open topic || 'fixtures/BlockchainTests/bcMultiChainTest/ChainAtoChainB_BlockHash.json'), prefix: 'test', tags: {}]
+  # run_test_case[JSON.load(open topic || 'fixtures/BlockchainTests/TransitionTests/bcFrontierToHomestead/HomesteadOverrideFrontier.json'), prefix: 'test', tags: {}]
   # end
 
 end

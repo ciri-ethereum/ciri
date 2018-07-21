@@ -27,9 +27,10 @@ require 'ciri/utils'
 
 RSpec.describe Ciri::Chain do
   let(:store) {Ciri::DB::Backend::Memory.new}
+  let(:fork_config) {Ciri::Forks::Config.new([[0, Ciri::Forks::Frontier::Schema.new]])}
 
   context Ciri::Chain::HeaderChain do
-    let(:header_chain) {Ciri::Chain::HeaderChain.new(store)}
+    let(:header_chain) {Ciri::Chain::HeaderChain.new(store, fork_config: fork_config)}
     let(:headers) do
       load_blocks('blocks').map(&:header)
     end
@@ -89,7 +90,7 @@ RSpec.describe Ciri::Chain do
       load_blocks('blocks')
     end
 
-    let(:chain) {Ciri::Chain.new(store, genesis: blocks[0], network_id: 0)}
+    let(:chain) {Ciri::Chain.new(store, genesis: blocks[0], network_id: 0, fork_config: fork_config)}
 
     it 'genesis is current block' do
       expect(chain.genesis_hash).to eq chain.current_block.header.get_hash
@@ -118,7 +119,7 @@ RSpec.describe Ciri::Chain do
         load_blocks('chain_fork/forked_chain')
       end
 
-      let(:chain) {Ciri::Chain.new(store, genesis: main_chain_blocks[0], network_id: 0)}
+      let(:chain) {Ciri::Chain.new(store, genesis: main_chain_blocks[0], network_id: 0, fork_config: fork_config)}
 
       it 'forked blocks should reorg current chain' do
         # initial main chain

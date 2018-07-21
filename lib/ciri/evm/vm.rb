@@ -46,9 +46,9 @@ module Ciri
         # this method provide a simpler interface to create VM and execute code
         # VM.spawn(...) == VM.new(...)
         # @return VM
-        def spawn(state:, gas_limit:, header: nil, block_info: nil, instruction: EVM::Instruction.new, fork_config:)
+        def spawn(state:, gas_limit:, header: nil, block_info: nil, instruction: EVM::Instruction.new, fork_schema:)
           ms = MachineState.new(remain_gas: gas_limit, pc: 0, stack: [], memory: "\x00".b * 256, memory_item: 0,
-                                fork_config: fork_config)
+                                fork_schema: fork_schema)
 
           block_info = block_info || header && BlockInfo.new(
             coinbase: header.beneficiary,
@@ -65,7 +65,7 @@ module Ciri
             machine_state: ms,
             block_info: block_info,
             instruction: instruction,
-            fork_config: fork_config
+            fork_schema: fork_schema
           )
           yield vm if block_given?
           vm
@@ -83,18 +83,18 @@ module Ciri
       def_delegators :@sub_state, :add_refund_account, :add_touched_account, :add_suicide_account
       def_delegators :@state, :find_account, :account_dead?, :store, :fetch, :set_account_code, :get_account_code
 
-      attr_reader :state, :machine_state, :instruction, :sub_state, :block_info, :fork_config
+      attr_reader :state, :machine_state, :instruction, :sub_state, :block_info, :fork_schema
       attr_accessor :output, :exception
 
       def initialize(state:, machine_state:, sub_state: nil, instruction:, block_info:,
-                     fork_config:, burn_gas_on_exception: true)
+                     fork_schema:, burn_gas_on_exception: true)
         @state = state
         @machine_state = machine_state
         @instruction = instruction
         @sub_state = sub_state || SubState.new
         @output = nil
         @block_info = block_info
-        @fork_config = fork_config
+        @fork_schema = fork_schema
         @burn_gas_on_exception = burn_gas_on_exception
       end
 
@@ -134,7 +134,7 @@ module Ciri
         call_instruction(create_contract_instruction) do
           execute
 
-          deposit_code_gas = fork_config.calculate_deposit_code_gas(output)
+          deposit_code_gas = fork_schema.calculate_deposit_code_gas(output)
 
           if deposit_code_gas > remain_gas
             # deposit_code_gas not enough
@@ -273,7 +273,7 @@ module Ciri
 
         raise "can't find operation #{w}, pc #{ms.pc}" unless operation
 
-        op_cost = fork_config.gas_of_operation(self)
+        op_cost = fork_schema.gas_of_operation(self)
         ms.consume_gas op_cost
 
         # call operation
@@ -326,7 +326,7 @@ module Ciri
           InvalidOpCodeError.new "can't find op code 0x#{w.to_s(16)}"
         when ms.stack.size < (consume = OP.input_count(w))
           StackError.new "stack not enough: stack:#{ms.stack.size} next consume: #{consume}"
-        when ms.remain_gas < (gas_cost = fork_config.gas_of_operation(self))
+        when ms.remain_gas < (gas_cost = fork_schema.gas_of_operation(self))
           GasNotEnoughError.new "gas not enough: gas remain:#{ms.remain_gas} gas cost: #{gas_cost}"
         when w == OP::JUMP && instruction.destinations.include?(ms.get_stack(0, Integer))
           InvalidJumpError.new "invalid jump dest #{ms.get_stack(0, Integer)}"

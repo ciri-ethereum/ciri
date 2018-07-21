@@ -72,9 +72,9 @@ RSpec.describe Ciri::EVM do
         data = Ciri::Utils.to_bytes(t['exec']['data'])
         env = t['env'] && t['env'].map {|k, v| [k, Ciri::Utils.to_bytes(v)]}.to_h
 
-        fork_config = Ciri::Forks::Frontier::Config.new
+        fork_schema = Ciri::Forks::Frontier::Schema.new
         ms = Ciri::EVM::MachineState.new(remain_gas: gas, pc: 0, stack: [], memory: "\x00".b * 256,
-                                         memory_item: 0, fork_config: fork_config)
+                                         memory_item: 0, fork_schema: fork_schema)
         instruction = Ciri::EVM::Instruction.new(address: address, origin: origin, price: gas_price, sender: caller,
                                                  bytes_code: code, value: value, data: data)
         block_info = env && Ciri::EVM::BlockInfo.new(
@@ -85,9 +85,9 @@ RSpec.describe Ciri::EVM do
           timestamp: env['currentTimestamp'],
         )
 
-        fork_config = Ciri::Forks::Frontier::Config.new
+        fork_schema = Ciri::Forks::Frontier::Schema.new
         vm = Ciri::EVM::VM.new(state: state, machine_state: ms, instruction: instruction, block_info: block_info,
-                               fork_config: fork_config, burn_gas_on_exception: false)
+                               fork_schema: fork_schema, burn_gas_on_exception: false)
 
         # ignore exception
         vm.run(ignore_exception: true)

@@ -10,12 +10,11 @@ module Ciri
       TD_SUFFIX = 't'
       NUM_SUFFIX = 'n'
 
-      attr_reader :store, :byzantium_block, :homestead_block
+      attr_reader :store
 
-      def initialize(store, byzantium_block: nil, homestead_block: nil)
+      def initialize(store, fork_config: nil)
         @store = store
-        @byzantium_block = byzantium_block
-        @homestead_block = homestead_block
+        @fork_config = fork_config
       end
 
       def head
@@ -71,29 +70,16 @@ module Ciri
       def calculate_difficulty(header, parent_header)
         return header.difficulty if header.number == 0
 
+        fork_schema = @fork_config.choose_fork(header.number)
+        difficulty_time_factor = fork_schema.difficulty_time_factor(header, parent_header)
+
         x = parent_header.difficulty / 2048
-        y = header.ommers_hash == Utils::BLANK_SHA3 ? 1 : 2
-
-        # handle byzantium fork
-        # https://github.com/ethereum/EIPs/blob/181867ae830df5419eb9982d2a24797b2dcad28f/EIPS/eip-609.md
-        # https://github.com/ethereum/EIPs/blob/984cf5de90bbf5fbe7e49be227b0c2f9567e661e/EIPS/eip-100.md
-        byzantium_fork = byzantium_block && header.number > byzantium_block
-        # https://github.com/ethereum/EIPs/blob/984cf5de90bbf5fbe7e49be227b0c2f9567e661e/EIPS/eip-2.md
-        homestead_fork = homestead_block && header.number > homestead_block
-
-        time_factor = if byzantium_fork
-                        [y - (header.timestamp - parent_header.timestamp) / 9, -99].max
-                      elsif homestead_fork
-                        [1 - (header.timestamp - parent_header.timestamp) / 10, -99].max
-                      else
-                        (header.timestamp - parent_header.timestamp) < 13 ? 1 : -1
-                      end
 
         # difficulty bomb
-        height = byzantium_fork ? [(header.number - 3000000), 0].max : header.number
+        height = fork_schema.difficulty_virtual_height(header.number)
         height_factor = 2 ** (height / 100000 - 2)
 
-        difficulty = (parent_header.difficulty + x * time_factor + height_factor).to_i
+        difficulty = (parent_header.difficulty + x * difficulty_time_factor + height_factor).to_i
         [header.difficulty, difficulty].max
       end
 
