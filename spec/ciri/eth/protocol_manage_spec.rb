@@ -38,7 +38,8 @@ RSpec.describe Ciri::Eth::ProtocolManage do
   end
   let(:tmp_dir) {Dir.mktmpdir}
   let(:store) {Ciri::DB::Backend::Rocks.new tmp_dir}
-  let(:chain) {Ciri::Chain.new(store, genesis: blocks[0], network_id: 0)}
+  let(:fork_config) {Ciri::Forks::Config.new([[0, Ciri::Forks::Frontier::Schema.new]])}
+  let(:chain) {Ciri::Chain.new(store, genesis: blocks[0], network_id: 0, fork_config: fork_config)}
 
   before {Ciri::Actor.default_executor = Concurrent::CachedThreadPool.new}
 
