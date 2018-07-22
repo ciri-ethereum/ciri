@@ -381,7 +381,7 @@ module Ciri
       end
 
       def_op :GAS, 0x5a, 0, 1 do |vm|
-        vm.push vm.machine_state.remain_gas
+        vm.push vm.remain_gas
       end
 
       def_op :JUMPDEST, 0x5b, 0, 0
@@ -489,7 +489,7 @@ module Ciri
       def_op :RETURN, 0xf3, 2, 0 do |vm|
         index, size = vm.pop_list(2, Integer)
         vm.extend_memory(index, size)
-        vm.output = vm.memory_fetch(index, size)
+        vm.set_output vm.memory_fetch(index, size)
       end
 
       def_op :DELEGATECALL, 0xf4, 6, 1 do |vm|

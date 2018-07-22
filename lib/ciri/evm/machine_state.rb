@@ -30,23 +30,13 @@ module Ciri
     # represent current vm status, include stack, memory..
     class MachineState
 
-      attr_reader :remain_gas, :memory, :stack
-      attr_accessor :pc, :output, :memory_item
+      attr_reader :memory, :stack
+      attr_accessor :memory_item
 
-      def initialize(remain_gas:, pc:, memory:, memory_item:, stack:, output: ''.b, fork_schema:)
-        raise ArgumentError.new("remain_gas must more than 0") if remain_gas < 0
-        @remain_gas = remain_gas
-        @pc = pc
+      def initialize(memory: "\x00".b * 256, memory_item: 0, stack: [])
         @memory = memory
         @memory_item = memory_item
         @stack = stack
-        @output = output
-        @fork_schema = fork_schema
-      end
-
-      def consume_gas(gas)
-        raise GasNotEnoughError.new("can't consume gas to negative, remain_gas: #{remain_gas}, consumed: #{gas}") if gas > remain_gas
-        @remain_gas -= gas
       end
 
       # fetch a list of items from stack
@@ -89,11 +79,11 @@ module Ciri
       end
 
       # extend vm memory, used for memory_gas calculation
-      def extend_memory(pos, size)
+      def extend_memory(context, pos, size)
         if size != 0 && (new_item = Utils.ceil_div(pos + size, 32)) > memory_item
-          old_cost_gas = @fork_schema.gas_of_memory self.memory_item
-          new_cost_gas = @fork_schema.gas_of_memory new_item
-          consume_gas(new_cost_gas - old_cost_gas)
+          old_cost_gas = context.fork_schema.gas_of_memory self.memory_item
+          new_cost_gas = context.fork_schema.gas_of_memory new_item
+          context.consume_gas(new_cost_gas - old_cost_gas)
 
           self.memory_item = new_item
           new_size = new_item * 32

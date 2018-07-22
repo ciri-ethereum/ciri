@@ -93,7 +93,7 @@ module Ciri
           def cost_of_operation(vm)
             ms = vm.machine_state
             instruction = vm.instruction
-            w = instruction.get_op(ms.pc)
+            w = instruction.get_op(vm.pc)
             if w == SSTORE
               cost_of_sstore(vm)
             elsif w == EXP && ms.get_stack(1, Integer) == 0

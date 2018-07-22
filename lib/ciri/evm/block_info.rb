@@ -26,7 +26,20 @@ module Ciri
 
     # Block Info
     BlockInfo = Struct.new(:coinbase, :difficulty, :gas_limit, :number, :timestamp, :block_hash, :parent_hash,
-                           keyword_init: true)
+                           keyword_init: true) do
+
+      def self.from_header(header)
+        BlockInfo.new(
+          coinbase: header.beneficiary,
+          difficulty: header.difficulty,
+          gas_limit: header.gas_limit,
+          number: header.number,
+          timestamp: header.timestamp,
+          parent_hash: header.parent_hash,
+          block_hash: header.get_hash,
+        )
+      end
+    end
 
   end
 end

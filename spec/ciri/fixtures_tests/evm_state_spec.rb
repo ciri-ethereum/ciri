@@ -107,10 +107,14 @@ RSpec.describe Ciri::EVM do
               transaction.sender
 
               evm = Ciri::EVM.new(state: state)
-              evm.execute_transaction(transaction, block_info: block_info, ignore_exception: true) rescue nil
+              result = begin
+                evm.execute_transaction(transaction, block_info: block_info, ignore_exception: true)
+              rescue Ciri::EVM::Error
+                Ciri::EVM::ExecutionResult.new(logs: [])
+              end
 
               if config['logs']
-                expect(Ciri::Utils.to_hex evm.logs_hash).to eq config['logs']
+                expect(Ciri::Utils.to_hex result.logs_hash).to eq config['logs']
               end
 
             end
@@ -154,6 +158,7 @@ RSpec.describe Ciri::EVM do
     tags = {}
     # tag slow test topics
     if slow_topics.include?(topic)
+      skip topic
       tags[:slow_tests] = true
     end
 
