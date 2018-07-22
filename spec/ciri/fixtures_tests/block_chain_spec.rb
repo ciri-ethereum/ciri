@@ -229,9 +229,9 @@ RSpec.describe Ciri::Chain do
     end
   end if true
 
-    # Dir.glob("fixtures/BlockchainTests/bcMultiChainTest/*").each do |topic|
-    # topic ||= nil
-    # run_test_case[JSON.load(open topic || 'fixtures/BlockchainTests/bcUncleHeaderValidity/timestampTooLow.json'), prefix: 'test', tags: {}]
+  # Dir.glob("fixtures/BlockchainTests/bcMultiChainTest/*").each do |topic|
+  # topic ||= nil
+  # run_test_case[JSON.load(open topic || 'fixtures/BlockchainTests/bcValidBlockTest/callRevert.json'), prefix: 'test', tags: {}]
   # end
 
 end
