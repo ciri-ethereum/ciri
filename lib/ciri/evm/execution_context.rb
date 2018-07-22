@@ -59,6 +59,10 @@ module Ciri
         @pc = pc
       end
 
+      def revert
+        @sub_state = SubState::EMPTY
+      end
+
       def status
         exception.nil? ? 0 : 1
       end

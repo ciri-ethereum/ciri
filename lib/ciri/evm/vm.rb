@@ -192,6 +192,7 @@ module Ciri
               debug("exception: #{exception}, burn gas #{remain_gas} to zero")
               consume_gas remain_gas
             end
+            execution_context.revert
             return [EMPTY_SET, machine_state, SubState::EMPTY, instruction, EMPTY_SET]
           elsif get_op(pc) == OP::REVERT
             o = halt
@@ -221,7 +222,6 @@ module Ciri
 
       # O(σ, μ, A, I) ≡ (σ′, μ′, A′, I)
       def operate
-        ms = machine_state
         w = get_op(pc)
         operation = OP.get(w)
 
@@ -239,7 +239,7 @@ module Ciri
 
         # revert sub_state and return if exception occur
         if exception
-          @sub_state = SubState::EMPTY
+          execution_context.revert
           return
         end
 
