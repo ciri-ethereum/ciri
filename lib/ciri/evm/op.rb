@@ -447,7 +447,7 @@ module Ciri
       end
 
       def_op :CALL, 0xf1, 7, 1 do |vm|
-        vm.pop
+        gas_limit = vm.pop(Integer)
         target = vm.pop(Address)
         value = vm.pop(Integer)
         input_mem_pos, input_size = vm.pop_list(2, Integer)
@@ -455,9 +455,9 @@ module Ciri
 
         data = vm.memory_fetch(input_mem_pos, input_size)
         vm.extend_memory(input_mem_pos, input_size)
-
-        status, output = vm.call_message(sender: vm.instruction.address, value: value,
-                                         data: data, target: target, code_address: target)
+        context = vm.execution_context.child_context(gas_limit: gas_limit)
+        status, output = vm.call_message(sender: vm.instruction.address, value: value, data: data, target: target,
+                                         code_address: target, context: context)
 
         output_size = [output_mem_size, output.size].min
         vm.extend_memory(output_mem_pos, output_size)
@@ -467,8 +467,7 @@ module Ciri
 
       def_op :CALLCODE, 0xf2, 7, 1 do |vm|
         # this method consume 7 items from stack, but seems not all of them are used
-        # skip item
-        vm.pop
+        gas_limit = vm.pop(Integer)
         target = vm.pop(Address)
         value = vm.pop(Integer)
         input_mem_pos, input_size = vm.pop_list(2, Integer)
@@ -477,8 +476,9 @@ module Ciri
         vm.extend_memory(input_mem_pos, input_size)
         data = vm.memory_fetch(input_mem_pos, input_size)
 
-        status, output = vm.call_message(sender: vm.instruction.address, value: value,
-                                         data: data, target: vm.instruction.address, code_address: target)
+        context = vm.execution_context.child_context(gas_limit: gas_limit)
+        status, output = vm.call_message(sender: vm.instruction.address, value: value, data: data,
+                                         target: vm.instruction.address, code_address: target, context: context)
 
         output_size = [output_mem_size, output.size].min
         vm.extend_memory(output_mem_pos, output_size)
@@ -493,7 +493,7 @@ module Ciri
       end
 
       def_op :DELEGATECALL, 0xf4, 6, 1 do |vm|
-        vm.pop
+        gas_limit = vm.pop(Integer)
         target = vm.pop(Address)
         input_mem_pos, input_size = vm.pop_list(2, Integer)
         output_mem_pos, output_mem_size = vm.pop_list(2, Integer)
@@ -501,8 +501,9 @@ module Ciri
         data = vm.memory_fetch(input_mem_pos, input_size)
         vm.extend_memory(input_mem_pos, input_size)
 
-        status, output = vm.call_message(sender: vm.instruction.sender, value: vm.instruction.value,
-                                         data: data, target: vm.instruction.address, code_address: target)
+        context = vm.execution_context.child_context(gas_limit: gas_limit)
+        status, output = vm.call_message(sender: vm.instruction.sender, value: vm.instruction.value, data: data,
+                                         target: vm.instruction.address, code_address: target, context: context)
 
         output_size = [output_mem_size, output.size].min
         vm.extend_memory(output_mem_pos, output_size)
