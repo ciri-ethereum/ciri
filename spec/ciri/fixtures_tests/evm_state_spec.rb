@@ -68,16 +68,15 @@ RSpec.describe Ciri::EVM do
 
         # transaction
         transaction_arguments = t['transaction']
-
-        env = t['env'] && t['env'].map {|k, v| [k, Ciri::Utils.to_bytes(v)]}.to_h
+        env = t['env']
 
         # env
         block_info = env && Ciri::EVM::BlockInfo.new(
-          coinbase: env['currentCoinbase'],
-          difficulty: env['currentDifficulty'],
-          gas_limit: env['currentGasLimit'],
-          number: env['currentNumber'],
-          timestamp: env['currentTimestamp'],
+          coinbase: Ciri::Utils.to_bytes(env['currentCoinbase']),
+          difficulty: Ciri::Utils.hex_to_number(env['currentDifficulty']),
+          gas_limit: Ciri::Utils.hex_to_number(env['currentGasLimit']),
+          number: Ciri::Utils.hex_to_number(env['currentNumber']),
+          timestamp: Ciri::Utils.hex_to_number(env['currentTimestamp']),
         )
 
         t['post'].each do |fork_name, configs|
@@ -158,7 +157,6 @@ RSpec.describe Ciri::EVM do
     tags = {}
     # tag slow test topics
     if slow_topics.include?(topic)
-      skip topic
       tags[:slow_tests] = true
     end
 
