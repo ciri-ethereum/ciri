@@ -73,7 +73,7 @@ module Ciri
 
       # low_level create_contract interface
       # CREATE_CONTRACT op is based on this method
-      def create_contract(value:, init:, gas_limit: self.gas_limit)
+      def create_contract(value:, init:, context: self.execution_context)
         caller_address = instruction.address
         account = find_account(caller_address)
 
@@ -92,12 +92,11 @@ module Ciri
         # contract_account.nonce = 1
 
         # execute initialize code
-        new_context = execution_context.child_context(gas_limit: gas_limit)
-        new_context.instruction = instruction.dup
-        new_context.instruction.bytes_code = init
-        new_context.instruction.address = contract_address
+        # new_context = execution_context.child_context(gas_limit: gas_limit)
+        context.instruction.bytes_code = init
+        context.instruction.address = contract_address
 
-        with_context(new_context) do
+        with_context(context) do
           execute
 
           deposit_code_gas = fork_schema.calculate_deposit_code_gas(output)
@@ -128,7 +127,7 @@ module Ciri
 
       # low level call message interface
       # CALL, CALLCODE, DELEGATECALL ops is base on this method
-      def call_message(sender:, value:, target:, data:, code_address: target, gas_limit: self.gas_limit)
+      def call_message(sender:, value:, target:, data:, code_address: target, context: self.execution_context)
         # return status code 0 represent execution failed
         return [0, ''.b] unless value <= find_account(sender).balance && depth <= 1024
 
@@ -139,15 +138,14 @@ module Ciri
         transact(sender: sender, value: value, to: target)
 
         # execute initialize code
-        new_context = execution_context.child_context(gas_limit: gas_limit)
-        new_context.instruction = instruction.dup
-        new_context.instruction.address = target
-        new_context.instruction.sender = sender
-        new_context.instruction.value = value
-        new_context.instruction.data = data
-        new_context.instruction.bytes_code = get_account_code(code_address)
+        # new_context = execution_context.child_context(gas_limit: gas_limit)
+        context.instruction.address = target
+        context.instruction.sender = sender
+        context.instruction.value = value
+        context.instruction.data = data
+        context.instruction.bytes_code = get_account_code(code_address)
 
-        with_context(new_context) do
+        with_context(context) do
           execute
 
           if exception

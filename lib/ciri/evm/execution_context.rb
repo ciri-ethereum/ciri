@@ -83,6 +83,16 @@ module Ciri
         @remain_gas -= gas
       end
 
+      # used gas of context
+      def used_gas
+        @gas_limit - @remain_gas
+      end
+
+      # remain gas of context
+      def calculate_remain_gas
+        @remain_gas - children.reduce(0) {|s, c| s + c.used_gas}
+      end
+
     end
   end
 end

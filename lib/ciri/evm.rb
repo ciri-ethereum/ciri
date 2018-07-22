@@ -136,7 +136,7 @@ module Ciri
       block_info ||= header && BlockInfo.from_header(header)
       context = Ciri::EVM::ExecutionContext.new(instruction: instruction, gas_limit: gas_limit,
                                                 block_info: block_info, fork_schema: fork_schema)
-      vm = Ciri::EVM::VM.new(state: state, burn_gas_on_exception: false)
+      vm = Ciri::EVM::VM.new(state: state, burn_gas_on_exception: true)
 
       vm.with_context(context) do
         if t.contract_creation?
@@ -149,9 +149,10 @@ module Ciri
 
         # refund gas
         refund_gas = fork_schema.calculate_refund_gas(vm)
-        gas_used = t.gas_limit - context.remain_gas
+        remain_gas = context.calculate_remain_gas
+        gas_used = t.gas_limit - remain_gas
         refund_gas = [refund_gas, gas_used / 2].min
-        state.add_balance(t.sender, (refund_gas + context.remain_gas) * t.gas_price)
+        state.add_balance(t.sender, (refund_gas + remain_gas) * t.gas_price)
 
         # destroy accounts
         vm.sub_state.suicide_accounts.each do |address|
