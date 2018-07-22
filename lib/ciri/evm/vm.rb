@@ -42,59 +42,26 @@ module Ciri
     # other logic of EVM (include transaction logic) in EVM module.
     class VM
 
-      class << self
-        # this method provide a simpler interface to create VM and execute code
-        # VM.spawn(...) == VM.new(...)
-        # @return VM
-        def spawn(state:, gas_limit:, header: nil, block_info: nil, instruction: EVM::Instruction.new, fork_schema:)
-          ms = MachineState.new(remain_gas: gas_limit, pc: 0, stack: [], memory: "\x00".b * 256, memory_item: 0,
-                                fork_schema: fork_schema)
-
-          block_info = block_info || header && BlockInfo.new(
-            coinbase: header.beneficiary,
-            difficulty: header.difficulty,
-            gas_limit: header.gas_limit,
-            number: header.number,
-            timestamp: header.timestamp,
-            parent_hash: header.parent_hash,
-            block_hash: header.get_hash,
-          )
-
-          vm = VM.new(
-            state: state,
-            machine_state: ms,
-            block_info: block_info,
-            instruction: instruction,
-            fork_schema: fork_schema
-          )
-          yield vm if block_given?
-          vm
-        end
-      end
-
       extend Forwardable
 
       # helper methods
       include Utils::Logger
 
-      def_delegators :@machine_state, :stack, :pc, :pop, :push, :pop_list, :get_stack, :memory_item, :memory_item=,
-                     :memory_store, :memory_fetch, :extend_memory, :remain_gas, :consume_gas
-      def_delegators :@instruction, :get_op, :get_code, :next_valid_instruction_pos, :get_data, :data, :sender
-      def_delegators :@sub_state, :add_refund_account, :add_touched_account, :add_suicide_account
+      def_delegators :@machine_state, :stack, :pop, :push, :pop_list, :get_stack, :memory_item, :memory_item=,
+                     :memory_store, :memory_fetch, :extend_memory
       def_delegators :@state, :find_account, :account_dead?, :store, :fetch, :set_account_code, :get_account_code
 
-      attr_reader :state, :machine_state, :instruction, :sub_state, :block_info, :fork_schema
-      attr_accessor :output, :exception
+      # delegate methods to current execution_context
+      def_delegators :execution_context, :instruction, :sub_state, :consume_gas, :remain_gas, :block_info, :fork_schema,
+                     :pc, :output, :exception, :set_output, :set_exception, :set_pc, :status, :gas_limit, :depth
+      def_delegators :instruction, :get_op, :get_code, :next_valid_instruction_pos, :get_data, :data, :sender
+      def_delegators :sub_state, :add_refund_account, :add_touched_account, :add_suicide_account
 
-      def initialize(state:, machine_state:, sub_state: nil, instruction:, block_info:,
-                     fork_schema:, burn_gas_on_exception: true)
+      attr_reader :state, :machine_state, :execution_context
+
+      def initialize(state:, machine_state: MachineState.new, burn_gas_on_exception: true)
         @state = state
         @machine_state = machine_state
-        @instruction = instruction
-        @sub_state = sub_state || SubState.new
-        @output = nil
-        @block_info = block_info
-        @fork_schema = fork_schema
         @burn_gas_on_exception = burn_gas_on_exception
       end
 
@@ -106,12 +73,12 @@ module Ciri
 
       # low_level create_contract interface
       # CREATE_CONTRACT op is based on this method
-      def create_contract(value:, init:)
+      def create_contract(value:, init:, gas_limit: self.gas_limit)
         caller_address = instruction.address
         account = find_account(caller_address)
 
         # return contract address 0 represent execution failed
-        return 0 unless account.balance >= value || instruction.execute_depth > 1024
+        return 0 unless account.balance >= value || depth > 1024
 
         state.increment_nonce(caller_address)
         snapshot = state.snapshot
@@ -125,13 +92,12 @@ module Ciri
         # contract_account.nonce = 1
 
         # execute initialize code
-        create_contract_instruction = instruction.dup
-        create_contract_instruction.bytes_code = init
-        create_contract_instruction.execute_depth += 1
-        create_contract_instruction.address = contract_address
+        new_context = execution_context.child_context(gas_limit: gas_limit)
+        new_context.instruction = instruction.dup
+        new_context.instruction.bytes_code = init
+        new_context.instruction.address = contract_address
 
-        # TODO refactoring: Maybe should use call_message to execute data
-        call_instruction(create_contract_instruction) do
+        with_context(new_context) do
           execute
 
           deposit_code_gas = fork_schema.calculate_deposit_code_gas(output)
@@ -147,7 +113,7 @@ module Ciri
             # set contract code
             set_account_code(contract_address, output)
             # minus deposit_code_fee
-            machine_state.consume_gas deposit_code_gas
+            consume_gas deposit_code_gas
             # transact value
             account.balance -= value
             contract_account.balance += value
@@ -162,9 +128,9 @@ module Ciri
 
       # low level call message interface
       # CALL, CALLCODE, DELEGATECALL ops is base on this method
-      def call_message(sender:, value:, target:, data:, code_address: target)
+      def call_message(sender:, value:, target:, data:, code_address: target, gas_limit: self.gas_limit)
         # return status code 0 represent execution failed
-        return [0, ''.b] unless value <= find_account(sender).balance && instruction.execute_depth <= 1024
+        return [0, ''.b] unless value <= find_account(sender).balance && depth <= 1024
 
         state.increment_nonce(sender)
 
@@ -172,17 +138,16 @@ module Ciri
 
         transact(sender: sender, value: value, to: target)
 
-        message_call_instruction = instruction.dup
-        message_call_instruction.address = target
-        message_call_instruction.sender = sender
-        message_call_instruction.value = value
+        # execute initialize code
+        new_context = execution_context.child_context(gas_limit: gas_limit)
+        new_context.instruction = instruction.dup
+        new_context.instruction.address = target
+        new_context.instruction.sender = sender
+        new_context.instruction.value = value
+        new_context.instruction.data = data
+        new_context.instruction.bytes_code = get_account_code(code_address)
 
-        message_call_instruction.execute_depth += 1
-
-        message_call_instruction.data = data
-        message_call_instruction.bytes_code = get_account_code(code_address)
-
-        call_instruction(message_call_instruction) do
+        with_context(new_context) do
           execute
 
           if exception
@@ -193,10 +158,6 @@ module Ciri
 
           [status, output || ''.b, exception]
         end
-      end
-
-      def status
-        exception.nil? ? 0 : 1
       end
 
       # jump to pc
@@ -224,34 +185,17 @@ module Ciri
         state.set_balance(to, to_account.balance)
       end
 
-      # call instruction
-      def call_instruction(new_instruction)
-        origin_instruction = instruction
-        origin_pc = pc
-        @instruction = new_instruction
-        @machine_state.pc = 0
-
-        return_value = yield
-
-        @instruction = origin_instruction
-        @machine_state.pc = origin_pc
-        # clear up state
-        @exception = nil
-        @output = ''.b
-        return_value
-      end
-
       # Execute instruction with states
       # Ξ(σ,g,I,T) ≡ (σ′,μ′ ,A,o)
       def execute
         loop do
-          if (@exception ||= check_exception(@state, machine_state, instruction))
+          if exception || set_exception(check_exception(@state, machine_state, instruction))
             if @burn_gas_on_exception
-              debug("exception: #{@exception}, burn gas #{machine_state.remain_gas} to zero")
-              machine_state.consume_gas machine_state.remain_gas
+              debug("exception: #{exception}, burn gas #{remain_gas} to zero")
+              consume_gas remain_gas
             end
             return [EMPTY_SET, machine_state, SubState::EMPTY, instruction, EMPTY_SET]
-          elsif get_op(machine_state.pc) == OP::REVERT
+          elsif get_op(pc) == OP::REVERT
             o = halt
             return [EMPTY_SET, machine_state, SubState::EMPTY, instruction, o]
           elsif (o = halt) != EMPTY_SET
@@ -263,24 +207,36 @@ module Ciri
         end
       end
 
+      def with_context(new_context)
+        origin_context = execution_context
+        @execution_context = new_context
+        return_value = yield
+        @execution_context = origin_context
+        return_value
+      end
+
+      def extend_memory(pos, size)
+        machine_state.extend_memory(execution_context, pos, size)
+      end
+
       private
 
       # O(σ, μ, A, I) ≡ (σ′, μ′, A′, I)
       def operate
         ms = machine_state
-        w = get_op(ms.pc)
+        w = get_op(pc)
         operation = OP.get(w)
 
-        raise "can't find operation #{w}, pc #{ms.pc}" unless operation
+        raise "can't find operation #{w}, pc #{pc}" unless operation
 
         op_cost = fork_schema.gas_of_operation(self)
-        ms.consume_gas op_cost
+        consume_gas op_cost
 
         # call operation
         begin
           operation.call(self)
         rescue VMError => e
-          @exception = e
+          set_exception(e)
         end
 
         # revert sub_state and return if exception occur
@@ -289,20 +245,20 @@ module Ciri
           return
         end
 
-        debug("depth: #{instruction.execute_depth} pc: #{ms.pc} #{operation.name} gas: #{op_cost} stack: #{stack.size} logs: #{sub_state.log_series.size}")
-        ms.pc = case
-                when w == OP::JUMP
-                  @jump_to
-                when w == OP::JUMPI
-                  @jump_to
-                else
-                  next_valid_instruction_pos(ms.pc, w)
-                end
+        debug("depth: #{depth} pc: #{pc} #{operation.name} gas: #{op_cost} stack: #{stack.size} logs: #{sub_state.log_series.size}")
+        set_pc case
+               when w == OP::JUMP
+                 @jump_to
+               when w == OP::JUMPI
+                 @jump_to
+               else
+                 next_valid_instruction_pos(pc, w)
+               end
       end
 
       # determinate halt or not halt
       def halt
-        w = get_op(machine_state.pc)
+        w = get_op(pc)
         if w == OP::RETURN || w == OP::REVERT
           operate
           output
@@ -318,7 +274,7 @@ module Ciri
 
       # check status
       def check_exception(state, ms, instruction)
-        w = instruction.get_op(ms.pc)
+        w = instruction.get_op(pc)
         case
         when w == OP::INVALID
           InvalidOpCodeError.new "can't find op code 0x#{w.to_s(16)}"
@@ -326,8 +282,8 @@ module Ciri
           InvalidOpCodeError.new "can't find op code 0x#{w.to_s(16)}"
         when ms.stack.size < (consume = OP.input_count(w))
           StackError.new "stack not enough: stack:#{ms.stack.size} next consume: #{consume}"
-        when ms.remain_gas < (gas_cost = fork_schema.gas_of_operation(self))
-          GasNotEnoughError.new "gas not enough: gas remain:#{ms.remain_gas} gas cost: #{gas_cost}"
+        when remain_gas < (gas_cost = fork_schema.gas_of_operation(self))
+          GasNotEnoughError.new "gas not enough: gas remain:#{remain_gas} gas cost: #{gas_cost}"
         when w == OP::JUMP && instruction.destinations.include?(ms.get_stack(0, Integer))
           InvalidJumpError.new "invalid jump dest #{ms.get_stack(0, Integer)}"
         when w == OP::JUMPI && ms.get_stack(1, Integer) != 0 && instruction.destinations.include?(ms.get_stack(0, Integer))
@@ -337,7 +293,7 @@ module Ciri
         when stack.size - OP.input_count(w) + OP.output_count(w) > 1024
           StackError.new "stack size reach 1024 limit"
           # A condition in yellow paper but I can't understand..: (¬Iw ∧W(w,μ))
-        when instruction.execute_depth > 1024
+        when depth > 1024
           StackError.new "call depth reach 1024 limit"
         else
           nil

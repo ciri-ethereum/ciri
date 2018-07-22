@@ -25,15 +25,14 @@ module Ciri
   class EVM
 
     # represent instruction
-    Instruction = Struct.new(:address, :origin, :price, :data, :sender, :value, :bytes_code, :header, :execute_depth,
-                             keyword_init: true) do
+    Instruction = Struct.new(:address, :origin, :price, :data, :sender, :value, :bytes_code,
+                             :header, keyword_init: true) do
 
       def initialize(*args)
         super
         self.data ||= ''.b
         self.value ||= 0
         self.bytes_code ||= ''.b
-        self.execute_depth ||= 0
       end
 
       def get_op(pos)

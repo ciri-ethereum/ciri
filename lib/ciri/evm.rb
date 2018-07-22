@@ -26,6 +26,7 @@ require 'ciri/forks'
 require_relative 'evm/op'
 require_relative 'evm/vm'
 require_relative 'evm/errors'
+require_relative 'evm/execution_context'
 require_relative 'types/account'
 require_relative 'types/receipt'
 
@@ -33,7 +34,12 @@ module Ciri
   class EVM
     extend Forwardable
 
-    ExecutionResult = Struct.new(:status, :state_root, :logs, :gas_used, :gas_price, :exception, keyword_init: true)
+    ExecutionResult = Struct.new(:status, :state_root, :logs, :gas_used, :gas_price, :exception, keyword_init: true) do
+      def logs_hash
+        # return nil unless vm
+        Utils.keccak(RLP.encode_simple(logs))
+      end
+    end
 
     def_delegators :@state, :find_account, :account_dead?, :get_account_code, :state_root
 
@@ -116,7 +122,6 @@ module Ciri
         sender: t.sender,
         value: t.value,
         header: header,
-        execute_depth: 0,
       )
 
       if t.contract_creation?
@@ -128,61 +133,35 @@ module Ciri
         instruction.data = t.data
       end
 
-      @vm = VM.spawn(
-        state: state,
-        gas_limit: gas_limit,
-        instruction: instruction,
-        header: header,
-        block_info: block_info,
-        fork_schema: fork_schema
-      )
+      block_info ||= header && BlockInfo.from_header(header)
+      context = Ciri::EVM::ExecutionContext.new(instruction: instruction, gas_limit: gas_limit,
+                                                block_info: block_info, fork_schema: fork_schema)
+      vm = Ciri::EVM::VM.new(state: state, burn_gas_on_exception: false)
 
-      # transact ether
-      exception = nil
-      # begin
-      if t.contract_creation?
-        # contract creation
-        _, exception = @vm.create_contract(value: instruction.value, init: instruction.bytes_code)
-      else
-        _, _, exception = @vm.call_message(sender: t.sender, value: t.value, target: t.to, data: t.data)
+      vm.with_context(context) do
+        if t.contract_creation?
+          # contract creation
+          vm.create_contract(value: instruction.value, init: instruction.bytes_code)
+        else
+          vm.call_message(sender: t.sender, value: t.value, target: t.to, data: t.data)
+        end
+        raise context.exception if !ignore_exception && context.exception
+
+        # refund gas
+        refund_gas = fork_schema.calculate_refund_gas(vm)
+        gas_used = t.gas_limit - context.remain_gas
+        refund_gas = [refund_gas, gas_used / 2].min
+        state.add_balance(t.sender, (refund_gas + context.remain_gas) * t.gas_price)
+
+        # destroy accounts
+        vm.sub_state.suicide_accounts.each do |address|
+          state.set_balance(address, 0)
+          state.delete_account(address)
+        end
+
+        ExecutionResult.new(status: context.status, state_root: state_root, logs: context.sub_state.log_series,
+                            gas_used: gas_used - refund_gas, gas_price: t.gas_price, exception: context.exception)
       end
-      # rescue ArgumentError => e
-      #   raise unless ignore_exception
-      #   exception = e
-      # end
-      raise exception if !ignore_exception && exception
-
-      # refund gas
-      refund_gas = fork_schema.calculate_refund_gas(@vm)
-      gas_used = t.gas_limit - @vm.remain_gas
-      refund_gas = [refund_gas, gas_used / 2].min
-      state.add_balance(t.sender, (refund_gas + @vm.remain_gas) * t.gas_price)
-
-      # destroy accounts
-      @vm.sub_state.suicide_accounts.each do |address|
-        state.set_balance(address, 0)
-        state.delete_account(address)
-      end
-
-      ExecutionResult.new(status: @vm.status, state_root: state_root, logs: @vm.sub_state.log_series, gas_used: gas_used - refund_gas,
-                          gas_price: t.gas_price, exception: @vm.exception)
-    end
-
-    def logs_hash
-      # return nil unless @vm
-      Utils.keccak(RLP.encode_simple(vm.sub_state.log_series))
-    end
-
-    private
-
-    def vm
-      @vm ||= VM.spawn(
-        state: state,
-        gas_limit: 0,
-        instruction: nil,
-        block_info: BlockInfo.new,
-        fork_schema: nil
-      )
     end
 
   end

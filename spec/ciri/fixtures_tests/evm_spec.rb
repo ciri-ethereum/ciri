@@ -24,6 +24,7 @@
 require 'spec_helper'
 require 'ciri/evm/state'
 require 'ciri/evm'
+require 'ciri/evm/execution_context'
 require 'ciri/types/account'
 require 'ciri/forks/frontier'
 require 'ciri/utils'
@@ -72,9 +73,6 @@ RSpec.describe Ciri::EVM do
         data = Ciri::Utils.to_bytes(t['exec']['data'])
         env = t['env'] && t['env'].map {|k, v| [k, Ciri::Utils.to_bytes(v)]}.to_h
 
-        fork_schema = Ciri::Forks::Frontier::Schema.new
-        ms = Ciri::EVM::MachineState.new(remain_gas: gas, pc: 0, stack: [], memory: "\x00".b * 256,
-                                         memory_item: 0, fork_schema: fork_schema)
         instruction = Ciri::EVM::Instruction.new(address: address, origin: origin, price: gas_price, sender: caller,
                                                  bytes_code: code, value: value, data: data)
         block_info = env && Ciri::EVM::BlockInfo.new(
@@ -86,22 +84,26 @@ RSpec.describe Ciri::EVM do
         )
 
         fork_schema = Ciri::Forks::Frontier::Schema.new
-        vm = Ciri::EVM::VM.new(state: state, machine_state: ms, instruction: instruction, block_info: block_info,
-                               fork_schema: fork_schema, burn_gas_on_exception: false)
+        context = Ciri::EVM::ExecutionContext.new(instruction: instruction, gas_limit: gas,
+                                                  block_info: block_info, fork_schema: fork_schema)
+        vm = Ciri::EVM::VM.new(state: state, burn_gas_on_exception: false)
 
         # ignore exception
-        vm.run(ignore_exception: true)
+        vm.with_context(context) do
+          vm.run(ignore_exception: true)
+        end
+
         next unless t['post']
         # post
         output = t['out'].yield_self {|out| out && Ciri::Utils.to_bytes(out)}
         if output
           # padding vm output, cause testcases return length is uncertain
-          vm_output = (vm.output || '').rjust(output.size, "\x00".b)
+          vm_output = (context.output || '').rjust(output.size, "\x00".b)
           expect(vm_output).to eq output
         end
 
         remain_gas = t['gas'].yield_self {|remain_gas| remain_gas && Ciri::Utils.big_endian_decode(Ciri::Utils.to_bytes(remain_gas))}
-        expect(vm.machine_state.remain_gas).to eq remain_gas if remain_gas
+        expect(context.remain_gas).to eq remain_gas if remain_gas
 
         state = vm.state
         t['post'].each do |address, v|
