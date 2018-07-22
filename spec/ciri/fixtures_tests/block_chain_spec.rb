@@ -199,7 +199,6 @@ RSpec.describe Ciri::Chain do
   broken_topics = %w{
     bcExploitTest
     bcStateTests
-    bcUncleHeaderValidity
     bcWalletTest
     bcForkStressTest
     bcRandomBlockhashTest
@@ -230,9 +229,9 @@ RSpec.describe Ciri::Chain do
     end
   end if true
 
-  # Dir.glob("fixtures/BlockchainTests/bcMultiChainTest/*").each do |topic|
-  # topic ||= nil
-  # run_test_case[JSON.load(open topic || 'fixtures/BlockchainTests/TransitionTests/bcFrontierToHomestead/HomesteadOverrideFrontier.json'), prefix: 'test', tags: {}]
+    # Dir.glob("fixtures/BlockchainTests/bcMultiChainTest/*").each do |topic|
+    # topic ||= nil
+    # run_test_case[JSON.load(open topic || 'fixtures/BlockchainTests/bcUncleHeaderValidity/timestampTooLow.json'), prefix: 'test', tags: {}]
   # end
 
 end
