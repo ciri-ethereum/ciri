@@ -40,8 +40,8 @@ module Ciri
           Cost.cost_of_memory word_count
         end
 
-        def gas_of_call(context:, gas:, to:, value:)
-          Cost.gas_of_call(context: context, gas: gas, to: to, value: value)
+        def gas_of_call(vm:, gas:, to:, value:)
+          Cost.gas_of_call(vm: vm, gas: gas, to: to, value: value)
         end
 
         def intrinsic_gas_of_transaction(transaction)

@@ -34,7 +34,7 @@ module Ciri
         raise NotImplementedError
       end
 
-      def gas_of_call(context:, gas:, to:, value:)
+      def gas_of_call(vm:, gas:, to:, value:)
         raise NotImplementedError
       end
 

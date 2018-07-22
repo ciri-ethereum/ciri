@@ -47,13 +47,18 @@ module Ciri
       # helper methods
       include Utils::Logger
 
-      def_delegators :@machine_state, :stack, :pop, :push, :pop_list, :get_stack, :memory_item, :memory_item=,
+      def_delegators :@machine_state, :stack, :pc, :pop, :push, :pop_list, :get_stack, :memory_item, :memory_item=,
                      :memory_store, :memory_fetch, :extend_memory
-      def_delegators :@state, :find_account, :account_dead?, :store, :fetch, :set_account_code, :get_account_code
+      def_delegators :@instruction, :get_op, :get_code, :next_valid_instruction_pos, :get_data, :data, :sender
+      def_delegators :@sub_state, :add_refund_account, :add_touched_account, :add_suicide_account
+
+      def_delegators :@state, :find_account, :account_dead?, :store, :fetch,
+                     :set_account_code, :get_account_code, :account_exist?
 
       # delegate methods to current execution_context
       def_delegators :execution_context, :instruction, :sub_state, :consume_gas, :remain_gas, :block_info, :fork_schema,
-                     :pc, :output, :exception, :set_output, :set_exception, :set_pc, :status, :gas_limit, :depth
+                     :pc, :output, :exception, :set_output, :set_exception, :set_pc, :status, :gas_limit, :depth,
+                     :refund_gas, :reset_refund_gas
       def_delegators :instruction, :get_op, :get_code, :next_valid_instruction_pos, :get_data, :data, :sender
       def_delegators :sub_state, :add_refund_account, :add_touched_account, :add_suicide_account
 
@@ -73,14 +78,15 @@ module Ciri
 
       # low_level create_contract interface
       # CREATE_CONTRACT op is based on this method
-      def create_contract(value:, init:, context: self.execution_context)
+      def create_contract(value:, init:, context: self.execution_context, touch_nonce:)
         caller_address = instruction.address
         account = find_account(caller_address)
 
         # return contract address 0 represent execution failed
         return 0 unless account.balance >= value || depth > 1024
 
-        state.increment_nonce(caller_address)
+        # increment nonce first, nonce will not revert if state rollback
+        state.increment_nonce(caller_address) if touch_nonce
         snapshot = state.snapshot
 
         # generate contract_address
@@ -127,13 +133,12 @@ module Ciri
 
       # low level call message interface
       # CALL, CALLCODE, DELEGATECALL ops is base on this method
-      def call_message(sender:, value:, target:, data:, code_address: target, context: self.execution_context)
+      def call_message(sender:, value:, target:, data:, code_address: target, context: self.execution_context, touch_nonce:)
         # return status code 0 represent execution failed
         return [0, ''.b] unless value <= find_account(sender).balance && depth <= 1024
-        debug("call_message: depth: #{depth}")
 
-        state.increment_nonce(sender)
-
+        # increment nonce first, nonce will not revert if state rollback
+        state.increment_nonce(sender) if touch_nonce
         snapshot = state.snapshot
 
         transact(sender: sender, value: value, to: target)
@@ -228,8 +233,12 @@ module Ciri
 
         raise "can't find operation #{w}, pc #{pc}" unless operation
 
-        op_cost = fork_schema.gas_of_operation(self)
+        op_cost, op_refund = fork_schema.gas_of_operation(self)
+
+        debug("depth: #{depth} pc: #{pc} #{operation.name} gas: #{op_cost} stack: #{stack.size} logs: #{sub_state.log_series.size}")
+
         consume_gas op_cost
+        refund_gas op_refund if op_refund && op_refund > 0
 
         # call operation
         begin
@@ -244,7 +253,6 @@ module Ciri
           return
         end
 
-        debug("depth: #{depth} pc: #{pc} #{operation.name} gas: #{op_cost} stack: #{stack.size} logs: #{sub_state.log_series.size}")
         set_pc case
                when w == OP::JUMP
                  @jump_to
@@ -281,8 +289,8 @@ module Ciri
           InvalidOpCodeError.new "can't find op code 0x#{w.to_s(16)}"
         when ms.stack.size < (consume = OP.input_count(w))
           StackError.new "stack not enough: stack:#{ms.stack.size} next consume: #{consume}"
-        when remain_gas < (gas_cost = fork_schema.gas_of_operation(self))
-          GasNotEnoughError.new "gas not enough: op code 0x#{w.to_s(16)} gas remain:#{remain_gas} gas cost: #{gas_cost}"
+        when remain_gas < (gas_cost = fork_schema.gas_of_operation(self).then {|gas_cost, _| gas_cost})
+          GasNotEnoughError.new "gas not enough: gas remain:#{remain_gas} gas cost: #{gas_cost}"
         when w == OP::JUMP && instruction.destinations.include?(ms.get_stack(0, Integer))
           InvalidJumpError.new "invalid jump dest #{ms.get_stack(0, Integer)}"
         when w == OP::JUMPI && ms.get_stack(1, Integer) != 0 && instruction.destinations.include?(ms.get_stack(0, Integer))

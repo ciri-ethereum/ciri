@@ -119,6 +119,12 @@ module Ciri
         end
       end
 
+      def account_exist?(address)
+        rlp_encoded_account = @trie[convert_key address]
+        non_exists = rlp_encoded_account.nil? || rlp_encoded_account.size == 0
+        !non_exists
+      end
+
       def delete_account(address)
         @trie.delete(convert_key address)
       end

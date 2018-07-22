@@ -442,7 +442,7 @@ module Ciri
         init = vm.memory_fetch(mem_pos, size)
         vm.extend_memory(mem_pos, size)
 
-        contract_address, _ = vm.create_contract(value: value, init: init)
+        contract_address, _ = vm.create_contract(value: value, init: init, touch_nonce: false)
         vm.push contract_address
       end
 
@@ -519,13 +519,14 @@ module Ciri
 
       def self.call_message(vm:, gas:, sender:, value:, data:, to:, code_address: to, output_mem_pos:, output_mem_size:)
         context = vm.execution_context
-        child_gas_limit, child_gas_fee = context.fork_schema.gas_of_call(context: context,
+        child_gas_limit, child_gas_fee = context.fork_schema.gas_of_call(vm: vm,
                                                                          gas: gas, to: to, value: value)
         context.consume_gas(child_gas_fee)
         child_context = context.child_context(gas_limit: child_gas_limit)
         status, output = vm.call_message(sender: sender, value: value, data: data, target: to,
-                                         code_address: code_address, context: child_context)
+                                         code_address: code_address, context: child_context, touch_nonce: false)
 
+        context.return_gas(child_context.remain_gas)
         output_size = [output_mem_size, output.size].min
         vm.extend_memory(output_mem_pos, output_size)
         vm.memory_store(output_mem_pos, output_size, output)
