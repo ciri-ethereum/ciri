@@ -199,7 +199,6 @@ RSpec.describe Ciri::Chain do
   broken_topics = %w{
     bcExploitTest
     bcStateTests
-    bcWalletTest
     bcForkStressTest
     bcRandomBlockhashTest
     GeneralStateTests
@@ -231,7 +230,7 @@ RSpec.describe Ciri::Chain do
 
   # Dir.glob("fixtures/BlockchainTests/bcMultiChainTest/*").each do |topic|
   # topic ||= nil
-  # run_test_case[JSON.load(open topic || 'fixtures/BlockchainTests/bcValidBlockTest/callRevert.json'), prefix: 'test', tags: {}]
+  # run_test_case[JSON.load(open topic || 'fixtures/BlockchainTests/bcValidBlockTest/dataTx.json'), prefix: 'test', tags: {}]
   # end
 
 end

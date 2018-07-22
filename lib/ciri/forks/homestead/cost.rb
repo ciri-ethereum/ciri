@@ -25,7 +25,7 @@ require 'ciri/evm/op'
 
 module Ciri
   module Forks
-    module Frontier
+    module Homestead
 
       module Cost
 
@@ -49,7 +49,7 @@ module Ciri
         G_SELFDESTRUCT = 0
         G_CREATE = 32000
         G_CODEDEPOSIT = 200
-        G_CALL = 40
+        G_CALL = 700
         G_CALLVALUE = 9000
         G_CALLSTIPEND = 2300
         G_NEWACCOUNT = 25000

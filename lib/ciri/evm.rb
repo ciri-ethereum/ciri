@@ -64,7 +64,7 @@ module Ciri
           raise InvalidTransition.new('reach block gas_limit')
         end
         if check_gas_used && total_gas_used > block.header.gas_used
-          raise InvalidTransition.new("incorrect gas_used, total_gas_used: #{total_gas_used}, block gas_used: #{block.header.gas_used}")
+          raise InvalidTransition.new("overflow header gas_used, total_gas_used: #{total_gas_used}, block gas_used: #{block.header.gas_used}")
         end
 
         # calculate fee
@@ -141,14 +141,15 @@ module Ciri
       vm.with_context(context) do
         if t.contract_creation?
           # contract creation
-          vm.create_contract(value: instruction.value, init: instruction.bytes_code)
+          vm.create_contract(value: instruction.value, init: instruction.bytes_code, touch_nonce: true)
         else
-          vm.call_message(sender: t.sender, value: t.value, target: t.to, data: t.data)
+          vm.call_message(sender: t.sender, value: t.value, target: t.to, data: t.data, touch_nonce: true)
         end
         raise context.exception if !ignore_exception && context.exception
 
         # refund gas
         refund_gas = fork_schema.calculate_refund_gas(vm)
+        refund_gas += context.reset_refund_gas
         remain_gas = context.remain_gas
         gas_used = t.gas_limit - remain_gas
         refund_gas = [refund_gas, gas_used / 2].min

@@ -28,7 +28,7 @@ module Ciri
     class ExecutionContext
 
       attr_accessor :instruction, :depth, :pc, :output, :exception, :gas_limit, :block_info, :sub_state, :fork_schema
-      attr_reader :children
+      attr_reader :children, :remain_gas
 
       def initialize(instruction:, depth: 1, gas_limit:, remain_gas: gas_limit, fork_schema:, pc: 0,
                      block_info:, sub_state: SubState::EMPTY.dup)
@@ -44,6 +44,7 @@ module Ciri
         @fork_schema = fork_schema
         @pc = pc
         @children = []
+        @refund_gas = 0
       end
 
       def set_exception(e)
@@ -73,7 +74,7 @@ module Ciri
           pc: pc,
           gas_limit: gas_limit,
           block_info: block_info,
-          sub_state: sub_state.dup,
+          sub_state: SubState::EMPTY.dup,
           remain_gas: gas_limit,
           fork_schema: fork_schema,
         )
@@ -86,14 +87,25 @@ module Ciri
         @remain_gas -= gas
       end
 
+      def return_gas(gas)
+        raise ArgumentError.new("can't return negative gas, gas: #{gas}") if gas < 0
+        @remain_gas += gas
+      end
+
+      def reset_refund_gas
+        refund_gas = @refund_gas
+        @refund_gas = 0
+        refund_gas
+      end
+
+      def refund_gas(gas)
+        raise ArgumentError.new("gas can't be negative: #{gas}") if gas < 0
+        @refund_gas += gas
+      end
+
       # used gas of context
       def used_gas
         @gas_limit - @remain_gas
-      end
-
-      # remain gas of context
-      def remain_gas
-        @remain_gas - children.reduce(0) {|s, c| s + c.used_gas}
       end
 
       def all_log_series
