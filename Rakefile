@@ -16,6 +16,7 @@ SUB_COMPONENTS = %w{ciri-utils ciri-rlp ciri-crypto}
 
 desc 'run tests'
 task :test do
+  exit(1) unless check_env
   exit $?.exitstatus unless system("rspec -t ~slow_tests")
   SUB_COMPONENTS.each do |dir|
     puts `cd #{dir} && rake`
@@ -24,6 +25,7 @@ end
 
 desc 'run all tests, include extreme slow tests'
 task :"test:all" do
+  exit(1) unless check_env
   exit $?.exitstatus unless system("rspec")
   SUB_COMPONENTS.each do |dir|
     puts `cd #{dir} && rake`
@@ -59,17 +61,32 @@ namespace :docker do
 
   desc 'run tests in docker'
   task :test do
-    system(default_env, "docker run -v `pwd`:/app --rm #{base_image}:latest rake test")
+    system("docker run -v `pwd`:/app --rm #{base_image}:latest rake test")
     exit $?.exitstatus
   end
 
   desc 'run all tests(include slow tests) in docker'
   task :"test:all" do
-    system(default_env, "docker run -v `pwd`:/app --rm #{base_image}:latest rake test:all")
+    system("docker run -v `pwd`:/app --rm #{base_image}:latest rake test:all")
     exit $?.exitstatus
   end
 
+  def default_stack_size
+    52428800
+  end
+
+  def check_env
+    pass = false
+    if ENV['RUBY_THREAD_VM_STACK_SIZE'].to_i < default_stack_size
+      warn "Ruby stack size is not enough: set env 'RUBY_THREAD_VM_STACK_SIZE' to #{default_stack_size} and try again"
+      warn "export RUBY_THREAD_VM_STACK_SIZE=#{default_stack_size}"
+    else
+      pass = true
+    end
+    pass
+  end
+
   def default_env
-    {'RUBY_THREAD_VM_STACK_SIZE' => ENV['RUBY_THREAD_VM_STACK_SIZE'] || '52428800'}
+    {'RUBY_THREAD_VM_STACK_SIZE' => ENV['RUBY_THREAD_VM_STACK_SIZE'] || default_stack_size.to_s}
   end
 end
