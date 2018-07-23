@@ -34,6 +34,10 @@ module Ciri
         raise NotImplementedError
       end
 
+      def gas_of_call(context:, gas:, to:, value:)
+        raise NotImplementedError
+      end
+
       def intrinsic_gas_of_transaction(transaction)
         raise NotImplementedError
       end

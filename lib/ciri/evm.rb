@@ -149,7 +149,7 @@ module Ciri
 
         # refund gas
         refund_gas = fork_schema.calculate_refund_gas(vm)
-        remain_gas = context.calculate_remain_gas
+        remain_gas = context.remain_gas
         gas_used = t.gas_limit - remain_gas
         refund_gas = [refund_gas, gas_used / 2].min
         state.add_balance(t.sender, (refund_gas + remain_gas) * t.gas_price)
@@ -160,7 +160,7 @@ module Ciri
           state.delete_account(address)
         end
 
-        ExecutionResult.new(status: context.status, state_root: state_root, logs: context.sub_state.log_series,
+        ExecutionResult.new(status: context.status, state_root: state_root, logs: context.all_log_series,
                             gas_used: gas_used - refund_gas, gas_price: t.gas_price, exception: context.exception)
       end
     end

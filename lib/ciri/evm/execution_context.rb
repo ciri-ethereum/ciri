@@ -27,11 +27,10 @@ module Ciri
   class EVM
     class ExecutionContext
 
-      attr_accessor :instruction, :depth, :pc, :output, :exception, :gas_limit, :block_info, :sub_state,
-                    :remain_gas, :fork_schema
+      attr_accessor :instruction, :depth, :pc, :output, :exception, :gas_limit, :block_info, :sub_state, :fork_schema
       attr_reader :children
 
-      def initialize(instruction:, depth: 0, gas_limit:, remain_gas: gas_limit, fork_schema:, pc: 0,
+      def initialize(instruction:, depth: 1, gas_limit:, remain_gas: gas_limit, fork_schema:, pc: 0,
                      block_info:, sub_state: SubState::EMPTY.dup)
         raise ArgumentError.new("remain_gas must more than 0") if remain_gas < 0
         raise ArgumentError.new("gas_limit must more than 0") if gas_limit < 0
@@ -74,7 +73,7 @@ module Ciri
           pc: pc,
           gas_limit: gas_limit,
           block_info: block_info,
-          sub_state: sub_state,
+          sub_state: sub_state.dup,
           remain_gas: gas_limit,
           fork_schema: fork_schema,
         )
@@ -93,8 +92,12 @@ module Ciri
       end
 
       # remain gas of context
-      def calculate_remain_gas
+      def remain_gas
         @remain_gas - children.reduce(0) {|s, c| s + c.used_gas}
+      end
+
+      def all_log_series
+        sub_state.log_series + children.map {|c| c.all_log_series}.flatten
       end
 
     end
