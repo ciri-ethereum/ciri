@@ -59,13 +59,17 @@ namespace :docker do
 
   desc 'run tests in docker'
   task :test do
-    system("docker run -v `pwd`:/app --rm #{base_image}:latest rake test")
+    system(default_env, "docker run -v `pwd`:/app --rm #{base_image}:latest rake test")
     exit $?.exitstatus
   end
 
   desc 'run all tests(include slow tests) in docker'
   task :"test:all" do
-    system("docker run -v `pwd`:/app --rm #{base_image}:latest rake test:all")
+    system(default_env, "docker run -v `pwd`:/app --rm #{base_image}:latest rake test:all")
     exit $?.exitstatus
+  end
+
+  def default_env
+    {'RUBY_THREAD_VM_STACK_SIZE' => ENV['RUBY_THREAD_VM_STACK_SIZE'] || '52428800'}
   end
 end

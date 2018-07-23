@@ -151,14 +151,18 @@ module Ciri
             gas + G_TRANSACTION
           end
 
+          def gas_of_call(context:, gas:, to:, value:)
+            # extra_gas = self.compute_msg_extra_gas(computation, gas, to, value)
+            # total_fee = gas + extra_gas
+            total_fee = 0
+            child_gas_limit = gas + (value > 0 ? G_CALLSTIPEND : 0)
+            [child_gas_limit, total_fee]
+          end
+
           private
 
           def cost_of_self_destruct(vm)
             G_SELFDESTRUCT
-          end
-
-          def cost_of_call
-
           end
 
           def cost_of_sstore(vm)

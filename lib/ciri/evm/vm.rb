@@ -130,6 +130,7 @@ module Ciri
       def call_message(sender:, value:, target:, data:, code_address: target, context: self.execution_context)
         # return status code 0 represent execution failed
         return [0, ''.b] unless value <= find_account(sender).balance && depth <= 1024
+        debug("call_message: depth: #{depth}")
 
         state.increment_nonce(sender)
 
@@ -189,7 +190,7 @@ module Ciri
         loop do
           if exception || set_exception(check_exception(@state, machine_state, instruction))
             if @burn_gas_on_exception
-              debug("exception: #{exception}, burn gas #{remain_gas} to zero")
+              debug("exception: #{exception}, burn gas #{remain_gas} to zero... op code: 0x#{get_op(pc).to_s(16)}")
               consume_gas remain_gas
             end
             execution_context.revert
@@ -281,7 +282,7 @@ module Ciri
         when ms.stack.size < (consume = OP.input_count(w))
           StackError.new "stack not enough: stack:#{ms.stack.size} next consume: #{consume}"
         when remain_gas < (gas_cost = fork_schema.gas_of_operation(self))
-          GasNotEnoughError.new "gas not enough: gas remain:#{remain_gas} gas cost: #{gas_cost}"
+          GasNotEnoughError.new "gas not enough: op code 0x#{w.to_s(16)} gas remain:#{remain_gas} gas cost: #{gas_cost}"
         when w == OP::JUMP && instruction.destinations.include?(ms.get_stack(0, Integer))
           InvalidJumpError.new "invalid jump dest #{ms.get_stack(0, Integer)}"
         when w == OP::JUMPI && ms.get_stack(1, Integer) != 0 && instruction.destinations.include?(ms.get_stack(0, Integer))
