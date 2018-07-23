@@ -47,12 +47,9 @@ module Ciri
       # helper methods
       include Utils::Logger
 
-      def_delegators :@machine_state, :stack, :pc, :pop, :push, :pop_list, :get_stack, :memory_item, :memory_item=,
+      def_delegators :machine_state, :stack, :pop, :push, :pop_list, :get_stack, :memory_item, :memory_item=,
                      :memory_store, :memory_fetch, :extend_memory
-      def_delegators :@instruction, :get_op, :get_code, :next_valid_instruction_pos, :get_data, :data, :sender
-      def_delegators :@sub_state, :add_refund_account, :add_touched_account, :add_suicide_account
-
-      def_delegators :@state, :find_account, :account_dead?, :store, :fetch,
+      def_delegators :state, :find_account, :account_dead?, :store, :fetch,
                      :set_account_code, :get_account_code, :account_exist?
 
       # delegate methods to current execution_context
