@@ -1,4 +1,4 @@
-FROM ruby:2.5.1
+FROM ruby:2.6.0-preview2
 MAINTAINER Jiang Jinyang<jjyruby@gmail.com>
 
 RUN apt-get update -y
