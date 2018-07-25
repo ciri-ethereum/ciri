@@ -464,7 +464,7 @@ module Ciri
         vm.set_output vm.memory_fetch(index, size)
       end
 
-      def_op :DELEGATECALL, 0xf4, 6, 1 do |vm|
+      def_op :DELEGATECALL, -0xf4, 6, 1 do |vm|
         gas, to, _value, data, output_mem_pos, output_mem_size = extract_call_argument(vm, delegate_call: true)
         call_message(vm: vm, sender: vm.instruction.sender, value: vm.instruction.value, gas: gas,
                      to: vm.instruction.address, data: data, code_address: to,

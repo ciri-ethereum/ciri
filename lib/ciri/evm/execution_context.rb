@@ -31,10 +31,10 @@ module Ciri
       include Utils::Logger
 
       attr_accessor :instruction, :depth, :pc, :output, :exception, :gas_limit, :block_info, :sub_state, :fork_schema
-      attr_reader :children, :remain_gas
+      attr_reader :children, :remain_gas, :machine_state
 
       def initialize(instruction:, depth: 1, gas_limit:, remain_gas: gas_limit, fork_schema:, pc: 0,
-                     block_info:, sub_state: SubState::EMPTY.dup)
+                     block_info:, sub_state: SubState::EMPTY.dup, machine_state: MachineState.new)
         raise ArgumentError.new("remain_gas must more than 0") if remain_gas < 0
         raise ArgumentError.new("gas_limit must more than 0") if gas_limit < 0
 
@@ -48,6 +48,7 @@ module Ciri
         @pc = pc
         @children = []
         @refund_gas = 0
+        @machine_state = machine_state
       end
 
       def set_exception(e)
@@ -67,7 +68,7 @@ module Ciri
       end
 
       def status
-        exception.nil? ? 0 : 1
+        exception.nil? ? 1 : 0
       end
 
       def child_context(instruction: self.instruction.dup, depth: self.depth + 1, pc: 0, gas_limit:)
