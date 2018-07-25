@@ -23,6 +23,7 @@
 
 require 'ciri/utils/logger'
 require_relative 'errors'
+require_relative 'execution_context'
 require_relative 'machine_state'
 require_relative 'instruction'
 require_relative 'sub_state'
@@ -53,17 +54,16 @@ module Ciri
                      :set_account_code, :get_account_code, :account_exist?
 
       # delegate methods to current execution_context
-      def_delegators :execution_context, :instruction, :sub_state, :consume_gas, :remain_gas, :block_info, :fork_schema,
-                     :pc, :output, :exception, :set_output, :set_exception, :set_pc, :status, :gas_limit, :depth,
-                     :refund_gas, :reset_refund_gas
+      def_delegators :execution_context, :instruction, :sub_state, :machine_state, :block_info, :fork_schema,
+                     :pc, :output, :exception, :set_output, :set_exception, :set_pc, :status, :depth,
+                     :gas_limit, :refund_gas, :reset_refund_gas, :consume_gas, :remain_gas
       def_delegators :instruction, :get_op, :get_code, :next_valid_instruction_pos, :get_data, :data, :sender
       def_delegators :sub_state, :add_refund_account, :add_touched_account, :add_suicide_account
 
-      attr_reader :state, :machine_state, :execution_context
+      attr_reader :state, :execution_context
 
-      def initialize(state:, machine_state: MachineState.new, burn_gas_on_exception: true)
+      def initialize(state:, burn_gas_on_exception: true)
         @state = state
-        @machine_state = machine_state
         @burn_gas_on_exception = burn_gas_on_exception
       end
 
