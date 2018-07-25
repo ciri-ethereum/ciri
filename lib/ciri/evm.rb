@@ -67,16 +67,6 @@ module Ciri
           raise InvalidTransition.new("overflow header gas_used, total_gas_used: #{total_gas_used}, block gas_used: #{block.header.gas_used}")
         end
 
-        # calculate fee
-        fee = result.gas_used * result.gas_price
-
-        miner_account = find_account(block.header.beneficiary)
-        miner_account.balance += fee
-        state.set_balance(block.header.beneficiary, miner_account.balance)
-
-        # update actually state_root(after calculate fee)
-        result.state_root = state.state_root
-
         receipts << Types::Receipt.new(state_root: result.state_root, gas_used: total_gas_used, logs: result.logs)
       end
 
@@ -151,9 +141,18 @@ module Ciri
         refund_gas = fork_schema.calculate_refund_gas(vm)
         refund_gas += context.reset_refund_gas
         remain_gas = context.remain_gas
-        gas_used = t.gas_limit - remain_gas
-        refund_gas = [refund_gas, gas_used / 2].min
+        actually_gas_used = t.gas_limit - remain_gas
+        refund_gas = [refund_gas, actually_gas_used / 2].min
         state.add_balance(t.sender, (refund_gas + remain_gas) * t.gas_price)
+
+        # gas_used after refund gas
+        gas_used = actually_gas_used - refund_gas
+
+        # miner fee
+        fee = gas_used * t.gas_price
+        miner_account = find_account(block_info.coinbase)
+        miner_account.balance += fee
+        state.set_balance(block_info.coinbase, miner_account.balance)
 
         # destroy accounts
         vm.sub_state.suicide_accounts.each do |address|
@@ -162,7 +161,7 @@ module Ciri
         end
 
         ExecutionResult.new(status: context.status, state_root: state_root, logs: context.all_log_series,
-                            gas_used: gas_used - refund_gas, gas_price: t.gas_price, exception: context.exception)
+                            gas_used: gas_used, gas_price: t.gas_price, exception: context.exception)
       end
     end
 

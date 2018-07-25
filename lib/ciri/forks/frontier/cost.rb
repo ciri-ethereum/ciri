@@ -38,8 +38,8 @@ module Ciri
         G_LOW = 5
         G_MID = 8
         G_HIGH = 10
-        G_EXTCODE = 700
-        G_BALANCE = 400
+        G_EXTCODE = 20
+        G_BALANCE = 20
         G_SLOAD = 50
         G_JUMPDEST = 1
         G_SSET = 20000
