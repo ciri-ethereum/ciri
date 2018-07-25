@@ -21,11 +21,14 @@
 # THE SOFTWARE.
 
 
+require 'ciri/utils/logger'
 require 'ciri/evm/errors'
 
 module Ciri
   class EVM
     class ExecutionContext
+
+      include Utils::Logger
 
       attr_accessor :instruction, :depth, :pc, :output, :exception, :gas_limit, :block_info, :sub_state, :fork_schema
       attr_reader :children, :remain_gas
@@ -84,6 +87,7 @@ module Ciri
 
       def consume_gas(gas)
         raise GasNotEnoughError.new("can't consume gas to negative, remain_gas: #{remain_gas}, consumed: #{gas}") if gas > remain_gas
+        debug "consume #{gas} gas, from #{@remain_gas} -> #{@remain_gas - gas}"
         @remain_gas -= gas
       end
 

@@ -486,18 +486,10 @@ module Ciri
 
       def_op :SELFDESTRUCT, 0xff, 1, 0 do |vm|
         refund_address = vm.pop(Address)
-        refund_account = vm.find_account(refund_address)
-
         contract_account = vm.find_account vm.instruction.address
 
-        if refund_address != vm.instruction.address
-          refund_account.balance += contract_account.balance
-        end
-
-        contract_account.balance = 0
-
-        vm.state.set_balance(refund_address, refund_account.balance)
-        vm.state.set_balance(vm.instruction.address, contract_account.balance)
+        vm.state.add_balance(refund_address, contract_account.balance)
+        vm.state.set_balance(vm.instruction.address, 0)
 
         # register changed accounts
         vm.add_refund_account(refund_address)
