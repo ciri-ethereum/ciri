@@ -199,7 +199,6 @@ RSpec.describe Ciri::Chain do
   broken_topics = %w{
     bcExploitTest
     bcStateTests
-    bcForkStressTest
     bcRandomBlockhashTest
     GeneralStateTests
   }.map {|f| ["fixtures/BlockchainTests/#{f}", true]}.to_h
