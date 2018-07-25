@@ -57,9 +57,8 @@ module Ciri
       end
 
       def revert(snapshot)
-        state_root, db = snapshot
-        @db = db
-        @account_db = DB::AccountDB.new(db, root_hash: state_root)
+        state_root, _db = snapshot
+        @account_db = DB::AccountDB.new(@db, root_hash: state_root)
       end
 
       def commit(snapshot)
