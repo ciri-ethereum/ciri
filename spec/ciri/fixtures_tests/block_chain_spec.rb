@@ -142,7 +142,8 @@ RSpec.describe Ciri::Chain do
           state.set_nonce(address, account.nonce)
           state.set_account_code(address, code)
 
-          storage.each do |key, value|
+          storage.each do |k, v|
+            key, value = Ciri::Utils.big_endian_decode(k), Ciri::Utils.big_endian_decode(v)
             state.store(address, key, value)
           end
         end
@@ -197,7 +198,6 @@ RSpec.describe Ciri::Chain do
   }.map {|f| ["fixtures/BlockchainTests/#{f}", true]}.to_h
 
   broken_topics = %w{
-    bcExploitTest
     bcStateTests
     bcRandomBlockhashTest
     GeneralStateTests
@@ -227,9 +227,9 @@ RSpec.describe Ciri::Chain do
     end
   end if true
 
-  # Dir.glob("fixtures/BlockchainTests/bcMultiChainTest/*").each do |topic|
-  # topic ||= nil
-  # run_test_case[JSON.load(open topic || 'fixtures/BlockchainTests/bcValidBlockTest/dataTx.json'), prefix: 'test', tags: {}]
+  # Dir.glob("fixtures/BlockchainTests/bcExploitTest/*").each do |topic|
+  #   topic ||= nil
+  #   run_test_case[JSON.load(open topic || 'fixtures/BlockchainTests/bcExploitTest/SuicideIssue.json'), prefix: 'test', tags: {}]
   # end
 
 end
