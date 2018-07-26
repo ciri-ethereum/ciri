@@ -174,16 +174,9 @@ module Ciri
       # transact value from sender to target address
       def transact(sender:, value:, to:)
         sender_account = find_account(sender)
-        to_account = find_account(to)
-
         raise VMError.new("balance not enough") if sender_account.balance < value
-
-        sender_account.balance -= value
-        to_account.balance += value
-
-        state.set_nonce(sender, sender_account.nonce)
-        state.set_balance(sender, sender_account.balance)
-        state.set_balance(to, to_account.balance)
+        state.add_balance(sender, -value)
+        state.add_balance(to, value)
       end
 
       # Execute instruction with states
@@ -280,10 +273,8 @@ module Ciri
       def check_exception(state, ms, instruction)
         w = instruction.get_op(pc)
         case
-        when w == OP::INVALID
-          InvalidOpCodeError.new "can't find op code 0x#{w.to_s(16)}"
-        when OP.input_count(w).nil?
-          InvalidOpCodeError.new "can't find op code 0x#{w.to_s(16)}"
+        when w == OP::INVALID || OP.input_count(w).nil?
+          InvalidOpCodeError.new "can't find op code 0x#{w.to_s(16)} pc: #{pc}"
         when ms.stack.size < (consume = OP.input_count(w))
           StackError.new "stack not enough: stack:#{ms.stack.size} next consume: #{consume}"
         when remain_gas < (gas_cost = fork_schema.gas_of_operation(self).then {|gas_cost, _| gas_cost})
