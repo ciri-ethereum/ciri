@@ -503,9 +503,13 @@ module Ciri
         to = vm.pop(Address)
         value = delegate_call ? 0 : vm.pop(Integer)
         input_mem_pos, input_size = vm.pop_list(2, Integer)
-        vm.extend_memory(input_mem_pos, input_size)
-        data = vm.memory_fetch(input_mem_pos, input_size)
         output_mem_pos, output_mem_size = vm.pop_list(2, Integer)
+
+        # extend input output memory
+        vm.extend_memory(input_mem_pos, input_size)
+        vm.extend_memory(output_mem_pos, output_mem_size)
+
+        data = vm.memory_fetch(input_mem_pos, input_size)
         [gas, to, value, data, output_mem_pos, output_mem_size]
       end
 
