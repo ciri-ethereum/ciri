@@ -43,7 +43,7 @@ module Ciri
       # get ancestor hash
       def get_ancestor_hash(current_hash, ancestor_distance)
         if ancestor_distance > 256 || ancestor_distance < 0
-          0
+          ''.b
         elsif ancestor_distance == 0
           current_hash
         else
