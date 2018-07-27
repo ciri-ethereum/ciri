@@ -24,6 +24,7 @@
 require 'openssl'
 require 'ciri/utils'
 require 'ciri/crypto'
+require 'ciri/types/address'
 
 module Ciri
 
@@ -74,7 +75,16 @@ module Ciri
       Crypto.ecies_decrypt(data, ec_key, shared_mac_data)
     end
 
+    def to_address
+      Types::Address.new(Utils.keccak(public_key)[-20..-1])
+    end
+
     private
+
+    # public key
+    def public_key
+      raw_public_key[1..-1]
+    end
 
     def secp256k1_key
       privkey = ec_key.private_key.to_s(2)

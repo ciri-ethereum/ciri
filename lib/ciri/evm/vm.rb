@@ -136,8 +136,8 @@ module Ciri
 
         # increment nonce first, nonce will not revert if state rollback
         state.increment_nonce(sender) if touch_nonce
-        snapshot = state.snapshot
 
+        snapshot = state.snapshot
         transact(sender: sender, value: value, to: target)
 
         # execute initialize code
@@ -149,7 +149,11 @@ module Ciri
         context.instruction.bytes_code = get_account_code(code_address)
 
         with_context(context) do
-          execute
+          if (precompile_contract = fork_schema.find_precompile_contract(code_address))
+            precompile_contract.call(self)
+          else
+            execute
+          end
 
           if exception
             state.revert(snapshot)
@@ -277,7 +281,7 @@ module Ciri
           InvalidOpCodeError.new "can't find op code 0x#{w.to_s(16)} pc: #{pc}"
         when ms.stack.size < (consume = OP.input_count(w))
           StackError.new "stack not enough: stack:#{ms.stack.size} next consume: #{consume}"
-        when remain_gas < (gas_cost = fork_schema.gas_of_operation(self).then {|gas_cost, _| gas_cost})
+        when remain_gas < (gas_cost = fork_schema.gas_of_operation(self).yield_self {|gas_cost, _| gas_cost})
           GasNotEnoughError.new "gas not enough: gas remain:#{remain_gas} gas cost: #{gas_cost}"
         when w == OP::JUMP && instruction.destinations.include?(ms.get_stack(0, Integer))
           InvalidJumpError.new "invalid jump dest #{ms.get_stack(0, Integer)}"

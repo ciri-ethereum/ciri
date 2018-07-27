@@ -62,6 +62,11 @@ module Ciri
       def difficulty_virtual_height(height)
         raise NotImplementedError
       end
+
+      # EVM op code and contract
+      def find_precompile_contract(address)
+        raise NotImplementedError
+      end
     end
 
   end
