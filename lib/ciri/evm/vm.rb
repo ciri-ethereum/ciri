@@ -60,7 +60,7 @@ module Ciri
       def_delegators :instruction, :get_op, :get_code, :next_valid_instruction_pos, :get_data, :data, :sender
       def_delegators :sub_state, :add_refund_account, :add_touched_account, :add_suicide_account
 
-      attr_reader :state, :execution_context
+      attr_reader :state, :execution_context, :burn_gas_on_exception
 
       def initialize(state:, burn_gas_on_exception: true)
         @state = state
@@ -149,13 +149,23 @@ module Ciri
         context.instruction.bytes_code = get_account_code(code_address)
 
         with_context(context) do
-          if (precompile_contract = fork_schema.find_precompile_contract(code_address))
-            precompile_contract.call(self)
-          else
-            execute
+          begin
+            if (precompile_contract = fork_schema.find_precompile_contract(code_address))
+              precompile_contract.call(self)
+            else
+              execute
+            end
+          rescue GasNotEnoughError => e
+            set_exception(e)
           end
 
           if exception
+            if burn_gas_on_exception
+              debug("exception: #{exception}, burn gas #{remain_gas} to zero... op code: 0x#{get_op(pc).to_s(16)}")
+              consume_gas remain_gas
+            end
+            execution_context.revert
+
             state.revert(snapshot)
           else
             state.commit(snapshot)
@@ -188,11 +198,6 @@ module Ciri
       def execute
         loop do
           if exception || set_exception(check_exception(@state, machine_state, instruction))
-            if @burn_gas_on_exception
-              debug("exception: #{exception}, burn gas #{remain_gas} to zero... op code: 0x#{get_op(pc).to_s(16)}")
-              consume_gas remain_gas
-            end
-            execution_context.revert
             return [EMPTY_SET, machine_state, SubState::EMPTY, instruction, EMPTY_SET]
           elsif get_op(pc) == OP::REVERT
             o = halt

@@ -46,7 +46,7 @@ module Ciri
     end
 
     refine(Integer) do
-      def ceil_dev(size)
+      def ceil_div(size)
         Utils.ceil_dev(self, size)
       end
     end
