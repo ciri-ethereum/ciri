@@ -21,39 +21,33 @@
 # THE SOFTWARE.
 
 
-require 'ciri/types/address'
-require 'ciri/core_ext'
-
-using Ciri::CoreExt
+require 'ciri/utils'
 
 module Ciri
-  module Serialize
+  # Core extension module for convenient
+  module CoreExt
 
-    extend self
+    refine(String) do
+      def to_hex
+        Utils.to_hex(self)
+      end
 
-    def serialize(item)
-      case item
-      when Integer
-        Utils.big_endian_encode(item)
-      when Types::Address
-        item.to_s
-      else
-        item
+      def keccak
+        Utils.keccak(self)
+      end
+
+      def decode_big_endian
+        Utils.big_endian_decode(self)
+      end
+
+      def pad_zero(size)
+        self.rjust(size, "\x00".b)
       end
     end
 
-    def deserialize(type, item)
-      if type == Integer && !item.is_a?(Integer)
-        Utils.big_endian_decode(item.to_s)
-      elsif type == Types::Address && !item.is_a?(Types::Address)
-        # check if address represent in Integer
-        item = Utils.big_endian_encode(item) if item.is_a?(Integer)
-        Types::Address.new(item.size >= 20 ? item[-20..-1] : item.pad_zero(20))
-      elsif type.nil?
-        # get serialized word
-        serialize(item).rjust(32, "\x00".b)
-      else
-        item
+    refine(Integer) do
+      def ceil_dev(size)
+        Utils.ceil_dev(self, size)
       end
     end
 

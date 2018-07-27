@@ -23,6 +23,7 @@
 
 require 'ciri/rlp'
 require 'ciri/crypto'
+require 'ciri/key'
 require 'ciri/types/address'
 
 module Ciri
@@ -56,7 +57,7 @@ module Ciri
       # @return address String
       def sender
         @sender ||= begin
-          address = Types::Address.new(Utils.keccak(Crypto.ecdsa_recover(sign_hash(chain_id), signature)[1..-1])[-20..-1])
+          address = Key.ecdsa_recover(sign_hash(chain_id), signature).to_address
           address.validate
           address
         end

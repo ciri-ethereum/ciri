@@ -23,6 +23,10 @@
 
 require_relative 'base'
 require_relative 'frontier/cost'
+require 'ciri/core_ext'
+require 'ciri/evm/precompile_contract'
+
+using Ciri::CoreExt
 
 module Ciri
   module Forks
@@ -75,6 +79,18 @@ module Ciri
 
         def difficulty_virtual_height(height)
           height
+        end
+
+        PRECOMPILE_CONTRACTS = {
+          "\x01".pad_zero(20).b => EVM::PrecompileContract::ECRecover.new,
+          "\x02".pad_zero(20).b => EVM::PrecompileContract::SHA256.new,
+          "\x03".pad_zero(20).b => EVM::PrecompileContract::RIPEMD160.new,
+          "\x04".pad_zero(20).b => EVM::PrecompileContract::Identity.new,
+        }.freeze
+
+        # EVM op code and contract
+        def find_precompile_contract(address)
+          PRECOMPILE_CONTRACTS[address.to_s]
         end
 
       end
