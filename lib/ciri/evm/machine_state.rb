@@ -21,6 +21,7 @@
 # THE SOFTWARE.
 
 
+require 'ciri/utils/logger'
 require 'ciri/serialize'
 require 'ciri/evm/errors'
 
@@ -29,13 +30,12 @@ module Ciri
 
     # represent current vm status, include stack, memory..
     class MachineState
+      include Utils::Logger
 
       attr_reader :memory, :stack
-      attr_accessor :memory_item
 
-      def initialize(memory: "\x00".b * 256, memory_item: 0, stack: [])
+      def initialize(memory: ''.b, stack: [])
         @memory = memory
-        @memory_item = memory_item
         @stack = stack
       end
 
@@ -63,7 +63,7 @@ module Ciri
 
       # store data to memory
       def memory_store(start, size, data)
-        if start < memory.size && start + size - 1 < memory.size
+        if size > 0 && start < memory.size && start + size - 1 < memory.size
           memory[start..(start + size - 1)] = Serialize.serialize(data).rjust(size, "\x00".b)
         end
       end
@@ -78,16 +78,20 @@ module Ciri
         end
       end
 
+      def memory_item
+        Utils.ceil_div(memory.size, 32)
+      end
+
       # extend vm memory, used for memory_gas calculation
       def extend_memory(context, pos, size)
         if size != 0 && (new_item = Utils.ceil_div(pos + size, 32)) > memory_item
-          old_cost_gas = context.fork_schema.gas_of_memory self.memory_item
+          debug("extend memory: from #{memory_item} -> #{new_item}")
+          old_cost_gas = context.fork_schema.gas_of_memory memory_item
           new_cost_gas = context.fork_schema.gas_of_memory new_item
           context.consume_gas(new_cost_gas - old_cost_gas)
 
-          self.memory_item = new_item
-          new_size = new_item * 32
-          self.memory << "\x00".b * new_size
+          extend_size = (new_item - memory_item) * 32
+          self.memory << "\x00".b * extend_size
         end
       end
 

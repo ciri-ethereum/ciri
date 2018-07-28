@@ -22,6 +22,7 @@
 
 
 require 'spec_helper'
+require 'ciri/core_ext'
 require 'ciri/chain'
 require 'ciri/evm'
 require 'ciri/evm/state'
@@ -32,6 +33,8 @@ require 'ciri/db/backend/memory'
 require 'ciri/chain/transaction'
 require 'ciri/key'
 
+using Ciri::CoreExt
+
 RSpec.describe Ciri::Chain do
 
   before(:all) do
@@ -39,37 +42,39 @@ RSpec.describe Ciri::Chain do
   end
 
   parse_account = proc do |address, v|
-    balance = Ciri::Utils.hex_to_number(v["balance"])
-    nonce = Ciri::Utils.hex_to_number(v["nonce"])
-    code = Ciri::Utils.to_bytes(v["code"])
     storage = v["storage"].map do |k, v|
-      [Ciri::Utils.to_bytes(k), Ciri::Utils.to_bytes(v).rjust(32, "\x00".b)]
+      [k.decode_hex, v.decode_hex.pad_zero(32)]
     end.to_h
-    [Ciri::Types::Account.new(balance: balance, nonce: nonce), code, storage]
+    [
+      Ciri::Types::Account.new(
+        balance: v["balance"].decode_hex.decode_big_endian,
+        nonce: v["nonce"].decode_hex.decode_big_endian),
+      v["code"].decode_hex,
+      storage
+    ]
   end
 
   parse_header = proc do |data|
     columns = {}
-    columns[:logs_bloom] = Ciri::Utils.to_bytes(data['bloom'])
-    columns[:beneficiary] = Ciri::Utils.to_bytes(data['coinbase'])
-    columns[:difficulty] = Ciri::Utils.hex_to_number(data['difficulty'])
-    columns[:extra_data] = Ciri::Utils.to_bytes(data['extraData'])
-    columns[:gas_limit] = Ciri::Utils.hex_to_number(data['gasLimit'])
-    columns[:gas_used] = Ciri::Utils.hex_to_number(data['gasUsed'])
-    columns[:mix_hash] = Ciri::Utils.to_bytes(data['mixHash'])
-    columns[:nonce] = Ciri::Utils.to_bytes(data['nonce'])
-    columns[:number] = Ciri::Utils.hex_to_number(data['number'])
-    columns[:parent_hash] = Ciri::Utils.to_bytes(data['parentHash'])
-    columns[:receipts_root] = Ciri::Utils.to_bytes(data['receiptTrie'])
-    columns[:state_root] = Ciri::Utils.to_bytes(data['stateRoot'])
-    columns[:transactions_root] = Ciri::Utils.to_bytes(data['transactionsTrie'])
-    columns[:timestamp] = Ciri::Utils.hex_to_number(data['timestamp'])
-    columns[:ommers_hash] = Ciri::Utils.to_bytes(data['uncleHash'])
+    columns[:logs_bloom] = data['bloom'].decode_hex
+    columns[:beneficiary] = data['coinbase'].decode_hex
+    columns[:difficulty] = data['difficulty'].decode_hex.decode_big_endian
+    columns[:extra_data] = data['extraData'].decode_hex
+    columns[:gas_limit] = data['gasLimit'].decode_hex.decode_big_endian
+    columns[:gas_used] = data['gasUsed'].decode_hex.decode_big_endian
+    columns[:mix_hash] = data['mixHash'].decode_hex
+    columns[:nonce] = data['nonce'].decode_hex
+    columns[:number] = data['number'].decode_hex.decode_big_endian
+    columns[:parent_hash] = data['parentHash'].decode_hex
+    columns[:receipts_root] = data['receiptTrie'].decode_hex
+    columns[:state_root] = data['stateRoot'].decode_hex
+    columns[:transactions_root] = data['transactionsTrie'].decode_hex
+    columns[:timestamp] = data['timestamp'].decode_hex.decode_big_endian
+    columns[:ommers_hash] = data['uncleHash'].decode_hex
 
     header = Ciri::Chain::Header.new(**columns)
     unless Ciri::Utils.to_hex(header.get_hash) == data['hash']
       p columns
-      # raise "expect header #{Ciri::Utils.to_hex(header.get_hash)} shoult equal to #{data['hash']}"
     end
     header
   end
@@ -135,7 +140,7 @@ RSpec.describe Ciri::Chain do
         state = Ciri::EVM::State.new(db)
         # pre
         t['pre'].each do |address, v|
-          address = Ciri::Types::Address.new Ciri::Utils.to_bytes(address)
+          address = Ciri::Types::Address.new address.decode_hex
 
           account, code, storage = parse_account[address, v]
           state.set_balance(address, account.balance)
@@ -143,13 +148,13 @@ RSpec.describe Ciri::Chain do
           state.set_account_code(address, code)
 
           storage.each do |k, v|
-            key, value = Ciri::Utils.big_endian_decode(k), Ciri::Utils.big_endian_decode(v)
+            key, value = k.decode_big_endian, v.decode_big_endian
             state.store(address, key, value)
           end
         end
 
         genesis = if t['genesisRLP']
-                    Ciri::Chain::Block.rlp_decode(Ciri::Utils.to_bytes t['genesisRLP'])
+                    Ciri::Chain::Block.rlp_decode(t['genesisRLP'].decode_hex)
                   elsif t['genesisBlockHeader']
                     Ciri::Chain::Block.new(header: parse_header[t['genesisBlockHeader']], transactions: [], ommers: [])
                   end
@@ -160,7 +165,7 @@ RSpec.describe Ciri::Chain do
         # run block
         t['blocks'].each do |b|
           begin
-            block = Ciri::Chain::Block.rlp_decode Ciri::Utils.to_bytes(b['rlp'])
+            block = Ciri::Chain::Block.rlp_decode b['rlp'].decode_hex
             chain.import_block(block)
           rescue Ciri::Chain::InvalidBlockError, Ciri::RLP::InvalidValueError, Ciri::EVM::Error => e
             p e
@@ -172,18 +177,9 @@ RSpec.describe Ciri::Chain do
 
           # check status
           block = chain.get_block(block.get_hash)
-
-          if b['blockHeader']
-            expect(block.header).to eq fixture_to_block_header(b['blockHeader'])
-          end
-
-          if b['transactions']
-            expect(block.transactions).to eq b['transactions'].map {|t| fixture_to_transaction(t)}
-          end
-
-          if b['uncleHeaders']
-            expect(block.ommers).to eq b['uncleHeaders'].map {|h| fixture_to_block_header(h)}
-          end
+          expect(block.header).to eq fixture_to_block_header(b['blockHeader']) if b['blockHeader']
+          expect(block.transactions).to eq b['transactions'].map {|t| fixture_to_transaction(t)} if b['transactions']
+          expect(block.ommers).to eq b['uncleHeaders'].map {|h| fixture_to_block_header(h)} if b['uncleHeaders']
 
         end
       end
@@ -225,11 +221,22 @@ RSpec.describe Ciri::Chain do
 
       run_test_case[JSON.load(open t), prefix: topic, tags: tags]
     end
-  end if true
+  end
 
-  # Dir.glob("fixtures/BlockchainTests/bcRandomBlockhashTest/*").each do |topic|
-  # topic ||= nil
-  # run_test_case[JSON.load(open topic || 'fixtures/BlockchainTests/bcRandomBlockhashTest/randomStatetest224BC.json'), prefix: 'test', tags: {}]
+  # GeneralStateTests
+  passed_general_state_tests = %w{
+    stAttackTest
+  }
+
+  passed_general_state_tests.each do |sub_group|
+    Dir.glob("fixtures/BlockchainTests/GeneralStateTests/#{sub_group}/*.json").each do |topic|
+      run_test_case[JSON.load(open topic), prefix: 'GeneralStateTests', tags: {}]
+    end
+  end
+
+  # Dir.glob("fixtures/BlockchainTests/GeneralStateTests/stAttackTest/*.json").each do |topic|
+  #   topic ||= nil
+  #   run_test_case[JSON.load(open topic || 'fixtures/BlockchainTests/bcWalletTest/wallet2outOf3txs.json'), prefix: 'test', tags: {}]
   # end
 
 end

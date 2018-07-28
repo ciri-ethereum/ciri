@@ -92,7 +92,7 @@ module Ciri
           pc: pc,
           gas_limit: gas_limit,
           block_info: block_info,
-          sub_state: SubState::EMPTY.dup,
+          sub_state: SubState.new,
           remain_gas: gas_limit,
           fork_schema: fork_schema,
         )
@@ -129,6 +129,10 @@ module Ciri
 
       def all_log_series
         sub_state.log_series + children.map {|c| c.all_log_series}.flatten
+      end
+
+      def all_suicide_accounts
+        (sub_state.suicide_accounts + children.map {|c| c.all_suicide_accounts}.flatten).uniq(&:to_s)
       end
 
     end

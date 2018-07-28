@@ -94,6 +94,11 @@ module Ciri
         contract_account = find_account(contract_address)
         # contract_account.nonce = 1
 
+        if contract_account.has_code? || contract_account.nonce > 0
+          debug("create #{contract_address} conflict")
+          return 0
+        end
+
         # execute initialize code
         # new_context = execution_context.child_context(gas_limit: gas_limit)
         context.instruction.bytes_code = init

@@ -442,11 +442,21 @@ module Ciri
         value = vm.pop(Integer)
         mem_pos, size = vm.pop_list(2, Integer)
 
-        init = vm.memory_fetch(mem_pos, size)
         vm.extend_memory(mem_pos, size)
 
-        contract_address, _ = vm.create_contract(value: value, init: init, touch_nonce: false)
-        vm.push contract_address
+        # have not enough money
+        if vm.find_account(vm.instruction.address).balance < value
+          vm.push(0)
+        else
+          init = vm.memory_fetch(mem_pos, size)
+          create_gas = vm.remain_gas
+          vm.consume_gas(create_gas)
+          child_context = vm.execution_context.child_context(gas_limit: create_gas)
+          contract_address, _ = vm.create_contract(value: value, init: init, touch_nonce: true, context: child_context)
+          vm.execution_context.return_gas(child_context.remain_gas)
+
+          vm.push contract_address
+        end
       end
 
       def_op :CALL, 0xf1, 7, 1 do |vm|

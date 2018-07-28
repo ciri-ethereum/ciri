@@ -42,7 +42,11 @@ module Ciri
 
       # EMPTY(σ,a) ≡ σ[a]c =KEC􏰁()􏰂∧σ[a]n =0∧σ[a]b =0
       def empty?
-        code_hash == Utils::BLANK_SHA3 && nonce == 0 && balance == 0
+        !has_code? && nonce == 0 && balance == 0
+      end
+
+      def has_code?
+        code_hash != Utils::BLANK_SHA3
       end
 
       class << self
