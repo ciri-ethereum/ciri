@@ -428,8 +428,8 @@ module Ciri
         def_op name, 0xa0 + i, i + 2, 0, &(proc do |i|
           proc do |vm|
             pos, size = vm.pop_list(2, Integer)
-            log_data = vm.memory_fetch(pos, size)
             vm.extend_memory(pos, size)
+            log_data = vm.memory_fetch(pos, size)
             topics = vm.pop_list(i, Integer)
             vm.add_log_entry(topics, log_data)
           end
