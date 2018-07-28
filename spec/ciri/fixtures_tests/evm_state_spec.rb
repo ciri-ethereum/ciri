@@ -108,7 +108,7 @@ RSpec.describe Ciri::EVM do
               evm = Ciri::EVM.new(state: state)
               result = begin
                 evm.execute_transaction(transaction, block_info: block_info, ignore_exception: true)
-              rescue Ciri::EVM::Error
+              rescue StandardError
                 Ciri::EVM::ExecutionResult.new(logs: [])
               end
 

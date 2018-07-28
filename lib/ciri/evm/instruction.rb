@@ -77,12 +77,12 @@ module Ciri
       def destinations_by_index(bytes_code, i)
         destinations = []
         loop do
-          if i > bytes_code.size
+          if i >= bytes_code.size
             break
-          elsif bytes_code[i] == OP::JUMPDEST
+          elsif bytes_code[i].bytes[0] == OP::JUMPDEST
             destinations << i
           end
-          i = next_valid_instruction_pos(i, bytes_code[i])
+          i = next_valid_instruction_pos(i, bytes_code[i].bytes[0])
         end
         destinations
       end

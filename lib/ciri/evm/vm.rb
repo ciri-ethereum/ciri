@@ -56,8 +56,8 @@ module Ciri
       # delegate methods to current execution_context
       def_delegators :execution_context, :instruction, :sub_state, :machine_state, :block_info, :fork_schema,
                      :pc, :output, :exception, :set_output, :set_exception, :set_pc, :status, :depth,
-                     :gas_limit, :refund_gas, :reset_refund_gas, :consume_gas, :remain_gas
-      def_delegators :instruction, :get_op, :get_code, :next_valid_instruction_pos, :get_data, :data, :sender
+                     :gas_limit, :refund_gas, :reset_refund_gas, :consume_gas, :remain_gas, :jump_to, :jump_pc
+      def_delegators :instruction, :get_op, :get_code, :next_valid_instruction_pos, :get_data, :data, :sender, :destinations
       def_delegators :sub_state, :add_refund_account, :add_touched_account, :add_suicide_account
 
       attr_reader :state, :execution_context, :burn_gas_on_exception
@@ -108,8 +108,13 @@ module Ciri
             # deposit_code_gas not enough
             contract_address = 0
           elsif exception
-            state.touch_account(contract_address)
+            # state.touch_account(contract_address)
             contract_address = 0
+            if burn_gas_on_exception
+              debug("exception: #{exception}, burn gas #{remain_gas} to zero... op code: 0x#{get_op(pc).to_s(16)}")
+              consume_gas remain_gas
+            end
+            execution_context.revert
             state.revert(snapshot)
           else
             # set contract code
@@ -175,12 +180,6 @@ module Ciri
         end
       end
 
-      # jump to pc
-      # only valid if current op code is allowed to modify pc
-      def jump_to(pc)
-        @jump_to = pc
-      end
-
       def add_log_entry(topics, log_data)
         sub_state.log_series << LogEntry.new(address: instruction.address, topics: topics, data: log_data)
       end
@@ -198,6 +197,7 @@ module Ciri
       def execute
         loop do
           if exception || set_exception(check_exception(@state, machine_state, instruction))
+            debug("check exception: #{exception}")
             return [EMPTY_SET, machine_state, SubState::EMPTY, instruction, EMPTY_SET]
           elsif get_op(pc) == OP::REVERT
             o = halt
@@ -254,9 +254,9 @@ module Ciri
 
         set_pc case
                when w == OP::JUMP
-                 @jump_to
-               when w == OP::JUMPI
-                 @jump_to
+                 jump_pc
+               when w == OP::JUMPI && jump_pc
+                 jump_pc
                else
                  next_valid_instruction_pos(pc, w)
                end
@@ -288,9 +288,9 @@ module Ciri
           StackError.new "stack not enough: stack:#{ms.stack.size} next consume: #{consume}"
         when remain_gas < (gas_cost = fork_schema.gas_of_operation(self).yield_self {|gas_cost, _| gas_cost})
           GasNotEnoughError.new "gas not enough: gas remain:#{remain_gas} gas cost: #{gas_cost}"
-        when w == OP::JUMP && instruction.destinations.include?(ms.get_stack(0, Integer))
+        when w == OP::JUMP && !destinations.include?(ms.get_stack(0, Integer))
           InvalidJumpError.new "invalid jump dest #{ms.get_stack(0, Integer)}"
-        when w == OP::JUMPI && ms.get_stack(1, Integer) != 0 && instruction.destinations.include?(ms.get_stack(0, Integer))
+        when w == OP::JUMPI && ms.get_stack(1, Integer) != 0 && !destinations.include?(ms.get_stack(0, Integer))
           InvalidJumpError.new "invalid condition jump dest #{ms.get_stack(0, Integer)}"
         when w == OP::RETURNDATACOPY && ms.get_stack(1, Integer) + ms.get_stack(2, Integer) > ms.output.size
           ReturnError.new "return data copy error"

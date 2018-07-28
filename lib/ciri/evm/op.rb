@@ -365,10 +365,12 @@ module Ciri
 
       def_op :JUMPI, 0x57, 2, 0 do |vm|
         dest, cond = vm.pop_list(2, Integer)
+        # if cond is non zero jump to dest, else just goto next pc
         if cond != 0
           vm.jump_to(dest)
         else
-          vm.jump_to(vm.pc + 1)
+          # clear jump_to
+          vm.jump_to(nil)
         end
       end
 
