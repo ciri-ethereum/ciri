@@ -200,7 +200,6 @@ RSpec.describe Ciri::Chain do
   }.map {|f| ["fixtures/BlockchainTests/#{f}", true]}.to_h
 
   broken_topics = %w{
-    bcRandomBlockhashTest
     GeneralStateTests
   }.map {|f| ["fixtures/BlockchainTests/#{f}", true]}.to_h
 
@@ -228,9 +227,9 @@ RSpec.describe Ciri::Chain do
     end
   end if true
 
-  # Dir.glob("fixtures/BlockchainTests/bcExploitTest/*").each do |topic|
+  # Dir.glob("fixtures/BlockchainTests/bcRandomBlockhashTest/*").each do |topic|
   # topic ||= nil
-  # run_test_case[JSON.load(open topic || 'fixtures/BlockchainTests/bcExploitTest/DelegateCallSpam.json'), prefix: 'test', tags: {}]
+  # run_test_case[JSON.load(open topic || 'fixtures/BlockchainTests/bcRandomBlockhashTest/randomStatetest224BC.json'), prefix: 'test', tags: {}]
   # end
 
 end
