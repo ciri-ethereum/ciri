@@ -32,6 +32,12 @@ module Ciri
         Utils.to_hex(self)
       end
 
+      alias encode_hex to_hex
+
+      def decode_hex
+        Utils.to_bytes(self)
+      end
+
       def keccak
         Utils.keccak(self)
       end
@@ -47,7 +53,11 @@ module Ciri
 
     refine(Integer) do
       def ceil_div(size)
-        Utils.ceil_dev(self, size)
+        Utils.ceil_div(self, size)
+      end
+
+      def encode_big_endian
+        Utils.big_endian_encode(self)
       end
     end
 

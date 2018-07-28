@@ -51,6 +51,20 @@ module Ciri
         @machine_state = machine_state
       end
 
+      # jump to pc
+      # only valid if current op code is allowed to modify pc
+      def jump_to(pc)
+        # allow pc = nil to clear exist @jump_to
+        unless pc.nil? || instruction.destinations.include?(pc)
+          raise EVM::InvalidJumpError.new("invalid jump in runtime, pc: #{pc}")
+        end
+        @jump_to = pc
+      end
+
+      def jump_pc
+        @jump_to
+      end
+
       def set_exception(e)
         @exception ||= e
       end

@@ -71,7 +71,7 @@ module Ciri
           input_bytes = vm.instruction.data
           word_count = input_bytes.size.ceil_div(32) / 32
           gas_fee = GAS_SHA256 + word_count * GAS_SHA256WORD
-          vm.consume(gas_fee)
+          vm.consume_gas(gas_fee)
           vm.set_output input_bytes.keccak
         end
       end
@@ -84,7 +84,7 @@ module Ciri
           input_bytes = vm.instruction.data
           word_count = input_bytes.size.ceil_div(32) / 32
           gas_fee = GAS_RIPEMD160 + word_count * GAS_RIPEMD160WORD
-          vm.consume(gas_fee)
+          vm.consume_gas(gas_fee)
           vm.set_output Digest::RMD160.digest(input_bytes).pad_zero(32)
         end
       end
@@ -97,7 +97,7 @@ module Ciri
           input_bytes = vm.instruction.data
           word_count = input_bytes.size.ceil_div(32) / 32
           gas_fee = GAS_IDENTITY + word_count * GAS_IDENTITYWORD
-          vm.consume(gas_fee)
+          vm.consume_gas(gas_fee)
           computation.output = input_bytes
         end
       end
