@@ -23,6 +23,8 @@
 
 require 'forwardable'
 require 'ciri/forks'
+require 'ciri/core_ext'
+require 'ciri/utils'
 require_relative 'evm/op'
 require_relative 'evm/vm'
 require_relative 'evm/errors'
@@ -30,8 +32,11 @@ require_relative 'evm/execution_context'
 require_relative 'types/account'
 require_relative 'types/receipt'
 
+using Ciri::CoreExt
+
 module Ciri
   class EVM
+    include Utils::Logger
     extend Forwardable
 
     ExecutionResult = Struct.new(:status, :state_root, :logs, :gas_used, :gas_price, :exception, keyword_init: true) do
@@ -138,24 +143,28 @@ module Ciri
         raise context.exception if !ignore_exception && context.exception
 
         # refund gas
-        refund_gas = fork_schema.calculate_refund_gas(vm)
-        refund_gas += context.reset_refund_gas
+        sub_state_refund_gas = fork_schema.calculate_refund_gas(vm)
+        context.refund_gas(sub_state_refund_gas)
+        refund_gas = context.reset_refund_gas
         remain_gas = context.remain_gas
         actually_gas_used = t.gas_limit - remain_gas
-        refund_gas = [refund_gas, actually_gas_used / 2].min
-        state.add_balance(t.sender, (refund_gas + remain_gas) * t.gas_price)
+        actually_refund_gas = [refund_gas, actually_gas_used / 2].min
+        refund_gas_amount = (actually_refund_gas + remain_gas) * t.gas_price
+        debug("Transaction refund #{refund_gas_amount} to #{t.sender.to_s.to_hex}")
+        state.add_balance(t.sender, refund_gas_amount)
 
         # gas_used after refund gas
-        gas_used = actually_gas_used - refund_gas
+        gas_used = actually_gas_used - actually_refund_gas
 
         # miner fee
         fee = gas_used * t.gas_price
+        debug("Transaction fee #{fee}")
         miner_account = find_account(block_info.coinbase)
         miner_account.balance += fee
         state.set_balance(block_info.coinbase, miner_account.balance)
 
         # destroy accounts
-        vm.sub_state.suicide_accounts.each do |address|
+        vm.execution_context.all_suicide_accounts.each do |address|
           state.set_balance(address, 0)
           state.delete_account(address)
         end

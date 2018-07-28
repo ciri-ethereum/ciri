@@ -21,10 +21,13 @@
 # THE SOFTWARE.
 
 
+require 'ciri/core_ext'
 require 'ciri/trie'
 require 'ciri/types/account'
 require 'ciri/serialize'
 require 'ciri/utils/logger'
+
+using Ciri::CoreExt
 
 module Ciri
   module DB
@@ -126,6 +129,7 @@ module Ciri
       end
 
       def delete_account(address)
+        debug "delete #{address.to_s.to_hex}"
         @trie.delete(convert_key address)
       end
 
@@ -137,7 +141,7 @@ module Ciri
 
       def update_account(address, account)
         debug 'update account'
-        debug Utils.to_hex(address)
+        debug address.to_hex
         debug account.serializable_attributes
         @trie[convert_key address] = Types::Account.rlp_encode account
       end

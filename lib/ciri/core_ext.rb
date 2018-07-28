@@ -46,6 +46,8 @@ module Ciri
         Utils.big_endian_decode(self)
       end
 
+      alias decode_number decode_big_endian
+
       def pad_zero(size)
         self.rjust(size, "\x00".b)
       end

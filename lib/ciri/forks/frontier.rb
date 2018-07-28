@@ -57,7 +57,7 @@ module Ciri
         end
 
         def calculate_refund_gas(vm)
-          vm.sub_state.suicide_accounts.size * Cost::R_SELFDESTRUCT
+          vm.execution_context.all_suicide_accounts.size * Cost::R_SELFDESTRUCT
         end
 
         def mining_rewards_of_block(block)
