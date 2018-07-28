@@ -35,16 +35,16 @@ end
 namespace :docker do
   base_image = 'ciriethereum/base'
 
-  desc 'pull base docker image'
-  task :pull_base do
+  desc 'pull docker image'
+  task :pull do
     system("docker pull #{base_image}:latest")
     exit $?.exitstatus
   end
 
-  desc 'build base docker image, rerun this task after updated Gemfile or Dockerfile'
-  task :build_base do
+  desc 'build docker image, rerun this task after updated Gemfile or Dockerfile'
+  task :build do
     system("git submodule init && git submodule update")
-    system("docker build . -f docker/Base -t #{base_image}:latest")
+    system("docker build . -f docker/Dockerfile -t #{base_image}:latest")
     exit $?.exitstatus
   end
 
