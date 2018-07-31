@@ -45,7 +45,7 @@ module Ciri
       def store(address, key, value)
         account = find_account address
         trie = Trie.new(db: @db, root_hash: account.storage_root)
-
+        debug("#{address.to_hex}[#{key}] -> #{value}")
         converted_key = convert_key Utils.big_endian_encode(key, size: 32)
 
         if value && value != 0

@@ -98,6 +98,7 @@ module Ciri
         # new_context = execution_context.child_context(gas_limit: gas_limit)
         context.instruction.bytes_code = init
         context.instruction.address = contract_address
+        context.instruction.sender = caller_address
 
         with_context(context) do
           execute
