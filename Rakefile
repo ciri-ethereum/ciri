@@ -17,18 +17,18 @@ SUB_COMPONENTS = %w{ciri-utils ciri-rlp ciri-crypto}
 desc 'run tests'
 task :test do
   exit(1) unless check_env
-  exit $?.exitstatus unless system("rspec -t ~slow_tests")
+  run("rspec -t ~slow_tests")
   SUB_COMPONENTS.each do |dir|
-    puts `cd #{dir} && rake`
+    run("cd #{dir} && rake")
   end
 end
 
 desc 'run all tests, include extreme slow tests'
 task :"test:all" do
   exit(1) unless check_env
-  exit $?.exitstatus unless system("rspec")
+  run("rspec")
   SUB_COMPONENTS.each do |dir|
-    puts `cd #{dir} && rake`
+    run("cd #{dir} && rake")
   end
 end
 
@@ -37,15 +37,13 @@ namespace :docker do
 
   desc 'pull docker image'
   task :pull do
-    system("docker pull #{base_image}:latest")
-    exit $?.exitstatus
+    run("docker pull #{base_image}:latest")
   end
 
   desc 'build docker image, rerun this task after updated Gemfile or Dockerfile'
   task :build do
     system("git submodule init && git submodule update")
-    system("docker build . -f docker/Dockerfile -t #{base_image}:latest")
-    exit $?.exitstatus
+    run("docker build . -f docker/Dockerfile -t #{base_image}:latest")
   end
 
   desc 'open Ciri develop container shell'
@@ -61,15 +59,15 @@ namespace :docker do
 
   desc 'run tests in docker'
   task :test do
-    system("docker run -v `pwd`:/app --rm #{base_image}:latest rake test")
-    exit $?.exitstatus
+    run("docker run -v `pwd`:/app --rm #{base_image}:latest rake test")
   end
 
   desc 'run all tests(include slow tests) in docker'
   task :"test:all" do
-    system("docker run -v `pwd`:/app --rm #{base_image}:latest rake test:all")
-    exit $?.exitstatus
+    run("docker run -v `pwd`:/app --rm #{base_image}:latest rake test:all")
   end
+
+  private
 
   def default_stack_size
     52428800
@@ -89,4 +87,13 @@ namespace :docker do
   def default_env
     {'RUBY_THREAD_VM_STACK_SIZE' => ENV['RUBY_THREAD_VM_STACK_SIZE'] || default_stack_size.to_s}
   end
+end
+
+private
+
+def run(cmd)
+  puts "$ #{cmd}"
+  pid = spawn(cmd)
+  Process.wait(pid)
+  exit $?.exitstatus unless $?.success?
 end

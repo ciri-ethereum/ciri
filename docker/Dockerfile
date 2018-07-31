@@ -1,5 +1,5 @@
 FROM ruby:2.6.0-preview2
-MAINTAINER Jiang Jinyang<jjyruby@gmail.com>
+LABEL maintainer="Jiang Jinyang <jjyruby@gmail.com>"
 
 RUN apt-get update -y
 RUN apt-get install -y cmake
@@ -32,5 +32,9 @@ COPY . /app
 
 ENV RUBY_THREAD_VM_STACK_SIZE=52428800
 
-# bundle
+# bundle install
 RUN bundle install
+# bundle install sub components
+RUN bundle install --gemfile ciri-utils/Gemfile
+RUN bundle install --gemfile ciri-rlp/Gemfile
+RUN bundle install --gemfile ciri-crypto/Gemfile
