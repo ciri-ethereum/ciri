@@ -84,9 +84,10 @@ module Ciri
         material = RLP.encode_simple([caller_address.to_s, account.nonce])
         contract_address = Utils.keccak(material)[-20..-1]
 
+        transact(sender: caller_address, value: value, to: contract_address)
+
         # initialize contract account
         contract_account = find_account(contract_address)
-        # contract_account.nonce = 1
 
         if contract_account.has_code? || contract_account.nonce > 0
           debug("create #{contract_address} conflict")
@@ -120,12 +121,6 @@ module Ciri
             set_account_code(contract_address, output)
             # minus deposit_code_fee
             consume_gas deposit_code_gas
-            # transact value
-            account.balance -= value
-            contract_account.balance += value
-
-            state.set_balance(contract_address, contract_account.balance)
-            state.set_balance(caller_address, account.balance)
             state.commit(snapshot)
           end
           [contract_address, exception]
