@@ -12,7 +12,7 @@ Gem::Specification.new do |spec|
   spec.summary       = %q{The RLP serialization library.}
   spec.description   = %q{Provide simple and structure RLP serialization.}
   spec.homepage      = "https://github.com/ciri-ethereum/ciri"
-  spec.license       = "MIT"
+  spec.license       = "Apache 2.0"
 
   spec.files         = `git ls-files -z`.split("\x0").reject do |f|
     f.match(%r{^(test|spec|features)/})
