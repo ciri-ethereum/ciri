@@ -28,7 +28,7 @@ GEM
     digest-sha3 (1.1.0)
     ffi (1.9.25)
     lru_redux (1.1.0)
-    rake (10.3.2)
+    rake (12.3.1)
     rspec (3.7.0)
       rspec-core (~> 3.7.0)
       rspec-expectations (~> 3.7.0)
@@ -50,8 +50,8 @@ PLATFORMS
 DEPENDENCIES
   bundler (~> 1.16)
   ciri!
-  rake (~> 10.0)
+  rake (~> 12.0)
   rspec (~> 3.0)
 
 BUNDLED WITH
-   1.16.2
+   1.16.3
