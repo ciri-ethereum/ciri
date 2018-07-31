@@ -220,6 +220,7 @@ RSpec.describe Ciri::Chain do
   # GeneralStateTests
   passed_general_state_tests = %w{
     stAttackTest
+    stCallCodes
   }
 
   passed_general_state_tests.each do |sub_group|
@@ -228,9 +229,9 @@ RSpec.describe Ciri::Chain do
     end
   end
 
-  # Dir.glob("fixtures/BlockchainTests/GeneralStateTests/stAttackTest/*.json").each do |topic|
+  # Dir.glob("fixtures/BlockchainTests/GeneralStateTests/stCallCodes/*.json").each do |topic|
   #   topic ||= nil
-  #   run_test_case[JSON.load(open topic || 'fixtures/BlockchainTests/bcWalletTest/wallet2outOf3txs.json'), prefix: 'test', tags: {}]
+  #   run_test_case[JSON.load(open topic || 'fixtures/BlockchainTests/GeneralStateTests/stCallCodes/callcodeDynamicCode2SelfCall_d0g0v0.json'), prefix: 'test', tags: {}]
   # end
 
 end
