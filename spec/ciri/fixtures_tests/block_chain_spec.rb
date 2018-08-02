@@ -190,10 +190,26 @@ RSpec.describe Ciri::Chain do
   }.map {|f| ["fixtures/BlockchainTests/#{f}", true]}.to_h
 
   broken_topics = %w{
-    GeneralStateTests
   }.map {|f| ["fixtures/BlockchainTests/#{f}", true]}.to_h
+  
+  # unpassed GeneralStateTests
+  broken_topics.merge!(
+    %w{
+      stRevertTest
+      stInitCodeTest
+      stCreateTest
+      stRefundTest
+      stPreCompiledContracts2
+      stCallCreateCallCodeTest
+      stSolidityTest
+      stMemoryTest
+      stSystemOperationsTest
+      stTransactionTest
+      stReturnDataTest
+    }.map{|f| ["fixtures/BlockchainTests/GeneralStateTests/#{f}", true] }.to_h
+  )
 
-  Dir.glob("fixtures/BlockchainTests/*").each do |topic|
+  Dir.glob("fixtures/BlockchainTests/**").each do |topic|
     # skip topics
     if broken_topics.include? topic
       skip topic
@@ -206,7 +222,7 @@ RSpec.describe Ciri::Chain do
       tags[:slow_tests] = true
     end
 
-    Dir.glob("#{topic}/**/*.json").each do |t|
+    Dir.glob("#{topic}/*.json").each do |t|
       tags = tags.dup
       # tag slow test cases
       if slow_cases.include?(t)
@@ -217,22 +233,9 @@ RSpec.describe Ciri::Chain do
     end
   end
 
-  # GeneralStateTests
-  passed_general_state_tests = %w{
-    stAttackTest
-    stCallCodes
-    stCallCreateCallCodeTest
-  }
-
-  passed_general_state_tests.each do |sub_group|
-    Dir.glob("fixtures/BlockchainTests/GeneralStateTests/#{sub_group}/*.json").each do |topic|
-      run_test_case[JSON.load(open topic), prefix: 'GeneralStateTests', tags: {}]
-    end
-  end
-
-  # Dir.glob("fixtures/BlockchainTests/GeneralStateTests/stCallCreateCallCodeTest/*.json").each do |topic|
+  # Dir.glob("fixtures/BlockchainTests/GeneralStateTests/**/*.json").each do |topic|
   #   topic ||= nil
-  #   run_test_case[JSON.load(open topic || 'fixtures/BlockchainTests/GeneralStateTests/stCallCreateCallCodeTest/CallRecursiveBombPreCall_d0g0v0.json'), prefix: 'test', tags: {}]
+  #   run_test_case[JSON.load(open topic || 'fixtures/BlockchainTests/GeneralStateTests/stCallCreateCallCodeTest/CallRecursiveBombPreCall_d0g0v0.json'), prefix: topic, tags: {}]
   # end
 
 end
