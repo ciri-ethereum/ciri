@@ -16,6 +16,7 @@
 
 
 require 'ciri/utils/logger'
+require 'ciri/core_ext'
 require_relative 'errors'
 require_relative 'execution_context'
 require_relative 'machine_state'
@@ -24,6 +25,7 @@ require_relative 'sub_state'
 require_relative 'block_info'
 require_relative 'log_entry'
 
+using Ciri::CoreExt
 module Ciri
   class EVM
 
@@ -89,11 +91,6 @@ module Ciri
         # initialize contract account
         contract_account = find_account(contract_address)
 
-        if contract_account.has_code? || contract_account.nonce > 0
-          debug("create #{contract_address} conflict")
-          return 0
-        end
-
         # execute initialize code
         # new_context = execution_context.child_context(gas_limit: gas_limit)
         context.instruction.bytes_code = init
@@ -101,7 +98,13 @@ module Ciri
         context.instruction.sender = caller_address
 
         with_context(context) do
-          execute
+          if contract_account.has_code? || contract_account.nonce > 0
+            err = ContractCollisionError.new("address #{contract_address.to_hex} collision")
+            debug(err.message)
+            set_exception(err)
+          else
+            execute
+          end
 
           deposit_code_gas = fork_schema.calculate_deposit_code_gas(output)
 
