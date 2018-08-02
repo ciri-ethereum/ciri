@@ -115,7 +115,6 @@ module Ciri
 
       if t.contract_creation?
         instruction.bytes_code = t.data
-        instruction.address = t.sender
       else
         instruction.bytes_code = get_account_code(t.to)
         instruction.address = t.to
@@ -123,16 +122,22 @@ module Ciri
       end
 
       block_info ||= header && BlockInfo.from_header(header)
-      context = Ciri::EVM::ExecutionContext.new(instruction: instruction, gas_limit: gas_limit,
-                                                block_info: block_info, fork_schema: fork_schema)
+      context = Ciri::EVM::ExecutionContext.new(
+        instruction: instruction, gas_limit: gas_limit,
+        block_info: block_info, fork_schema: fork_schema
+      )
       vm = Ciri::EVM::VM.new(state: state, burn_gas_on_exception: true)
+
+      unless instruction.value > state.find_account(instruction.sender).balance
+        state.increment_nonce(instruction.sender)
+      end
 
       vm.with_context(context) do
         if t.contract_creation?
           # contract creation
-          vm.create_contract(value: instruction.value, init: instruction.bytes_code, touch_nonce: true)
+          vm.create_contract(context: context)
         else
-          vm.call_message(sender: t.sender, value: t.value, target: t.to, data: t.data, touch_nonce: true)
+          vm.call_message(context: context)
         end
         raise context.exception if !ignore_exception && context.exception
 

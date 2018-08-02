@@ -18,6 +18,7 @@
 require 'ciri/utils'
 require 'ciri/utils/number'
 require 'ciri/types/address'
+require_relative 'op_call'
 
 module Ciri
   class EVM
@@ -454,15 +455,11 @@ module Ciri
       end
 
       def_op :CALL, 0xf1, 7, 1 do |vm|
-        gas, to, value, data, output_mem_pos, output_mem_size = extract_call_argument(vm)
-        call_message(vm: vm, sender: vm.instruction.address, value: value, gas: gas, to: to,
-                     data: data, code_address: to, output_mem_pos: output_mem_pos, output_mem_size: output_mem_size)
+        OPCall::Call.new.call(vm)
       end
 
       def_op :CALLCODE, 0xf2, 7, 1 do |vm|
-        gas, to, value, data, output_mem_pos, output_mem_size = extract_call_argument(vm)
-        call_message(vm: vm, sender: vm.instruction.address, value: value, gas: gas, to: vm.instruction.address,
-                     data: data, code_address: to, output_mem_pos: output_mem_pos, output_mem_size: output_mem_size)
+        OPCall::CallCode.new.call(vm)
       end
 
       def_op :RETURN, 0xf3, 2, 0 do |vm|
@@ -472,10 +469,7 @@ module Ciri
       end
 
       def_op :DELEGATECALL, -0xf4, 6, 1 do |vm|
-        gas, to, _value, data, output_mem_pos, output_mem_size = extract_call_argument(vm, delegate_call: true)
-        call_message(vm: vm, sender: vm.instruction.sender, value: vm.instruction.value, gas: gas,
-                     to: vm.instruction.address, data: data, code_address: to,
-                     output_mem_pos: output_mem_pos, output_mem_size: output_mem_size)
+        OPCall::DelegateCall.new.call(vm)
       end
 
       STATICCALL = 0xfa
@@ -501,44 +495,6 @@ module Ciri
         # register changed accounts
         vm.add_refund_account(refund_address)
         vm.add_suicide_account(vm.instruction.address)
-      end
-
-      private
-
-      def self.extract_call_argument(vm, delegate_call: false)
-        gas = vm.pop(Integer)
-        to = vm.pop(Address)
-        value = delegate_call ? 0 : vm.pop(Integer)
-        input_mem_pos, input_size = vm.pop_list(2, Integer)
-        output_mem_pos, output_mem_size = vm.pop_list(2, Integer)
-
-        # extend input output memory
-        vm.extend_memory(input_mem_pos, input_size)
-        vm.extend_memory(output_mem_pos, output_mem_size)
-
-        data = vm.memory_fetch(input_mem_pos, input_size)
-        [gas, to, value, data, output_mem_pos, output_mem_size]
-      end
-
-      def self.call_message(vm:, gas:, sender:, value:, data:, to:, code_address: to, output_mem_pos:, output_mem_size:)
-        context = vm.execution_context
-        child_gas_limit, child_gas_fee = context.fork_schema.gas_of_call(vm: vm,
-                                                                         gas: gas, to: to, value: value)
-        context.consume_gas(child_gas_fee)
-        if context.depth + 1 > 1024
-          context.return_gas(child_gas_limit)
-          vm.push 0
-          return
-        end
-        child_context = context.child_context(gas_limit: child_gas_limit)
-        status, output = vm.call_message(sender: sender, value: value, data: data, target: to,
-                                         code_address: code_address, context: child_context, touch_nonce: false)
-
-        context.return_gas(child_context.remain_gas)
-        output_size = [output_mem_size, output.size].min
-        vm.extend_memory(output_mem_pos, output_size)
-        vm.memory_store(output_mem_pos, output_size, output)
-        vm.push status
       end
 
     end

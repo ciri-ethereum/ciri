@@ -56,11 +56,13 @@ module Ciri
       def_delegators :instruction, :get_op, :get_code, :next_valid_instruction_pos, :get_data, :data, :sender, :destinations
       def_delegators :sub_state, :add_refund_account, :add_touched_account, :add_suicide_account
 
-      attr_reader :state, :execution_context, :burn_gas_on_exception
+      attr_reader :state, :execution_context, :burn_gas_on_exception, :max_depth, :stack_size
 
-      def initialize(state:, burn_gas_on_exception: true)
+      def initialize(state:, burn_gas_on_exception: true, max_depth: 1024, stack_size: 1024)
         @state = state
         @burn_gas_on_exception = burn_gas_on_exception
+        @max_depth = max_depth
+        @stack_size = stack_size
       end
 
       # run vm
@@ -71,32 +73,24 @@ module Ciri
 
       # low_level create_contract interface
       # CREATE_CONTRACT op is based on this method
-      def create_contract(value:, init:, context: self.execution_context, touch_nonce:)
-        caller_address = instruction.address
+      def create_contract(context: self.execution_context)
+        caller_address = context.instruction.sender
+        value = context.instruction.value
         account = find_account(caller_address)
 
         # return contract address 0 represent execution failed
-        return 0 unless account.balance >= value || depth > 1024
-
-        # increment nonce first, nonce will not revert if state rollback
-        state.increment_nonce(caller_address) if touch_nonce
+        return 0 unless account.balance >= value || depth > max_depth
         snapshot = state.snapshot
 
         # generate contract_address
-        material = RLP.encode_simple([caller_address.to_s, account.nonce])
+        material = RLP.encode_simple([caller_address.to_s, account.nonce - 1])
         contract_address = Utils.keccak(material)[-20..-1]
 
         transact(sender: caller_address, value: value, to: contract_address)
 
         # initialize contract account
         contract_account = find_account(contract_address)
-
-        # execute initialize code
-        # new_context = execution_context.child_context(gas_limit: gas_limit)
-        context.instruction.bytes_code = init
         context.instruction.address = contract_address
-        context.instruction.sender = caller_address
-
         with_context(context) do
           if contract_account.has_code? || contract_account.nonce > 0
             err = ContractCollisionError.new("address #{contract_address.to_hex} collision")
@@ -133,24 +127,16 @@ module Ciri
 
       # low level call message interface
       # CALL, CALLCODE, DELEGATECALL ops is base on this method
-      def call_message(sender:, value:, target:, data:, code_address: target, context: self.execution_context, touch_nonce:)
+      def call_message(context: self.execution_context, code_address: context.instruction.address)
+        address = context.instruction.address
+        value = context.instruction.value
+        sender = context.instruction.sender
         # return status code 0 represent execution failed
-        return [0, ''.b] unless value <= find_account(sender).balance && depth <= 1024
-
-        # increment nonce first, nonce will not revert if state rollback
-        state.increment_nonce(sender) if touch_nonce
+        return [0, ''.b] unless value <= find_account(sender).balance && depth <= max_depth
 
         snapshot = state.snapshot
-        transact(sender: sender, value: value, to: target)
-
-        # execute initialize code
-        # new_context = execution_context.child_context(gas_limit: gas_limit)
-        context.instruction.address = target
-        context.instruction.sender = sender
-        context.instruction.value = value
-        context.instruction.data = data
-        context.instruction.bytes_code = get_account_code(code_address)
-
+        transact(sender: sender, value: value, to: address)
+        # enter new execution context
         with_context(context) do
           begin
             if (precompile_contract = fork_schema.find_precompile_contract(code_address))
@@ -196,12 +182,12 @@ module Ciri
         loop do
           if exception || set_exception(check_exception(@state, machine_state, instruction))
             debug("check exception: #{exception}")
-            return [EMPTY_SET, machine_state, SubState::EMPTY, instruction, EMPTY_SET]
+            return
           elsif get_op(pc) == OP::REVERT
             o = halt
-            return [EMPTY_SET, machine_state, SubState::EMPTY, instruction, o]
+            return
           elsif (o = halt) != EMPTY_SET
-            return [@state, machine_state, sub_state, instruction, o]
+            return
           else
             operate
             next
@@ -292,11 +278,11 @@ module Ciri
           InvalidJumpError.new "invalid condition jump dest #{ms.get_stack(0, Integer)}"
         when w == OP::RETURNDATACOPY && ms.get_stack(1, Integer) + ms.get_stack(2, Integer) > ms.output.size
           ReturnError.new "return data copy error"
-        when stack.size - OP.input_count(w) + OP.output_count(w) > 1024
-          StackError.new "stack size reach 1024 limit"
+        when stack.size - OP.input_count(w) + OP.output_count(w) > stack_size
+          StackError.new "stack size reach #{stack_size} limit"
           # A condition in yellow paper but I can't understand..: (¬Iw ∧W(w,μ))
-        when depth > 1024
-          StackError.new "call depth reach 1024 limit"
+        when depth > max_depth
+          StackError.new "call depth reach #{max_depth} limit"
         else
           nil
         end
