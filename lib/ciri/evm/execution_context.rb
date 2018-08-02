@@ -27,7 +27,7 @@ module Ciri
       attr_accessor :instruction, :depth, :pc, :output, :exception, :gas_limit, :block_info, :sub_state, :fork_schema
       attr_reader :children, :remain_gas, :machine_state
 
-      def initialize(instruction:, depth: 1, gas_limit:, remain_gas: gas_limit, fork_schema:, pc: 0,
+      def initialize(instruction:, depth: 0, gas_limit:, remain_gas: gas_limit, fork_schema:, pc: 0,
                      block_info:, sub_state: SubState::EMPTY.dup, machine_state: MachineState.new)
         raise ArgumentError.new("remain_gas must more than 0") if remain_gas < 0
         raise ArgumentError.new("gas_limit must more than 0") if gas_limit < 0
@@ -102,6 +102,7 @@ module Ciri
 
       def return_gas(gas)
         raise ArgumentError.new("can't return negative gas, gas: #{gas}") if gas < 0
+        debug "return #{gas} gas, from #{@remain_gas} -> #{@remain_gas + gas}"
         @remain_gas += gas
       end
 
@@ -113,6 +114,7 @@ module Ciri
 
       def refund_gas(gas)
         raise ArgumentError.new("gas can't be negative: #{gas}") if gas < 0
+        debug "refund #{gas} gas"
         @refund_gas += gas
       end
 
