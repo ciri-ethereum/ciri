@@ -525,6 +525,11 @@ module Ciri
         child_gas_limit, child_gas_fee = context.fork_schema.gas_of_call(vm: vm,
                                                                          gas: gas, to: to, value: value)
         context.consume_gas(child_gas_fee)
+        if context.depth + 1 > 1024
+          context.return_gas(child_gas_limit)
+          vm.push 0
+          return
+        end
         child_context = context.child_context(gas_limit: child_gas_limit)
         status, output = vm.call_message(sender: sender, value: value, data: data, target: to,
                                          code_address: code_address, context: child_context, touch_nonce: false)
