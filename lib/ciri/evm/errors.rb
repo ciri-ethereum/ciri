@@ -46,5 +46,8 @@ module Ciri
     class ReturnError < VMError
     end
 
+    class ContractCollisionError < VMError
+    end
+
   end
 end
