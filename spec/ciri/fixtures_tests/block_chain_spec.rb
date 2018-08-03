@@ -189,32 +189,7 @@ RSpec.describe Ciri::Chain do
   slow_topics = %w{
   }.map {|f| ["fixtures/BlockchainTests/#{f}", true]}.to_h
 
-  broken_topics = %w{
-  }.map {|f| ["fixtures/BlockchainTests/#{f}", true]}.to_h
-  
-  # unpassed GeneralStateTests
-  broken_topics.merge!(
-    %w{
-      stRevertTest
-      stInitCodeTest
-      stCreateTest
-      stRefundTest
-      stPreCompiledContracts2
-      stCallCreateCallCodeTest
-      stSolidityTest
-      stMemoryTest
-      stSystemOperationsTest
-      stTransactionTest
-      stReturnDataTest
-    }.map{|f| ["fixtures/BlockchainTests/GeneralStateTests/#{f}", true] }.to_h
-  )
-
   Dir.glob("fixtures/BlockchainTests/**").each do |topic|
-    # skip topics
-    if broken_topics.include? topic
-      skip topic
-      next
-    end
 
     tags = {}
     # tag slow test topics
