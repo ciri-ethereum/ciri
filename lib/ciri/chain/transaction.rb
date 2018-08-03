@@ -19,11 +19,14 @@ require 'ciri/rlp'
 require 'ciri/crypto'
 require 'ciri/key'
 require 'ciri/types/address'
+require 'ciri/types/uint'
 
 module Ciri
   class Chain
 
     class Transaction
+
+      include Types
 
       class InvalidError < StandardError
       end
@@ -34,15 +37,15 @@ module Ciri
       include RLP::Serializable
 
       schema [
-               {nonce: Integer},
-               {gas_price: Integer},
-               {gas_limit: Integer},
-               {to: Types::Address},
-               {value: Integer},
-               :data,
-               {v: Integer},
-               {r: Integer},
-               {s: Integer}
+                 {nonce: Integer},
+                 {gas_price: Integer},
+                 {gas_limit: Integer},
+                 {to: Address},
+                 {value: Integer},
+                 :data,
+                 {v: Integer},
+                 {r: Integer},
+                 {s: Integer}
              ]
 
       default_data v: 0, r: 0, s: 0, data: "\x00".b
@@ -96,8 +99,7 @@ module Ciri
       end
 
       # validate transaction
-      # @param intrinsic_gas_of_transaction Proc
-      def validate!(intrinsic_gas_of_transaction: nil)
+      def validate!(fork_schema: nil)
         begin
           sender
         rescue Ciri::Crypto::ECDSASignatureError => e
@@ -107,11 +109,19 @@ module Ciri
         end
 
         raise InvalidError.new('signature rvs error') unless signature.valid?
-        raise InvalidError.new('signature s is low') unless signature.low_s?
+        # raise InvalidError.new('signature s is low') unless signature.low_s?
+        raise InvalidError.new('gas_price overflow') unless UInt256.valid?(gas_price)
+        raise InvalidError.new('nonce overflow') unless UInt256.valid?(nonce)
+        raise InvalidError.new('gas_limit overflow') unless UInt256.valid?(gas_limit)
+        raise InvalidError.new('value overflow') unless UInt256.valid?(value)
 
-        if intrinsic_gas_of_transaction
+        if fork_schema
+          if (reason = fork_schema.validate_transaction(self))
+            raise InvalidError.new(reason)
+          end
+
           begin
-            intrinsic_gas = intrinsic_gas_of_transaction[self]
+            intrinsic_gas = fork_schema.intrinsic_gas_of_transaction(self)
           rescue StandardError
             raise InvalidError.new 'intrinsic gas calculation error'
           end

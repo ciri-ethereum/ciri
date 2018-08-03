@@ -20,7 +20,7 @@ require 'ciri/rlp'
 module Ciri
   module Types
 
-    class Number
+    class UInt
       class << self
         attr_reader :size
 
@@ -30,6 +30,18 @@ module Ciri
 
         def rlp_decode(encoded)
           Utils.big_endian_decode(RLP.decode(encoded))
+        end
+
+        def max
+          @max ||= 2 ** size - 1
+        end
+
+        def min
+          0
+        end
+
+        def valid?(n)
+          n >= 0 && n <= max
         end
       end
 
@@ -55,11 +67,11 @@ module Ciri
       end
     end
 
-    class Int32 < Number
+    class UInt32 < UInt
       @size = 32
     end
 
-    class Int256 < Number
+    class UInt256 < UInt
       @size = 256
     end
 

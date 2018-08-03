@@ -27,39 +27,36 @@ RSpec.describe Ciri::Chain::Transaction do
     prepare_ethereum_fixtures
   end
 
-  parse_account = proc do |address, v|
-    address = Ciri::Utils.to_bytes(address)
-    balance = Ciri::Utils.big_endian_decode Ciri::Utils.to_bytes(v["balance"])
-    nonce = Ciri::Utils.big_endian_decode Ciri::Utils.to_bytes(v["nonce"])
-    storage = v["storage"].map do |k, v|
-      [Ciri::Utils.to_bytes(k), Ciri::Utils.to_bytes(v).rjust(32, "\x00".b)]
-    end.to_h
-    Ciri::EVM::Account.new(address: address, balance: balance, nonce: nonce, storage: storage)
-  end
-
   run_test_case = proc do |test_case, prefix: nil|
     test_case.each do |name, t|
 
-      %w{Byzantium Constantinople EIP150 EIP158 Frontier Homestead}.each do |fork_name|
-
-        # skip invalid tests now
-        next skip if t[fork_name].empty?
+      # %w{Byzantium Constantinople EIP150 EIP158 Frontier Homestead}.each do |fork_name|
+      %w{Frontier}.each do |fork_name|
 
         it "#{prefix} #{name} #{fork_name}" do
           expect_result = t[fork_name]
-          # expect do
-          #   transaction = begin
-          #     Ciri::Chain::Transaction.rlp_decode Ciri::Utils.hex_to_data(t['rlp'])
-          #   rescue Ciri::RLP::InvalidValueError, Ciri::Types::Errors::InvalidError
-          #     raise Ciri::Chain::Transaction::InvalidError
-          #   end
-          #
-          #   transaction.validate!(intrinsic_gas_of_transaction: Ciri::Forks.detect_fork.intrinsic_gas_of_transaction)
-          #
-          # end.to raise_error Ciri::Chain::Transaction::InvalidError
-          transaction = Ciri::Chain::Transaction.rlp_decode Ciri::Utils.to_bytes(t['rlp'])
-          expect(Ciri::Utils.to_hex transaction.get_hash).to eq "0x#{expect_result['hash']}"
-          expect(Ciri::Utils.to_hex transaction.sender).to eq "0x#{expect_result['sender']}"
+
+          fork_schema = Ciri::Forks::Frontier::Schema.new
+
+          transaction = begin
+            rlp = Ciri::Utils.to_bytes(t['rlp'])
+            transaction = Ciri::Chain::Transaction.rlp_decode rlp
+            # encoded again and check rlp encoding
+            Ciri::Chain::Transaction.rlp_encode(transaction) == rlp ? transaction : nil
+          rescue Ciri::RLP::InvalidValueError, Ciri::Types::Errors::InvalidError
+            nil
+          end
+
+          if expect_result.empty?
+            expect do
+              raise Ciri::Chain::Transaction::InvalidError if transaction.nil?
+              transaction.validate!(fork_schema: fork_schema)
+            end.to raise_error Ciri::Chain::Transaction::InvalidError
+          else
+            transaction.validate!(fork_schema: fork_schema)
+            expect(Ciri::Utils.to_hex transaction.get_hash).to eq "0x#{expect_result['hash']}"
+            expect(Ciri::Utils.to_hex transaction.sender).to eq "0x#{expect_result['sender']}"
+          end
         end
 
       end

@@ -18,7 +18,7 @@
 require 'spec_helper'
 require 'ciri/bloom_filter'
 require 'ciri/evm/log_entry'
-require 'ciri/types/number'
+require 'ciri/types/uint'
 require 'ciri/utils'
 
 
@@ -30,7 +30,7 @@ RSpec.describe Ciri::BloomFilter do
 
     bloom_filter = Ciri::BloomFilter.from_iterable(log_entry.to_blooms)
     topics.each do |topic|
-      expect(bloom_filter.include? Ciri::Types::Int32.new(topic).to_bytes).to be_truthy
+      expect(bloom_filter.include? Ciri::Types::UInt32.new(topic).to_bytes).to be_truthy
     end
   end
 
