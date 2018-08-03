@@ -66,6 +66,12 @@ module Ciri
           rewards
         end
 
+        def validate_transaction(transaction)
+          unless transaction.v >= 27 && transaction.v <= 28
+            "v can be only 27 or 28 in frontier schema, found: #{transaction.v}"
+          end
+        end
+
         # chain difficulty method
         def difficulty_time_factor(header, parent_header)
           (header.timestamp - parent_header.timestamp) < 13 ? 1 : -1

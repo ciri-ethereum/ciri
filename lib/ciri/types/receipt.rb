@@ -17,7 +17,7 @@
 
 require 'ciri/rlp'
 require 'ciri/bloom_filter'
-require 'ciri/types/number'
+require 'ciri/types/uint'
 
 module Ciri
   module Types
@@ -29,7 +29,7 @@ module Ciri
       schema [
                :state_root,
                {gas_used: Integer},
-               {bloom: Types::Int256},
+               {bloom: Types::UInt256},
                :logs,
              ]
 
