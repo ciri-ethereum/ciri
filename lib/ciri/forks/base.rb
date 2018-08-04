@@ -61,6 +61,10 @@ module Ciri
       def find_precompile_contract(address)
         raise NotImplementedError
       end
+
+      def transaction_class
+        raise NotImplementedError
+      end
     end
 
   end

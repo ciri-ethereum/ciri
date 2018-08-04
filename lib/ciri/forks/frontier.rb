@@ -17,6 +17,7 @@
 
 require_relative 'base'
 require_relative 'frontier/cost'
+require_relative 'frontier/transaction'
 require 'ciri/core_ext'
 require 'ciri/evm/precompile_contract'
 
@@ -66,12 +67,6 @@ module Ciri
           rewards
         end
 
-        def validate_transaction(transaction)
-          unless transaction.v >= 27 && transaction.v <= 28
-            "v can be only 27 or 28 in frontier schema, found: #{transaction.v}"
-          end
-        end
-
         # chain difficulty method
         def difficulty_time_factor(header, parent_header)
           (header.timestamp - parent_header.timestamp) < 13 ? 1 : -1
@@ -82,15 +77,19 @@ module Ciri
         end
 
         PRECOMPILE_CONTRACTS = {
-          "\x01".pad_zero(20).b => EVM::PrecompileContract::ECRecover.new,
-          "\x02".pad_zero(20).b => EVM::PrecompileContract::SHA256.new,
-          "\x03".pad_zero(20).b => EVM::PrecompileContract::RIPEMD160.new,
-          "\x04".pad_zero(20).b => EVM::PrecompileContract::Identity.new,
+            "\x01".pad_zero(20).b => EVM::PrecompileContract::ECRecover.new,
+            "\x02".pad_zero(20).b => EVM::PrecompileContract::SHA256.new,
+            "\x03".pad_zero(20).b => EVM::PrecompileContract::RIPEMD160.new,
+            "\x04".pad_zero(20).b => EVM::PrecompileContract::Identity.new,
         }.freeze
 
         # EVM op code and contract
         def find_precompile_contract(address)
           PRECOMPILE_CONTRACTS[address.to_s]
+        end
+
+        def transaction_class
+          Transaction
         end
 
       end

@@ -27,36 +27,48 @@ RSpec.describe Ciri::Chain::Transaction do
     prepare_ethereum_fixtures
   end
 
+  choose_fork_schema = proc do |fork_name|
+    if fork_name == 'Homestead'
+      Ciri::Forks::Homestead::Schema.new(support_dao_fork: false)
+    else
+      Ciri::Forks::Frontier::Schema.new
+    end
+  end
+
   run_test_case = proc do |test_case, prefix: nil|
     test_case.each do |name, t|
 
       # %w{Byzantium Constantinople EIP150 EIP158 Frontier Homestead}.each do |fork_name|
-      %w{Frontier}.each do |fork_name|
+      %w{Frontier Homestead}.each do |fork_name|
 
         it "#{prefix} #{name} #{fork_name}" do
           expect_result = t[fork_name]
+          expect_error = expect_result.empty?
 
-          fork_schema = Ciri::Forks::Frontier::Schema.new
+          fork_schema = choose_fork_schema[fork_name]
 
           transaction = begin
             rlp = Ciri::Utils.to_bytes(t['rlp'])
-            transaction = Ciri::Chain::Transaction.rlp_decode rlp
+            transaction = fork_schema.transaction_class.rlp_decode rlp
+
             # encoded again and check rlp encoding
-            Ciri::Chain::Transaction.rlp_encode(transaction) == rlp ? transaction : nil
+            fork_schema.transaction_class.rlp_encode(transaction) == rlp ? transaction : nil
+
           rescue Ciri::RLP::InvalidValueError, Ciri::Types::Errors::InvalidError
             nil
           end
 
-          if expect_result.empty?
+          if expect_error
             expect do
               raise Ciri::Chain::Transaction::InvalidError if transaction.nil?
-              transaction.validate!(fork_schema: fork_schema)
+              transaction.validate!
             end.to raise_error Ciri::Chain::Transaction::InvalidError
           else
-            transaction.validate!(fork_schema: fork_schema)
+            transaction.validate!
             expect(Ciri::Utils.to_hex transaction.get_hash).to eq "0x#{expect_result['hash']}"
             expect(Ciri::Utils.to_hex transaction.sender).to eq "0x#{expect_result['sender']}"
           end
+
         end
 
       end
