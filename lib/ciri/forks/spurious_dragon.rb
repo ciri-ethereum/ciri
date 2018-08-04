@@ -16,23 +16,16 @@
 
 
 require_relative 'base'
-require_relative 'spurious_dragon'
+require_relative 'tangerine_whistle'
+require_relative 'spurious_dragon/transaction'
 
 module Ciri
   module Forks
-    module Byzantium
-      class Schema < Forks::SpuriousDragon::Schema
+    module SpuriousDragon
+      class Schema < Forks::TangerineWhistle::Schema
 
-        # chain difficulty method
-        # https://github.com/ethereum/EIPs/blob/181867ae830df5419eb9982d2a24797b2dcad28f/EIPS/eip-609.md
-        # https://github.com/ethereum/EIPs/blob/984cf5de90bbf5fbe7e49be227b0c2f9567e661e/EIPS/eip-100.md
-        def difficulty_time_factor(header, parent_header)
-          y = header.ommers_hash == Utils::BLANK_SHA3 ? 1 : 2
-          [y - (header.timestamp - parent_header.timestamp) / 9, -99].max
-        end
-
-        def difficulty_virtual_height(height)
-          [(height - 3000000), 0].max
+        def transaction_class
+          Transaction
         end
 
       end

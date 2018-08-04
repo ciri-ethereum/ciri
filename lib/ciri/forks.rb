@@ -18,6 +18,10 @@
 require_relative 'forks/config'
 require_relative 'forks/frontier'
 require_relative 'forks/homestead'
+require_relative 'forks/tangerine_whistle'
+require_relative 'forks/spurious_dragon'
+require_relative 'forks/byzantium'
+require_relative 'forks/constantinople'
 
 module Ciri
   module Forks
