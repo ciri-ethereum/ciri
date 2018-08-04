@@ -28,22 +28,31 @@ RSpec.describe Ciri::Chain::Transaction do
   end
 
   choose_fork_schema = proc do |fork_name|
-    if fork_name == 'Homestead'
-      Ciri::Forks::Homestead::Schema.new(support_dao_fork: false)
-    else
+    case fork_name
+    when 'Frontier'
       Ciri::Forks::Frontier::Schema.new
+    when 'Homestead'
+      Ciri::Forks::Homestead::Schema.new(support_dao_fork: false)
+    when 'EIP150'
+      Ciri::Forks::TangerineWhistle::Schema.new
+    when 'EIP158'
+      Ciri::Forks::SpuriousDragon::Schema.new
+    when 'Byzantium'
+      Ciri::Forks::Byzantium::Schema.new
+    when 'Constantinople'
+      Ciri::Forks::Constantinople::Schema.new
+    else
+      raise ArgumentError.new("unknown fork #{fork_name}")
     end
   end
 
   run_test_case = proc do |test_case, prefix: nil|
     test_case.each do |name, t|
 
-      # %w{Byzantium Constantinople EIP150 EIP158 Frontier Homestead}.each do |fork_name|
-      %w{Frontier Homestead}.each do |fork_name|
+      %w{Byzantium Constantinople EIP150 EIP158 Frontier Homestead}.each do |fork_name|
 
         it "#{prefix} #{name} #{fork_name}" do
           expect_result = t[fork_name]
-          expect_error = expect_result.empty?
 
           fork_schema = choose_fork_schema[fork_name]
 
@@ -58,13 +67,14 @@ RSpec.describe Ciri::Chain::Transaction do
             nil
           end
 
-          if expect_error
-            expect do
-              raise Ciri::Chain::Transaction::InvalidError if transaction.nil?
-              transaction.validate!
-            end.to raise_error Ciri::Chain::Transaction::InvalidError
-          else
+          error_or_nil = begin
+            raise Ciri::Chain::Transaction::InvalidError if transaction.nil?
             transaction.validate!
+          rescue Ciri::Chain::Transaction::InvalidError => e
+            e
+          end
+
+          unless expect_result.empty?
             expect(Ciri::Utils.to_hex transaction.get_hash).to eq "0x#{expect_result['hash']}"
             expect(Ciri::Utils.to_hex transaction.sender).to eq "0x#{expect_result['sender']}"
           end

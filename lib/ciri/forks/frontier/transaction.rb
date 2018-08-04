@@ -31,11 +31,19 @@ module Ciri
           raise InvalidError.new('gas_limit overflow') unless UInt256.valid?(gas_limit)
           raise InvalidError.new('value overflow') unless UInt256.valid?(value)
 
-          unless v >= 27 && v <= 28
+          unless v >= v_min && v <= v_max
             raise InvalidError.new("v can be only 27 or 28 in frontier schema, found: #{v}")
           end
 
           validate_intrinsic_gas!
+        end
+
+        def v_min
+          27
+        end
+
+        def v_max
+          28
         end
 
         def validate_intrinsic_gas!

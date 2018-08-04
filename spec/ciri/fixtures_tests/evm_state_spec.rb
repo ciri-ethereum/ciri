@@ -55,6 +55,25 @@ RSpec.describe Ciri::EVM do
     transaction
   end
 
+  choose_fork_schema = proc do |fork_name|
+    case fork_name
+    when 'Frontier'
+      Ciri::Forks::Frontier::Schema.new
+    when 'Homestead'
+      Ciri::Forks::Homestead::Schema.new(support_dao_fork: false)
+    when 'EIP150'
+      Ciri::Forks::TangerineWhistle::Schema.new
+    when 'EIP158'
+      Ciri::Forks::SpuriousDragon::Schema.new
+    when 'Byzantium'
+      Ciri::Forks::Byzantium::Schema.new
+    when 'Constantinople'
+      Ciri::Forks::Constantinople::Schema.new
+    else
+      raise ArgumentError.new("unknown fork #{fork_name}")
+    end
+  end
+
   run_test_case = proc do |test_case, prefix: nil, tags: {}|
     test_case.each do |name, t|
 
@@ -75,6 +94,7 @@ RSpec.describe Ciri::EVM do
 
         t['post'].each do |fork_name, configs|
           it fork_name do
+            fork_schema = choose_fork_schema[fork_name]
             configs.each do |config|
               db = Ciri::DB::Backend::Memory.new
               state = Ciri::EVM::State.new(db)
@@ -94,9 +114,6 @@ RSpec.describe Ciri::EVM do
 
               indexes = config['indexes']
               transaction = build_transaction[transaction_arguments, indexes]
-              transaction.validate!
-
-              # expect(Ciri::Utils.data_to_hex transaction.get_hash).to eq config['hash']
               transaction.sender
 
               evm = Ciri::EVM.new(state: state)
