@@ -50,20 +50,22 @@ module Ciri
 
       def signature
         @signature ||= Utils.big_endian_encode(@r, "\x00".b, size: 32) +
-          Utils.big_endian_encode(@s, "\x00".b, size: 32) +
-          Utils.big_endian_encode(@v, "\x00".b)
+            Utils.big_endian_encode(@s, "\x00".b, size: 32) +
+            Utils.big_endian_encode(@v, "\x00".b)
       end
 
       alias to_s signature
 
       def valid?
         v <= 1 &&
-          r < SECP256K1N && r >= 1 &&
-          s < SECP256K1N && s >= 1
+            r < SECP256K1N && r >= 1 &&
+            s < SECP256K1N && s >= 1
       end
 
+      # high s value is invalid after Homestead fork
+      # see https://github.com/ethereum/EIPs/blob/master/EIPS/eip-2.md#specification
       def low_s?
-        s < (SECP256K1N / 2)
+        s <= (SECP256K1N / 2)
       end
     end
 

@@ -176,9 +176,13 @@ module Ciri
         end
 
         def schema(data_schema = nil)
-          @data_schema ||= Schema.new(data_schema).tap do |schema|
-            # define attributes methods
-            define_attributes(schema)
+          if data_schema
+            @data_schema = Schema.new(data_schema).tap do |schema|
+              # define attributes methods
+              define_attributes(schema)
+            end
+          else
+            @data_schema ||= superclass.schema
           end
         end
 

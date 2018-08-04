@@ -17,6 +17,7 @@
 
 require_relative 'base'
 require_relative 'frontier'
+require_relative 'homestead/transaction'
 
 module Ciri
   module Forks
@@ -38,6 +39,10 @@ module Ciri
         # https://github.com/ethereum/EIPs/blob/984cf5de90bbf5fbe7e49be227b0c2f9567e661e/EIPS/eip-2.md
         def difficulty_time_factor(header, parent_header)
           [1 - (header.timestamp - parent_header.timestamp) / 10, -99].max
+        end
+
+        def transaction_class
+          Transaction
         end
 
       end

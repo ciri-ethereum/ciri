@@ -99,7 +99,11 @@ module Ciri
       end
 
       # validate transaction
-      def validate!(fork_schema: nil)
+      def validate!
+        raise NotImplementedError
+      end
+
+      def validate_sender!
         begin
           sender
         rescue Ciri::Crypto::ECDSASignatureError => e
@@ -107,29 +111,7 @@ module Ciri
         rescue Ciri::Types::Errors::InvalidError => e
           raise InvalidError.new(e.to_s)
         end
-
-        raise InvalidError.new('signature rvs error') unless signature.valid?
-        # raise InvalidError.new('signature s is low') unless signature.low_s?
-        raise InvalidError.new('gas_price overflow') unless UInt256.valid?(gas_price)
-        raise InvalidError.new('nonce overflow') unless UInt256.valid?(nonce)
-        raise InvalidError.new('gas_limit overflow') unless UInt256.valid?(gas_limit)
-        raise InvalidError.new('value overflow') unless UInt256.valid?(value)
-
-        if fork_schema
-          if (reason = fork_schema.validate_transaction(self))
-            raise InvalidError.new(reason)
-          end
-
-          begin
-            intrinsic_gas = fork_schema.intrinsic_gas_of_transaction(self)
-          rescue StandardError
-            raise InvalidError.new 'intrinsic gas calculation error'
-          end
-          raise InvalidError.new 'intrinsic gas not enough' unless intrinsic_gas <= gas_limit
-        end
       end
-
-      private
 
       # return chain_id by v
       def chain_id
