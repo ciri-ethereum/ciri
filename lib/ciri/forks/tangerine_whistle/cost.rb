@@ -82,7 +82,12 @@ module Ciri
         end
 
         def cost_of_self_destruct(vm)
-          G_SELFDESTRUCT
+          refund_address = vm.get_stack(0, Address)
+          if vm.account_exist?(refund_address)
+            G_SELFDESTRUCT
+          else
+            G_SELFDESTRUCT + G_NEWACCOUNT
+          end
         end
 
       end
