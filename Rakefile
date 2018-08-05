@@ -14,8 +14,8 @@ end
 
 SUB_COMPONENTS = %w{ciri-utils ciri-rlp ciri-crypto}
 
-desc 'run tests'
-task :test do
+desc 'run quick spec'
+task :quick do
   exit(1) unless check_env
   run("rspec -t ~slow_tests")
   SUB_COMPONENTS.each do |dir|
@@ -23,8 +23,8 @@ task :test do
   end
 end
 
-desc 'run all tests, include extreme slow tests'
-task :"test:all" do
+desc 'run all specs, include extreme slow tests'
+task :"spec:all" do
   exit(1) unless check_env
   run("rspec")
   SUB_COMPONENTS.each do |dir|
@@ -33,7 +33,7 @@ task :"test:all" do
 end
 
 namespace :docker do
-  base_image = 'ciriethereum/base'
+  base_image = 'ciriethereum/ciri'
 
   desc 'pull docker image'
   task :pull do
@@ -44,6 +44,11 @@ namespace :docker do
   task :build do
     system("git submodule init && git submodule update")
     run("docker build . -f docker/Dockerfile -t #{base_image}:latest")
+  end
+
+  desc 'push docker image'
+  task :push do
+    run("docker push #{base_image}:latest")
   end
 
   desc 'open Ciri develop container shell'
@@ -57,14 +62,14 @@ namespace :docker do
     end
   end
 
-  desc 'run tests in docker'
-  task :test do
-    run("docker run -v `pwd`:/app --rm #{base_image}:latest rake test")
+  desc 'run quick specs in docker'
+  task :quick do
+    run("docker run -v `pwd`:/app --rm #{base_image}:latest rake quick")
   end
 
-  desc 'run all tests(include slow tests) in docker'
-  task :"test:all" do
-    run("docker run -v `pwd`:/app --rm #{base_image}:latest rake test:all")
+  desc 'run all specs(include slow tests) in docker'
+  task :"spec:all" do
+    run("docker run -v `pwd`:/app --rm #{base_image}:latest rake spec:all")
   end
 
   private
