@@ -21,6 +21,7 @@ require_relative 'frontier/transaction'
 require_relative 'frontier/opcodes'
 require 'ciri/core_ext'
 require 'ciri/evm/precompile_contract'
+require 'forwardable'
 
 using Ciri::CoreExt
 
@@ -29,24 +30,15 @@ module Ciri
     module Frontier
       class Schema < Base
 
+        extend Forwardable
+
         BLOCK_REWARD = 5 * 10.pow(18) # 5 ether
 
-        # gas methods
-        def gas_of_operation(vm)
-          Cost.cost_of_operation vm
+        def initialize
+          @cost = Cost.new
         end
 
-        def gas_of_memory(word_count)
-          Cost.cost_of_memory word_count
-        end
-
-        def gas_of_call(vm:, gas:, to:, value:)
-          Cost.gas_of_call(vm: vm, gas: gas, to: to, value: value)
-        end
-
-        def intrinsic_gas_of_transaction(transaction)
-          Cost.intrinsic_gas_of_transaction transaction
-        end
+        def_delegators :@cost, :gas_of_operation, :gas_of_memory, :gas_of_call, :intrinsic_gas_of_transaction
 
         def calculate_deposit_code_gas(code_bytes)
           Cost::G_CODEDEPOSIT * (code_bytes || ''.b).size
