@@ -52,6 +52,10 @@ module Ciri
           OPCODES[op]
         end
 
+        def exception_on_deposit_code_gas_not_enough
+          true
+        end
+
       end
     end
   end

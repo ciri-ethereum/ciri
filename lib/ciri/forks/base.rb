@@ -69,6 +69,10 @@ module Ciri
       def get_operation(op_code)
         raise NotImplementedError
       end
+
+      def exception_on_deposit_code_gas_not_enough
+        raise NotImplementedError
+      end
     end
 
   end

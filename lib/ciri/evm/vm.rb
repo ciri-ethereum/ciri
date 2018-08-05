@@ -102,12 +102,26 @@ module Ciri
 
           deposit_code_gas = fork_schema.calculate_deposit_code_gas(output)
 
+          # check deposit_code_gas
           if deposit_code_gas > remain_gas
-            # deposit_code_gas not enough
             contract_address = 0
+            if fork_schema.exception_on_deposit_code_gas_not_enough
+              set_exception GasNotEnoughError.new("deposit_code_gas not enough, deposit_code_gas: #{deposit_code_gas}, remain_gas: #{remain_gas}")
+            else
+              set_output ''.b
+            end
           elsif exception
             # state.touch_account(contract_address)
             contract_address = 0
+          else
+            # set contract code
+            set_account_code(contract_address, output)
+            # minus deposit_code_fee
+            consume_gas deposit_code_gas
+          end
+
+          # check exception and commit/revert state
+          if exception
             if burn_gas_on_exception
               debug("exception: #{exception}, burn gas #{remain_gas} to zero... op code: 0x#{get_op(pc).to_s(16)}")
               consume_gas remain_gas
@@ -115,12 +129,9 @@ module Ciri
             execution_context.revert
             state.revert(snapshot)
           else
-            # set contract code
-            set_account_code(contract_address, output)
-            # minus deposit_code_fee
-            consume_gas deposit_code_gas
             state.commit(snapshot)
           end
+
           [contract_address, exception]
         end
       end
