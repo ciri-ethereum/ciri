@@ -468,17 +468,16 @@ module Ciri
         vm.set_output vm.memory_fetch(index, size)
       end
 
-      def_op :DELEGATECALL, -0xf4, 6, 1 do |vm|
+      def_op :DELEGATECALL, 0xf4, 6, 1 do |vm|
         OPCall::DelegateCall.new.call(vm)
       end
 
       STATICCALL = 0xfa
 
-      # TODO REVERT need to be implement in forks
-      def_op :REVERT, -0xfd, 2, 0 do |vm|
+      def_op :REVERT, 0xfd, 2, 0 do |vm|
         index, size = vm.pop_list(2, Integer)
-        vm.output = vm.memory_fetch(index, size)
         vm.extend_memory(index, size)
+        vm.set_output vm.memory_fetch(index, size)
       end
 
       def_op :INVALID, 0xfe, 0, 0 do |vm|

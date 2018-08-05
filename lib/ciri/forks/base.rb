@@ -65,6 +65,10 @@ module Ciri
       def transaction_class
         raise NotImplementedError
       end
+
+      def get_operation(op_code)
+        raise NotImplementedError
+      end
     end
 
   end

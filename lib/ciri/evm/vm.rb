@@ -212,7 +212,7 @@ module Ciri
       # O(σ, μ, A, I) ≡ (σ′, μ′, A′, I)
       def operate
         w = get_op(pc)
-        operation = OP.get(w)
+        operation = fork_schema.get_operation(w)
 
         raise "can't find operation #{w}, pc #{pc}" unless operation
 
@@ -266,7 +266,7 @@ module Ciri
       def check_exception(state, ms, instruction)
         w = instruction.get_op(pc)
         case
-        when w == OP::INVALID || OP.input_count(w).nil?
+        when w == OP::INVALID || fork_schema.get_operation(w).nil?
           InvalidOpCodeError.new "can't find op code 0x#{w.to_s(16)} pc: #{pc}"
         when ms.stack.size < (consume = OP.input_count(w))
           StackError.new "stack not enough: stack:#{ms.stack.size} next consume: #{consume}"
@@ -280,7 +280,6 @@ module Ciri
           ReturnError.new "return data copy error"
         when stack.size - OP.input_count(w) + OP.output_count(w) > stack_size
           StackError.new "stack size reach #{stack_size} limit"
-          # A condition in yellow paper but I can't understand..: (¬Iw ∧W(w,μ))
         when depth > max_depth
           StackError.new "call depth reach #{max_depth} limit"
         else

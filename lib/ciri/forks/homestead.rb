@@ -18,9 +18,12 @@
 require_relative 'base'
 require_relative 'frontier'
 require_relative 'homestead/transaction'
+require_relative 'homestead/opcodes'
 
 module Ciri
   module Forks
+    # Homestead fork
+    # https://github.com/ethereum/EIPs/blob/master/EIPS/eip-606.md
     module Homestead
       class Schema < Forks::Frontier::Schema
 
@@ -43,6 +46,10 @@ module Ciri
 
         def transaction_class
           Transaction
+        end
+
+        def get_operation(op)
+          OPCODES[op]
         end
 
       end
