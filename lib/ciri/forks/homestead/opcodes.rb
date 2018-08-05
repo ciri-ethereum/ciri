@@ -26,7 +26,6 @@ module Ciri
 
       UPDATE_OPCODES = [
           DELEGATECALL,
-          REVERT,
       ].map do |op|
         [op, Ciri::EVM::OP.get(op)]
       end.to_h.freeze
