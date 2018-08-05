@@ -5,8 +5,8 @@ services:
   - docker
 
 before_install:
-  - docker pull ciriethereum/base:latest
+  - docker pull ciriethereum/ciri:latest
   - gem install rake
 
 script:
-  - rake docker:test
+  - rake docker:quick

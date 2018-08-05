@@ -8,8 +8,8 @@ Gem::Specification.new do |spec|
   spec.authors = ["Jiang Jinyang"]
   spec.email = ["jjyruby@gmail.com"]
 
-  spec.summary = %q{Ciri project intent to implement a full feature set Ethereum client.}
-  spec.description = %q{Ciri aims to be a feature complete, long maintained and stable Ethereum client.}
+  spec.summary = %q{Ciri is an ongoing Ethereum implementation.}
+  spec.description = %q{It aims to be a feature complete Ethereum implementation and expects to achieve both research-friendly and high-performance.}
   spec.homepage = "https://github.com/ciri-ethereum/ciri"
   spec.license = "Apache 2.0"
 
