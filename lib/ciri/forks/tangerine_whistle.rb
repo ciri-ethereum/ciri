@@ -17,14 +17,18 @@
 
 require_relative 'base'
 require_relative 'homestead'
+require_relative 'tangerine_whistle/cost'
 
 module Ciri
   module Forks
+    # Tangerine Whistle fork
+    # https://github.com/ethereum/EIPs/blob/master/EIPS/eip-608.md
     module TangerineWhistle
       class Schema < Forks::Homestead::Schema
 
         def initialize
           super(support_dao_fork: false)
+          @cost = Cost.new
         end
 
       end

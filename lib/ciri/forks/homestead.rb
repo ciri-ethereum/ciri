@@ -27,15 +27,16 @@ module Ciri
     module Homestead
       class Schema < Forks::Frontier::Schema
 
-        include Forks::Frontier::Cost
+        include Forks::Frontier
 
         def initialize(support_dao_fork:)
           @support_dao_fork = support_dao_fork
+          super()
         end
 
         def intrinsic_gas_of_transaction(t)
-          gas = (t.data.each_byte || '').reduce(0) {|sum, i| sum + (i.zero? ? G_TXDATAZERO : G_TXDATANONZERO)}
-          gas + (t.to.empty? ? G_TXCREATE : 0) + G_TRANSACTION
+          gas = (t.data.each_byte || '').reduce(0) {|sum, i| sum + (i.zero? ? Cost::G_TXDATAZERO : Cost::G_TXDATANONZERO)}
+          gas + (t.to.empty? ? Cost::G_TXCREATE : 0) + Cost::G_TRANSACTION
         end
 
         # chain difficulty method
