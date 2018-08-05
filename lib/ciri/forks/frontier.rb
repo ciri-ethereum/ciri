@@ -18,6 +18,7 @@
 require_relative 'base'
 require_relative 'frontier/cost'
 require_relative 'frontier/transaction'
+require_relative 'frontier/opcodes'
 require 'ciri/core_ext'
 require 'ciri/evm/precompile_contract'
 
@@ -90,6 +91,10 @@ module Ciri
 
         def transaction_class
           Transaction
+        end
+
+        def get_operation(op)
+          OPCODES[op]
         end
 
       end
