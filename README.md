@@ -120,7 +120,7 @@ RUBY_THREAD_VM_STACK_SIZE=52428800 bundle exec rake quick
 Why Ruby?
 ---------------
 
-Ruby is awesome, Ethereum is awesome too, so tell me a reason why not to use Ruby to implement Ethereum?
+> Because Ruby has built-in block support!
 
 Seriously, 
 
