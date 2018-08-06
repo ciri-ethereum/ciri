@@ -41,16 +41,16 @@ module Ciri
         @refunds = orig.refunds.dup
       end
 
-      def add_refund_account(account)
-        @refunds << account
+      def add_refund_account(address)
+        @refunds << address
       end
 
-      def add_touched_account(account)
-        @touched_accounts << account
+      def add_touched_account(address)
+        @touched_accounts << address
       end
 
-      def add_suicide_account(account)
-        @suicide_accounts << account
+      def add_suicide_account(address)
+        @suicide_accounts << address
       end
     end
 

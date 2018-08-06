@@ -24,7 +24,7 @@ module Ciri
 
       include Utils::Logger
 
-      attr_accessor :instruction, :depth, :pc, :output, :exception, :gas_limit, :block_info, :sub_state, :fork_schema
+      attr_accessor :instruction, :depth, :pc, :exception, :gas_limit, :block_info, :sub_state, :fork_schema
       attr_reader :children, :remain_gas, :machine_state
 
       def initialize(instruction:, depth: 0, gas_limit:, remain_gas: gas_limit, fork_schema:, pc: 0,
@@ -65,6 +65,10 @@ module Ciri
 
       def set_output(output)
         @output ||= output
+      end
+
+      def output
+        @output || ''.b
       end
 
       def set_pc(pc)

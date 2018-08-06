@@ -101,21 +101,29 @@ module Ciri
           end
 
           deposit_code_gas = fork_schema.calculate_deposit_code_gas(output)
+          gas_is_not_enough = deposit_code_gas > remain_gas
+          deposit_code_reach_limit = output.size > fork_schema.contract_code_size_limit
 
           # check deposit_code_gas
-          if deposit_code_gas > remain_gas
+          if gas_is_not_enough || deposit_code_reach_limit
             contract_address = 0
             if fork_schema.exception_on_deposit_code_gas_not_enough
-              set_exception GasNotEnoughError.new("deposit_code_gas not enough, deposit_code_gas: #{deposit_code_gas}, remain_gas: #{remain_gas}")
+              if deposit_code_reach_limit
+                set_exception GasNotEnoughError.new("deposit_code size reach limit, code size: #{output.size}, limit size: #{fork_schema.contract_code_size_limit}")
+              else
+                set_exception GasNotEnoughError.new("deposit_code_gas not enough, deposit_code_gas: #{deposit_code_gas}, remain_gas: #{remain_gas}")
+              end
             else
               set_output ''.b
             end
           elsif exception
-            # state.touch_account(contract_address)
             contract_address = 0
           else
             # set contract code
             set_account_code(contract_address, output)
+            if fork_schema.contract_init_nonce != 0
+              state.set_nonce(contract_address, fork_schema.contract_init_nonce)
+            end
             # minus deposit_code_fee
             consume_gas deposit_code_gas
           end
@@ -129,6 +137,7 @@ module Ciri
             execution_context.revert
             state.revert(snapshot)
           else
+            delete_empty_accounts
             state.commit(snapshot)
           end
 
@@ -168,6 +177,7 @@ module Ciri
 
             state.revert(snapshot)
           else
+            delete_empty_accounts
             state.commit(snapshot)
           end
 
@@ -183,6 +193,8 @@ module Ciri
       def transact(sender:, value:, to:)
         sender_account = find_account(sender)
         raise VMError.new("balance not enough") if sender_account.balance < value
+        add_touched_account(sender)
+        add_touched_account(to)
         state.add_balance(sender, -value)
         state.add_balance(to, value)
       end
@@ -216,6 +228,15 @@ module Ciri
 
       def extend_memory(pos, size)
         machine_state.extend_memory(execution_context, pos, size)
+      end
+
+      def delete_empty_accounts
+        return unless fork_schema.clean_empty_accounts?
+        sub_state.touched_accounts.select do |address|
+          account_dead?(address)
+        end.each do |address|
+          state.delete_account(address)
+        end
       end
 
       private

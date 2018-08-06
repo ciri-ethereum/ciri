@@ -73,6 +73,18 @@ module Ciri
       def exception_on_deposit_code_gas_not_enough
         raise NotImplementedError
       end
+
+      def contract_code_size_limit
+        raise NotImplementedError
+      end
+
+      def contract_init_nonce
+        raise NotImplementedError
+      end
+
+      def clean_empty_accounts?
+        raise NotImplementedError
+      end
     end
 
   end

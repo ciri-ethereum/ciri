@@ -446,8 +446,12 @@ module Ciri
           init = vm.memory_fetch(mem_pos, size)
           create_gas = vm.remain_gas
           vm.consume_gas(create_gas)
+          
           child_context = vm.execution_context.child_context(gas_limit: create_gas)
-          contract_address, _ = vm.create_contract(value: value, init: init, touch_nonce: true, context: child_context)
+          child_context.instruction.value = value
+          child_context.instruction.bytes_code = init
+          
+          contract_address, _ = vm.create_contract(context: child_context)
           vm.execution_context.return_gas(child_context.remain_gas)
 
           vm.push contract_address

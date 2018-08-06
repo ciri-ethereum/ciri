@@ -93,6 +93,18 @@ module Ciri
           false
         end
 
+        def contract_code_size_limit
+          Float::INFINITY
+        end
+
+        def contract_init_nonce
+          0
+        end
+
+        def clean_empty_accounts?
+          false
+        end
+
       end
     end
   end
