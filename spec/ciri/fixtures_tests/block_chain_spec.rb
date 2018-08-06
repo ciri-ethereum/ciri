@@ -35,20 +35,18 @@ RSpec.describe Ciri::Chain do
     prepare_ethereum_fixtures
   end
 
-  parse_account = proc do |address, v|
-    storage = v["storage"].map do |k, v|
+  def parse_account(account_hash)
+    storage = account_hash["storage"].map do |k, v|
       [k.decode_hex, v.decode_hex.pad_zero(32)]
     end.to_h
-    [
-      Ciri::Types::Account.new(
-        balance: v["balance"].decode_hex.decode_big_endian,
-        nonce: v["nonce"].decode_hex.decode_big_endian),
-      v["code"].decode_hex,
-      storage
-    ]
+    account = Ciri::Types::Account.new(
+        balance: account_hash["balance"].decode_hex.decode_big_endian,
+        nonce: account_hash["nonce"].decode_hex.decode_big_endian)
+    code = account_hash['code'].decode_hex
+    [account, code, storage]
   end
 
-  parse_header = proc do |data|
+  def parse_header(data)
     columns = {}
     columns[:logs_bloom] = data['bloom'].decode_hex
     columns[:beneficiary] = data['coinbase'].decode_hex
@@ -73,47 +71,47 @@ RSpec.describe Ciri::Chain do
     header
   end
 
-  extract_fork_config = proc do |fixture|
+  def extract_fork_config(fixture)
     network = fixture['network']
     schema_rules = case network
                    when "Frontier"
                      [
-                       [0, Ciri::Forks::Frontier::Schema.new],
+                         [0, Ciri::Forks::Frontier::Schema.new],
                      ]
                    when "Homestead"
                      [
-                       [0, Ciri::Forks::Homestead::Schema.new(support_dao_fork: false)],
+                         [0, Ciri::Forks::Homestead::Schema.new(support_dao_fork: false)],
                      ]
                    when "EIP150"
                      [
-                       [0, Ciri::Forks::TangerineWhistle::Schema.new],
+                         [0, Ciri::Forks::TangerineWhistle::Schema.new],
                      ]
                    when "EIP158"
                      [
-                       [0, Ciri::Forks::SpuriousDragon::Schema.new],
+                         [0, Ciri::Forks::SpuriousDragon::Schema.new],
                      ]
                    when "Byzantium"
                      [
-                       [0, Ciri::Forks::Byzantium::Schema.new],
+                         [0, Ciri::Forks::Byzantium::Schema.new],
                      ]
                    when "FrontierToHomesteadAt5"
                      [
-                       [0, Ciri::Forks::Frontier::Schema.new],
-                       [5, Ciri::Forks::Homestead::Schema.new(support_dao_fork: false)],
+                         [0, Ciri::Forks::Frontier::Schema.new],
+                         [5, Ciri::Forks::Homestead::Schema.new(support_dao_fork: false)],
                      ]
                    when "HomesteadToEIP150At5"
                      [
-                       [0, Ciri::Forks::Homestead::Schema.new(support_dao_fork: false)],
-                       [5, Ciri::Forks::TangerineWhistle::Schema.new],
+                         [0, Ciri::Forks::Homestead::Schema.new(support_dao_fork: false)],
+                         [5, Ciri::Forks::TangerineWhistle::Schema.new],
                      ]
                    when "HomesteadToDaoAt5"
                      [
-                       [0, Ciri::Forks::Homestead::Schema.new(support_dao_fork: true, dao_fork_block_number: 5)],
+                         [0, Ciri::Forks::Homestead::Schema.new(support_dao_fork: true, dao_fork_block_number: 5)],
                      ]
                    when "EIP158ToByzantiumAt5"
                      [
-                       [0, Ciri::Forks::SpuriousDragon::Schema.new],
-                       [5, Ciri::Forks::Byzantium::Schema.new],
+                         [0, Ciri::Forks::SpuriousDragon::Schema.new],
+                         [5, Ciri::Forks::Byzantium::Schema.new],
                      ]
                    else
                      raise ArgumentError.new("unknown network: #{network}")
@@ -122,38 +120,42 @@ RSpec.describe Ciri::Chain do
     Ciri::Forks::Config.new(schema_rules)
   end
 
-  run_test_case = proc do |test_case, prefix: nil, tags: {}|
+  def prepare_state(state, fixture)
+    fixture['pre'].each do |address, v|
+      address = Ciri::Types::Address.new address.decode_hex
+
+      account, code, storage = parse_account v
+      state.set_balance(address, account.balance)
+      state.set_nonce(address, account.nonce)
+      state.set_account_code(address, code)
+
+      storage.each do |k, v|
+        key, value = k.decode_big_endian, v.decode_big_endian
+        state.store(address, key, value)
+      end
+    end
+  end
+
+  def self.run_test_case(test_case, prefix: nil, tags: {})
     test_case.each do |name, t|
-      tags2 = tags.dup
 
       # TODO support all forks
-      next unless %w{Frontier Homestead _EIP150 _EIP158}.any?{|fork| name.include?(fork)}
+      next unless %w{Frontier Homestead _EIP150 _EIP158}.any? {|fork| name.include?(fork)}
 
-      it "#{prefix} #{name}", **tags2 do
+      # register rspec test case
+      it "#{prefix} #{name}", **tags.dup do
         db = Ciri::DB::Backend::Memory.new
         state = Ciri::EVM::State.new(db)
         # pre
-        t['pre'].each do |address, v|
-          address = Ciri::Types::Address.new address.decode_hex
-
-          account, code, storage = parse_account[address, v]
-          state.set_balance(address, account.balance)
-          state.set_nonce(address, account.nonce)
-          state.set_account_code(address, code)
-
-          storage.each do |k, v|
-            key, value = k.decode_big_endian, v.decode_big_endian
-            state.store(address, key, value)
-          end
-        end
+        prepare_state(state, t)
 
         genesis = if t['genesisRLP']
                     Ciri::Chain::Block.rlp_decode(t['genesisRLP'].decode_hex)
                   elsif t['genesisBlockHeader']
-                    Ciri::Chain::Block.new(header: parse_header[t['genesisBlockHeader']], transactions: [], ommers: [])
+                    Ciri::Chain::Block.new(header: parse_header(t['genesisBlockHeader']), transactions: [], ommers: [])
                   end
 
-        fork_config = extract_fork_config.call(t)
+        fork_config = extract_fork_config(t)
         chain = Ciri::Chain.new(db, genesis: genesis, network_id: 0, fork_config: fork_config)
 
         # run block
@@ -204,7 +206,7 @@ RSpec.describe Ciri::Chain do
         tags[:slow_tests] = true
       end
 
-      run_test_case[JSON.load(open t), prefix: topic, tags: tags]
+      run_test_case(JSON.load(open t), prefix: topic, tags: tags)
     end
   end
 
