@@ -18,14 +18,35 @@
 require_relative 'base'
 require_relative 'tangerine_whistle'
 require_relative 'spurious_dragon/transaction'
+require_relative 'spurious_dragon/cost'
 
 module Ciri
   module Forks
+    # https://github.com/ethereum/EIPs/blob/master/EIPS/eip-607.md
     module SpuriousDragon
       class Schema < Forks::TangerineWhistle::Schema
 
+        CONTRACT_CODE_SIZE_LIMIT = 2 ** 14 + 2 ** 13
+
+        def initialize
+          super
+          @cost = Cost.new
+        end
+
         def transaction_class
           Transaction
+        end
+
+        def contract_code_size_limit
+          CONTRACT_CODE_SIZE_LIMIT
+        end
+
+        def contract_init_nonce
+          1
+        end
+
+        def clean_empty_accounts?
+          true
         end
 
       end

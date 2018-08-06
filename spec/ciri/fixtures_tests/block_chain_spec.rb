@@ -127,7 +127,7 @@ RSpec.describe Ciri::Chain do
       tags2 = tags.dup
 
       # TODO support all forks
-      next unless %w{Frontier Homestead _EIP150}.any?{|fork| name.include?(fork)}
+      next unless %w{Frontier Homestead _EIP150 _EIP158}.any?{|fork| name.include?(fork)}
 
       it "#{prefix} #{name}", **tags2 do
         db = Ciri::DB::Backend::Memory.new
@@ -210,7 +210,7 @@ RSpec.describe Ciri::Chain do
 
   # Dir.glob("fixtures/BlockchainTests/GeneralStateTests/**/*.json").each do |topic|
   #   topic ||= nil
-  #   run_test_case[JSON.load(open topic || 'fixtures/BlockchainTests/bcWalletTest/wallet2outOf3txs2.json'), prefix: topic, tags: {}]
+  #   run_test_case[JSON.load(open topic || 'fixtures/BlockchainTests/bcStateTests/OOGStateCopyContainingDeletedContract.json'), prefix: topic, tags: {}]
   # end
 
 end

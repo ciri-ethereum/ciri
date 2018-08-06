@@ -16,28 +16,25 @@
 
 
 require 'ciri/evm/op'
-require 'ciri/forks/frontier/cost'
+require 'ciri/forks/tangerine_whistle/cost'
 
 module Ciri
   module Forks
-    module TangerineWhistle
+    module SpuriousDragon
 
-      class Cost < Frontier::Cost
+      class Cost < TangerineWhistle::Cost
 
         include Ciri::EVM::OP
 
         #   fee schedule, start with G
-        G_EXTCODE = 700
-        G_BALANCE = 400
-        G_SLOAD = 200
+        G_EXP = 10
+        G_EXPBYTE = 50
         R_SELFDESTRUCT = 24000
         G_SELFDESTRUCT = 5000
         G_CALL = 700
         G_NEWACCOUNT = 25000
-        G_COPY = 3
         G_CALLSTIPEND = 2300
         G_CALLVALUE = 9000
-        W_EXTCODE = [EXTCODESIZE]
 
         # C(σ,μ,I)
         # calculate cost of current operation
@@ -46,32 +43,29 @@ module Ciri
           instruction = vm.instruction
           w = instruction.get_op(vm.pc)
 
-          if w == EXTCODECOPY
-            G_EXTCODE + G_COPY * Utils.ceil_div(ms.get_stack(3, Integer), 32)
-          elsif w == CALL || w == CALLCODE || w == DELEGATECALL
+          if w == CALL || w == CALLCODE || w == DELEGATECALL
             G_CALL
           elsif w == SELFDESTRUCT
             cost_of_self_destruct(vm)
-          elsif w == SLOAD
-            G_SLOAD
-          elsif W_EXTCODE.include? w
-            G_EXTCODE
-          elsif w == BALANCE
-            G_BALANCE
+          elsif w == EXP && ms.get_stack(1, Integer) == 0
+            G_EXP
+          elsif w == EXP && (x = ms.get_stack(1, Integer)) > 0
+            G_EXP + G_EXPBYTE * Utils.ceil_div(x.bit_length, 8)
           else
             super
           end
         end
 
         def gas_of_call(vm:, gas:, to:, value:)
-          account_exists = vm.account_exist?(to)
-          transfer_gas_fee = value > 0 ? G_CALLVALUE : 0
-          create_gas_fee = !account_exists ? G_NEWACCOUNT : 0
+          account_is_dead = vm.account_dead?(to)
+          value_exists = value > 0
+          transfer_gas_fee = value_exists ? G_CALLVALUE : 0
+          create_gas_fee = account_is_dead && value_exists ? G_NEWACCOUNT : 0
           extra_gas = transfer_gas_fee + create_gas_fee
 
           gas = [gas, max_child_gas_eip150(vm.remain_gas - extra_gas)].min
           total_fee = gas + extra_gas
-          child_gas_limit = gas + (value > 0 ? G_CALLSTIPEND : 0)
+          child_gas_limit = gas + (value_exists ? G_CALLSTIPEND : 0)
           [child_gas_limit, total_fee]
         end
 
@@ -82,9 +76,8 @@ module Ciri
         end
 
         def cost_of_self_destruct(vm)
-          balance_is_zero = vm.find_account(vm.instruction.address).balance == 0
           refund_address = vm.get_stack(0, Address)
-          if vm.account_exist?(refund_address) || balance_is_zero
+          if vm.account_exist?(refund_address)
             G_SELFDESTRUCT
           else
             G_SELFDESTRUCT + G_NEWACCOUNT

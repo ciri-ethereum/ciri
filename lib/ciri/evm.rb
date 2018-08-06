@@ -162,6 +162,10 @@ module Ciri
         miner_account.balance += fee
         state.set_balance(block_info.coinbase, miner_account.balance)
 
+        # EIP158 fork, we need to delete miner account if account become empty
+        vm.sub_state.add_touched_account(block_info.coinbase)
+        vm.delete_empty_accounts
+
         # destroy accounts
         vm.execution_context.all_suicide_accounts.each do |address|
           state.set_balance(address, 0)

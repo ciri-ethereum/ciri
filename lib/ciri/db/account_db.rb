@@ -103,10 +103,6 @@ module Ciri
         db[find_account(address).code_hash] || ''.b
       end
 
-      def touch_account(address)
-        update_account(address, find_account(address))
-      end
-
       def find_account(address)
         rlp_encoded_account = @trie[convert_key address]
         if rlp_encoded_account.nil? || rlp_encoded_account.size == 0
