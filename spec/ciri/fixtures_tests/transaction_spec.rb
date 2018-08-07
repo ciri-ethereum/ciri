@@ -63,7 +63,7 @@ RSpec.describe Ciri::Chain::Transaction do
             # encoded again and check rlp encoding
             fork_schema.transaction_class.rlp_encode(transaction) == rlp ? transaction : nil
 
-          rescue Ciri::RLP::InvalidValueError, Ciri::Types::Errors::InvalidError
+          rescue Ciri::RLP::InvalidError, Ciri::Types::Errors::InvalidError
             nil
           end
 

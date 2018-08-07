@@ -15,29 +15,31 @@
 # limitations under the License.
 
 
+require 'ciri/rlp'
+
 module Ciri
   class Chain
 
     # block header
     class Header
-      include Ciri::RLP::Serializable
+      include RLP::Serializable
 
       schema [
-               :parent_hash,
-               :ommers_hash,
-               :beneficiary,
-               :state_root,
-               :transactions_root,
-               :receipts_root,
-               :logs_bloom,
+               {parent_hash: RLP::RawString},
+               {ommers_hash: RLP::RawString},
+               {beneficiary: RLP::RawString},
+               {state_root: RLP::RawString},
+               {transactions_root: RLP::RawString},
+               {receipts_root: RLP::RawString},
+               {logs_bloom: RLP::RawString},
                {difficulty: Integer},
                {number: Integer},
                {gas_limit: Integer},
                {gas_used: Integer},
                {timestamp: Integer},
-               :extra_data,
-               :mix_hash,
-               :nonce,
+               {extra_data: RLP::RawString},
+               {mix_hash: RLP::RawString},
+               {nonce: RLP::RawString},
              ]
 
       # header hash

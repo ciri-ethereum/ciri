@@ -62,9 +62,9 @@ RSpec.describe Ciri::RLP do
           expect {
             rlp_decoded = Ciri::RLP.decode(Ciri::Utils.to_bytes out_value)
             if Ciri::Utils.to_hex(Ciri::RLP.encode(rlp_decoded)) != out_value
-              raise Ciri::RLP::InvalidValueError, "not invalid encoding"
+              raise Ciri::RLP::InvalidError, "not invalid encoding"
             end
-          }.to raise_error(Ciri::RLP::InvalidValueError)
+          }.to raise_error(Ciri::RLP::InvalidError)
         elsif in_value == 'VALID'
           expect {Ciri::RLP.decode(Ciri::Utils.to_bytes out_value)}.to_not raise_error
         else
