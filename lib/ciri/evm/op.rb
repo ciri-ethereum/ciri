@@ -19,6 +19,7 @@ require 'ciri/utils'
 require 'ciri/utils/number'
 require 'ciri/types/address'
 require_relative 'op_call'
+require_relative 'op/errors'
 
 module Ciri
   class EVM
@@ -446,11 +447,11 @@ module Ciri
           init = vm.memory_fetch(mem_pos, size)
           create_gas = vm.remain_gas
           vm.consume_gas(create_gas)
-          
+
           child_context = vm.execution_context.child_context(gas_limit: create_gas)
           child_context.instruction.value = value
           child_context.instruction.bytes_code = init
-          
+
           contract_address, _ = vm.create_contract(context: child_context)
           vm.execution_context.return_gas(child_context.remain_gas)
 
@@ -481,7 +482,9 @@ module Ciri
       def_op :REVERT, 0xfd, 2, 0 do |vm|
         index, size = vm.pop_list(2, Integer)
         vm.extend_memory(index, size)
-        vm.set_output vm.memory_fetch(index, size)
+        output = vm.memory_fetch(index, size)
+        vm.set_exception RevertError.new
+        vm.set_output output
       end
 
       def_op :INVALID, 0xfe, 0, 0 do |vm|

@@ -140,7 +140,7 @@ RSpec.describe Ciri::Chain do
     test_case.each do |name, t|
 
       # TODO support all forks
-      next unless %w{Frontier Homestead _EIP150 _EIP158}.any? {|fork| name.include?(fork)}
+      next unless %w{Frontier Homestead _EIP150 _EIP158 Byzantium}.any? {|fork| name.include?(fork)}
 
       # register rspec test case
       it "#{prefix} #{name}", **tags.dup do
@@ -212,7 +212,7 @@ RSpec.describe Ciri::Chain do
 
   # Dir.glob("fixtures/BlockchainTests/GeneralStateTests/**/*.json").each do |topic|
   #   topic ||= nil
-  #   run_test_case[JSON.load(open topic || 'fixtures/BlockchainTests/bcStateTests/OOGStateCopyContainingDeletedContract.json'), prefix: topic, tags: {}]
+  #   run_test_case(JSON.load(open topic || 'fixtures/BlockchainTests/bcValidBlockTest/callRevert.json'), prefix: topic, tags: {})
   # end
 
 end

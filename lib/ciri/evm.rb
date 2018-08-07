@@ -66,7 +66,8 @@ module Ciri
           raise InvalidTransition.new("overflow header gas_used, total_gas_used: #{total_gas_used}, block gas_used: #{block.header.gas_used}")
         end
 
-        receipts << Types::Receipt.new(state_root: result.state_root, gas_used: total_gas_used, logs: result.logs)
+        receipt = fork_schema.make_receipt(execution_result: result, gas_used: total_gas_used)
+        receipts << receipt
       end
 
       if check_gas_used && total_gas_used != block.header.gas_used

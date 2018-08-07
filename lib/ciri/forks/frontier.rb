@@ -19,6 +19,7 @@ require_relative 'base'
 require_relative 'frontier/cost'
 require_relative 'frontier/transaction'
 require_relative 'frontier/opcodes'
+require 'ciri/types/receipt'
 require 'ciri/core_ext'
 require 'ciri/evm/precompile_contract'
 require 'forwardable'
@@ -60,13 +61,16 @@ module Ciri
           rewards
         end
 
-        # chain difficulty method
-        def difficulty_time_factor(header, parent_header)
-          (header.timestamp - parent_header.timestamp) < 13 ? 1 : -1
-        end
+        def calculate_difficulty(header, parent_header)
+          difficulty_time_factor = (header.timestamp - parent_header.timestamp) < 13 ? 1 : -1
+          x = parent_header.difficulty / 2048
 
-        def difficulty_virtual_height(height)
-          height
+          # difficulty bomb
+          height = header.number
+          height_factor = 2 ** (height / 100000 - 2)
+
+          difficulty = (parent_header.difficulty + x * difficulty_time_factor + height_factor).to_i
+          [header.difficulty, difficulty].max
         end
 
         PRECOMPILE_CONTRACTS = {
@@ -103,6 +107,10 @@ module Ciri
 
         def clean_empty_accounts?
           false
+        end
+
+        def make_receipt(execution_result:, gas_used:)
+          Types::Receipt.new(state_root: execution_result.state_root, gas_used: gas_used, logs: execution_result.logs)
         end
 
       end

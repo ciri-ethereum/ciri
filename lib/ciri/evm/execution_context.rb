@@ -75,7 +75,7 @@ module Ciri
         @pc = pc
       end
 
-      def revert
+      def revert_sub_state
         @sub_state = SubState::EMPTY
       end
 
