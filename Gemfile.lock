@@ -1,11 +1,11 @@
 PATH
   remote: .
   specs:
-    ciri (0.0.3)
+    ciri (0.0.4)
       bitcoin-secp256k1 (~> 0.4.0)
       ciri-crypto (~> 0.1.1)
-      ciri-rlp (~> 0.1.1)
-      ciri-utils (~> 0.2.0)
+      ciri-rlp (~> 0.2.1)
+      ciri-utils (~> 0.2.1)
       concurrent-ruby (~> 1.0.5)
       ffi (~> 1.9.23)
       lru_redux (~> 1.1.0)
@@ -13,9 +13,9 @@ PATH
     ciri-crypto (0.1.1)
       bitcoin-secp256k1 (~> 0.4.0)
       ciri-utils (~> 0.2.0)
-    ciri-rlp (0.1.1)
-      ciri-utils (~> 0.2.0)
-    ciri-utils (0.2.0)
+    ciri-rlp (0.2.1)
+      ciri-utils (~> 0.2.1)
+    ciri-utils (0.2.1)
       digest-sha3 (~> 1.1.0)
 
 GEM
