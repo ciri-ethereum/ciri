@@ -6,7 +6,7 @@ Ciri
 Ciri is an ongoing Ethereum implementation.
 
 It aims to be a feature complete Ethereum implementation and expects to achieve both research-friendly and high-performance.
-As you see it's still under development.
+As you see, it's still under development.
 
 See [How to learn Ethereum and contribute to Ciri](https://github.com/ciri-ethereum/ciri/wiki#how-to-learn-ethereum-and-contribute-to-ciri).
 
@@ -22,17 +22,17 @@ Development
 
 Ciri depends on [rocksdb](https://github.com/facebook/rocksdb), [secp256k1](https://github.com/bitcoin-core/secp256k1), [ethash](https://github.com/ethereum/ethash) and [snappy](https://github.com/google/snappy).
 
-It's recommendation to [setup with docker](#setup-with-docker), it will save lots of time.
+It's a recommendation to [setup with docker](#setup-with-docker), it will help to save lots of time.
 
 ### Setup with docker
 
-Use docker command to pull image:
+Use docker command to pull images:
 
 ``` bash
 docker pull ciriethereum/ciri
 ```
 
-Or you can use our prepared rake tasks if you not familiar with docker:
+Or you can use our prepared rake tasks if you're not familiar with docker:
 
 clone repo and submodules
 
@@ -56,7 +56,7 @@ rake docker:pull
 ```
 
 #### Build docker image
-(it will take few minutes)
+(it will take a few minutes)
 ``` bash
 # build Ciri docker image
 rake docker:build
@@ -68,9 +68,9 @@ rake docker:build
 rake docker:quick
 ```
 
-#### Other usage
+#### Other usages
 ``` bash
-# open a shell for develop
+# open a shell for developing
 rake docker:shell
 
 # type 'rake -T' see other supported tasks 
@@ -87,7 +87,7 @@ git clone --recursive https://github.com/ciri-ethereum/ciri.git
 
 #### Install dependencies
 
-On mac you can install `rocksdb` and `snappy` with homebrew
+On a mac you can install `rocksdb` and `snappy` with homebrew
 
 ``` bash
 brew install rocksdb snappy
@@ -105,7 +105,7 @@ secp256k1
 cd secp256k1 && ./autogen.sh && ./configure --enable-module-recovery --enable-experimental --enable-module-ecdh && make && make install
 ```
 
-For linux user, remember check [Dockerfile](/docker) instructions for hint.
+For linux users, you need to remember checking [Dockerfile](/docker) instructions for hint.
 
 then run: 
 ``` bash
@@ -124,11 +124,11 @@ Why Ruby?
 
 Seriously, 
 
-Ruby is a scripting language, it's easy to write prototype or research code with Ruby (like the official python Ethereum implementation intended).
+Ruby is a scripting language which makes it easy to write prototype or research code (like the official python Ethereum implementation intended).
 
-And with the several performance research projects in Ruby community (JIT, JRuby, TruffleRuby), we can expect the language performance improve in the future.
+According to the several performance research projects in Ruby community (JIT, JRuby, TruffleRuby), we are highly looking forward to seeing improvement of this language performance in the future. 
 
-So with Ruby, we can expect to achieve both research-friendly and high-performance in our implementation.
+Due to Ruby, we could expect to achieve both research-friendly and high-performance in our implementation.
 
 
 Contributors
