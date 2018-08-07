@@ -237,6 +237,10 @@ module Ciri
 
           alias []= put
 
+          def delete(key)
+            RocksDBLib.delete(@db, @writeoptions, key)
+          end
+
           def new_iterator
             Iterator.new(@db, @readoptions)
           end
