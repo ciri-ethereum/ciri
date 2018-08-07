@@ -31,7 +31,7 @@ RSpec.describe Ciri::EVM do
     prepare_ethereum_fixtures
   end
 
-  parse_account = proc do |address, v|
+  def parse_account(v)
     balance = Ciri::Utils.hex_to_number(v["balance"])
     nonce = Ciri::Utils.hex_to_number(v["nonce"])
     code = Ciri::Utils.to_bytes(v["code"])
@@ -41,21 +41,21 @@ RSpec.describe Ciri::EVM do
     [Ciri::Types::Account.new(balance: balance, nonce: nonce), code, storage]
   end
 
-  build_transaction = proc do |t_template, args|
-    key = Ciri::Key.new(raw_private_key: Ciri::Utils.to_bytes(t_template['secretKey']))
+  def build_transaction(transaction_data, args)
+    key = Ciri::Key.new(raw_private_key: Ciri::Utils.to_bytes(transaction_data['secretKey']))
     transaction = Ciri::Chain::Transaction.new(
-      data: Ciri::Utils.to_bytes(t_template['data'][args['data']]),
-      gas_limit: Ciri::Utils.hex_to_number(t_template['gasLimit'][args['gas']]),
-      gas_price: Ciri::Utils.hex_to_number(t_template['gasPrice']),
-      nonce: Ciri::Utils.hex_to_number(t_template['nonce']),
-      to: Ciri::Types::Address.new(Ciri::Utils.to_bytes(t_template['to'])),
-      value: Ciri::Utils.hex_to_number(t_template['value'][args['value']])
+        data: Ciri::Utils.to_bytes(transaction_data['data'][args['data']]),
+        gas_limit: Ciri::Utils.hex_to_number(transaction_data['gasLimit'][args['gas']]),
+        gas_price: Ciri::Utils.hex_to_number(transaction_data['gasPrice']),
+        nonce: Ciri::Utils.hex_to_number(transaction_data['nonce']),
+        to: Ciri::Types::Address.new(Ciri::Utils.to_bytes(transaction_data['to'])),
+        value: Ciri::Utils.hex_to_number(transaction_data['value'][args['value']])
     )
     transaction.sign_with_key!(key)
     transaction
   end
 
-  choose_fork_schema = proc do |fork_name|
+  def choose_fork_schema(fork_name)
     case fork_name
     when 'Frontier'
       Ciri::Forks::Frontier::Schema.new
@@ -74,49 +74,51 @@ RSpec.describe Ciri::EVM do
     end
   end
 
-  run_test_case = proc do |test_case, prefix: nil, tags: {}|
-    test_case.each do |name, t|
+  def self.block_info_from_env(env)
+    return nil unless env
+    Ciri::EVM::BlockInfo.new(
+        coinbase: Ciri::Utils.to_bytes(env['currentCoinbase']),
+        difficulty: env['currentDifficulty'].to_i(16),
+        gas_limit: env['currentGasLimit'].to_i(16),
+        number: env['currentNumber'].to_i(16),
+        timestamp: env['currentTimestamp'].to_i(16),
+    )
+  end
 
+  def prepare_state(state, fixture)
+    fixture['pre'].each do |address, v|
+      address = Ciri::Types::Address.new Ciri::Utils.to_bytes(address)
+
+      account, code, storage = parse_account(v)
+      state.set_balance(address, account.balance)
+      state.set_nonce(address, account.nonce)
+      state.set_account_code(address, code)
+
+      storage.each do |key, value|
+        state.store(address, key, value)
+      end
+    end
+  end
+
+  def self.run_test_case(test_case, prefix: nil, tags: {})
+    test_case.each do |name, t|
       context "#{prefix} #{name}", **tags do
 
-        # transaction
-        transaction_arguments = t['transaction']
-        env = t['env']
-
-        # env
-        block_info = env && Ciri::EVM::BlockInfo.new(
-          coinbase: Ciri::Utils.to_bytes(env['currentCoinbase']),
-          difficulty: Ciri::Utils.hex_to_number(env['currentDifficulty']),
-          gas_limit: Ciri::Utils.hex_to_number(env['currentGasLimit']),
-          number: Ciri::Utils.hex_to_number(env['currentNumber']),
-          timestamp: Ciri::Utils.hex_to_number(env['currentTimestamp']),
-        )
+        block_info = block_info_from_env(t['env'])
 
         t['post'].each do |fork_name, configs|
           it fork_name do
-            fork_schema = choose_fork_schema[fork_name]
+            fork_schema = choose_fork_schema(fork_name)
             configs.each do |config|
               db = Ciri::DB::Backend::Memory.new
               state = Ciri::EVM::State.new(db)
-              # pre
-              t['pre'].each do |address, v|
-                address = Ciri::Types::Address.new Ciri::Utils.to_bytes(address)
-
-                account, code, storage = parse_account[address, v]
-                state.set_balance(address, account.balance)
-                state.set_nonce(address, account.nonce)
-                state.set_account_code(address, code)
-
-                storage.each do |key, value|
-                  state.store(address, key, value)
-                end
-              end
+              prepare_state(state, t)
 
               indexes = config['indexes']
-              transaction = build_transaction[transaction_arguments, indexes]
+              transaction = build_transaction(t['transaction'], indexes)
               transaction.sender
 
-              evm = Ciri::EVM.new(state: state)
+              evm = Ciri::EVM.new(state: state, fork_schema: fork_schema)
               result = begin
                 evm.execute_transaction(transaction, block_info: block_info, ignore_exception: true)
               rescue StandardError
@@ -130,6 +132,7 @@ RSpec.describe Ciri::EVM do
             end
           end
         end
+
       end
 
     end
@@ -147,24 +150,10 @@ RSpec.describe Ciri::EVM do
     stCallCreateCallCodeTest
     stChangedEIP150
     stAttackTest
-  }.map {|f| ["fixtures/GeneralStateTests/#{f}", true]}.to_h
-
-  skip_topics = %w{
     stQuadraticComplexityTest
-    stRandom
-    stRandom2
-    stWalletTest
-    stMemoryStressTest
-    stSystemOperationsTest
   }.map {|f| ["fixtures/GeneralStateTests/#{f}", true]}.to_h
 
   Dir.glob("fixtures/GeneralStateTests/*").each do |topic|
-    # skip topics
-    if skip_topics.include? topic
-      skip topic
-      next
-    end
-
     tags = {}
     # tag slow test topics
     if slow_topics.include?(topic)
@@ -178,7 +167,7 @@ RSpec.describe Ciri::EVM do
         tags[:slow_tests] = true
       end
 
-      run_test_case[JSON.load(open t), prefix: topic, tags: tags]
+      run_test_case(JSON.load(open t), prefix: topic, tags: tags)
     end
   end
 
