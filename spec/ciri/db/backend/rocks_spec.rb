@@ -78,7 +78,7 @@ RSpec.describe Ciri::DB::Backend::Rocks do
     expect(store.closed?).to be_truthy
     expect do
       store["eh?"]
-    end.to raise_error(Ciri::DB::Backend::Rocks::InvalidError)
+    end.to raise_error(Ciri::DB::Backend::InvalidError)
   end
 
   it 'handle null byte string' do
