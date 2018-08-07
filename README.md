@@ -26,7 +26,7 @@ It's a recommendation to [setup with docker](#setup-with-docker), it will help t
 
 ### Setup with docker
 
-Use docker command to pull images:
+Use docker command to pull image:
 
 ``` bash
 docker pull ciriethereum/ciri
@@ -105,7 +105,7 @@ secp256k1
 cd secp256k1 && ./autogen.sh && ./configure --enable-module-recovery --enable-experimental --enable-module-ecdh && make && make install
 ```
 
-For linux users, you need to remember checking [Dockerfile](/docker) instructions for hint.
+For linux users, remember to check [Dockerfile](/docker) instructions for hint.
 
 then run: 
 ``` bash
