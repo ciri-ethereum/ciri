@@ -15,8 +15,9 @@
 # limitations under the License.
 
 
-require_relative 'rocks_db'
 require 'forwardable'
+require_relative 'rocks_db'
+require_relative 'errors'
 
 module Ciri
   module DB
@@ -24,17 +25,23 @@ module Ciri
 
       # implement kvstore
       class Rocks
-
-        class InvalidError < StandardError
-        end
-
         extend Forwardable
 
         def initialize(path)
           @db = RocksDB::DB.new(path)
         end
 
-        def_delegators :db, :get, :put, :[], :[]=
+        def_delegators :db, :get, :put, :[], :[]=, :delete
+
+        def fetch(key)
+          value = self[key]
+          raise KeyError.new("key not found: #{key.inspect}") if value.nil?
+          value
+        end
+
+        def include?(key)
+          !self[key].nil?
+        end
 
         def each(&blk)
           inter_each(only_key: false, &blk)

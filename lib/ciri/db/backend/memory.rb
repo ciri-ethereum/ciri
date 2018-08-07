@@ -15,8 +15,8 @@
 # limitations under the License.
 
 
-require_relative 'rocks_db'
 require 'forwardable'
+require_relative 'errors'
 
 module Ciri
   module DB
@@ -37,9 +37,6 @@ module Ciri
           end
         end
 
-        class InvalidError < StandardError
-        end
-
         extend Forwardable
 
         def initialize
@@ -51,24 +48,20 @@ module Ciri
           @db = orig.instance_variable_get(:@db).dup
         end
 
-        def_delegators :@db, :[], :[]=, :fetch, :delete, :include?
+        def_delegators :db, :[], :[]=, :fetch, :delete, :include?
 
         def get(key)
-          @db[key]
+          db[key]
         end
 
         def put(key, value)
-          @db[key] = value
-        end
-
-        def each(&blk)
-          keys.each(&blk)
+          db[key] = value
         end
 
         def batch
           b = Batch.new
           yield(b)
-          @db.merge! b.value
+          db.merge! b.value
         end
 
         def close
@@ -77,6 +70,11 @@ module Ciri
 
         def closed?
           @db.nil?
+        end
+
+        private
+        def db
+          @db || raise(InvalidError.new 'db is closed')
         end
 
       end
