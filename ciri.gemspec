@@ -21,8 +21,8 @@ Gem::Specification.new do |spec|
   spec.require_paths = ["lib"]
 
   # components
-  spec.add_dependency 'ciri-utils', '~> 0.2.0'
-  spec.add_dependency 'ciri-rlp', '~> 0.1.1'
+  spec.add_dependency 'ciri-utils', '~> 0.2.1'
+  spec.add_dependency 'ciri-rlp', '~> 0.2.1'
   spec.add_dependency 'ciri-crypto', '~> 0.1.1'
 
   spec.add_dependency 'ffi', '~> 1.9.23'
