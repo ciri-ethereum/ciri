@@ -71,16 +71,7 @@ module Ciri
         return header.difficulty if header.number == 0
 
         fork_schema = @fork_config.choose_fork(header.number)
-        difficulty_time_factor = fork_schema.difficulty_time_factor(header, parent_header)
-
-        x = parent_header.difficulty / 2048
-
-        # difficulty bomb
-        height = fork_schema.difficulty_virtual_height(header.number)
-        height_factor = 2 ** (height / 100000 - 2)
-
-        difficulty = (parent_header.difficulty + x * difficulty_time_factor + height_factor).to_i
-        [header.difficulty, difficulty].max
+        fork_schema.calculate_difficulty(header, parent_header)
       end
 
       # write header

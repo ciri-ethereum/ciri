@@ -24,6 +24,7 @@ require_relative 'instruction'
 require_relative 'sub_state'
 require_relative 'block_info'
 require_relative 'log_entry'
+require_relative 'op/errors'
 
 using Ciri::CoreExt
 module Ciri
@@ -128,19 +129,7 @@ module Ciri
             consume_gas deposit_code_gas
           end
 
-          # check exception and commit/revert state
-          if exception
-            if burn_gas_on_exception
-              debug("exception: #{exception}, burn gas #{remain_gas} to zero... op code: 0x#{get_op(pc).to_s(16)}")
-              consume_gas remain_gas
-            end
-            execution_context.revert
-            state.revert(snapshot)
-          else
-            delete_empty_accounts
-            state.commit(snapshot)
-          end
-
+          finalize_message(snapshot)
           [contract_address, exception]
         end
       end
@@ -168,19 +157,7 @@ module Ciri
             set_exception(e)
           end
 
-          if exception
-            if burn_gas_on_exception
-              debug("exception: #{exception}, burn gas #{remain_gas} to zero... op code: 0x#{get_op(pc).to_s(16)}")
-              consume_gas remain_gas
-            end
-            execution_context.revert
-
-            state.revert(snapshot)
-          else
-            delete_empty_accounts
-            state.commit(snapshot)
-          end
-
+          finalize_message(snapshot)
           [status, output || ''.b, exception]
         end
       end
@@ -232,7 +209,7 @@ module Ciri
 
       def delete_empty_accounts
         return unless fork_schema.clean_empty_accounts?
-        sub_state.touched_accounts.select do |address|
+        sub_state.touched_accounts.to_set.select do |address|
           account_dead?(address)
         end.each do |address|
           state.delete_account(address)
@@ -262,12 +239,6 @@ module Ciri
           set_exception(e)
         end
 
-        # revert sub_state and return if exception occur
-        if exception
-          execution_context.revert
-          return
-        end
-
         set_pc case
                when w == OP::JUMP
                  jump_pc
@@ -286,8 +257,6 @@ module Ciri
           output
         elsif w == OP::STOP || w == OP::SELFDESTRUCT
           operate
-          # return empty sequence: nil
-          # debug("#{pc} #{OP.get(w).name} gas: 0 stack: #{stack.size}")
           nil
         else
           EMPTY_SET
@@ -316,6 +285,26 @@ module Ciri
           StackError.new "call depth reach #{max_depth} limit"
         else
           nil
+        end
+      end
+
+      def finalize_message(snapshot)
+        # check exception and commit/revert state
+        if exception.is_a?(OP::RevertError)
+          execution_context.revert_sub_state
+          state.revert(snapshot)
+          # cleanup exception
+          set_exception(nil)
+        elsif exception
+          if burn_gas_on_exception
+            debug("exception: #{exception}, burn gas #{remain_gas} to zero... op code: 0x#{get_op(pc).to_s(16)}")
+            consume_gas remain_gas
+          end
+          execution_context.revert_sub_state
+          state.revert(snapshot)
+        else
+          delete_empty_accounts
+          state.commit(snapshot)
         end
       end
 

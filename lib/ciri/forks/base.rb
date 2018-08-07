@@ -85,6 +85,10 @@ module Ciri
       def clean_empty_accounts?
         raise NotImplementedError
       end
+
+      def make_receipt(execution_result:, gas_used:)
+        raise NotImplementedError
+      end
     end
 
   end

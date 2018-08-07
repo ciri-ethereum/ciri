@@ -39,10 +39,17 @@ module Ciri
           gas + (t.to.empty? ? Cost::G_TXCREATE : 0) + Cost::G_TRANSACTION
         end
 
-        # chain difficulty method
-        # https://github.com/ethereum/EIPs/blob/984cf5de90bbf5fbe7e49be227b0c2f9567e661e/EIPS/eip-2.md
-        def difficulty_time_factor(header, parent_header)
-          [1 - (header.timestamp - parent_header.timestamp) / 10, -99].max
+        def calculate_difficulty(header, parent_header)
+          # https://github.com/ethereum/EIPs/blob/984cf5de90bbf5fbe7e49be227b0c2f9567e661e/EIPS/eip-2.md
+          difficulty_time_factor = [1 - (header.timestamp - parent_header.timestamp) / 10, -99].max
+          x = parent_header.difficulty / 2048
+
+          # difficulty bomb
+          height = header.number
+          height_factor = 2 ** (height / 100000 - 2)
+
+          difficulty = (parent_header.difficulty + x * difficulty_time_factor + height_factor).to_i
+          [header.difficulty, difficulty].max
         end
 
         def transaction_class
