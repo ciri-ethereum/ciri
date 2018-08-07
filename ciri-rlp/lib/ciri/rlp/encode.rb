@@ -70,12 +70,18 @@ module Ciri
           if type.size == 1 # array type
             encode_list(item) {|i| encode_with_type(i, type[0])}
           else # unknown
-            raise RLP::InvalidValueError.new "type size should be 1, got #{type}"
+            raise RLP::InvalidError.new "type size should be 1, got #{type}"
           end
         elsif type == Raw
           encode_raw(item)
+        elsif type == RawString
+          raise RLP::InvalidError.new "expect String, got #{item.class}" unless item.is_a?(String)
+          encode_raw(item)
+        elsif type == RawList
+          raise RLP::InvalidError.new "expect Array, got #{item.class}" unless item.is_a?(Array)
+          encode_raw(item)
         else
-          raise RLP::InvalidValueError.new "unknown type #{type}"
+          raise RLP::InvalidError.new "unknown type #{type}"
         end
       rescue
         STDERR.puts "when encoding #{Utils.to_hex item.to_s} into #{type}"

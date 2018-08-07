@@ -94,6 +94,10 @@ RSpec.describe Ciri::Chain do
                      [
                          [0, Ciri::Forks::Byzantium::Schema.new],
                      ]
+                   when "Constantinople"
+                     [
+                         [0, Ciri::Forks::Constantinople::Schema.new],
+                     ]
                    when "FrontierToHomesteadAt5"
                      [
                          [0, Ciri::Forks::Frontier::Schema.new],
@@ -140,7 +144,7 @@ RSpec.describe Ciri::Chain do
     test_case.each do |name, t|
 
       # TODO support all forks
-      next unless %w{Frontier Homestead _EIP150 _EIP158 Byzantium}.any? {|fork| name.include?(fork)}
+      next skip("#{prefix} #{name}") if name.include?("Constantinople")
 
       # register rspec test case
       it "#{prefix} #{name}", **tags.dup do
@@ -163,7 +167,10 @@ RSpec.describe Ciri::Chain do
           begin
             block = Ciri::Chain::Block.rlp_decode b['rlp'].decode_hex
             chain.import_block(block)
-          rescue Ciri::Chain::InvalidBlockError, Ciri::RLP::InvalidValueError, Ciri::EVM::Error => e
+          rescue Ciri::Chain::InvalidBlockError,
+              Ciri::RLP::InvalidError,
+              Ciri::EVM::Error,
+              Ciri::Types::Errors::InvalidError => e
             p e
             expect(b['blockHeader']).to be_nil
             expect(b['transactions']).to be_nil

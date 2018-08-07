@@ -44,7 +44,7 @@ module Ciri
         if type == Integer
           item = s.read(1)
           if item.nil?
-            raise InvalidValueError.new "invalid bool value nil"
+            raise InvalidError.new "invalid bool value nil"
           elsif item == "\x80".b || item.empty?
             0
           elsif item.ord < 0x80
@@ -60,7 +60,7 @@ module Ciri
           elsif item == Bool::ENCODED_FALSE
             false
           else
-            raise InvalidValueError.new "invalid bool value #{item}"
+            raise InvalidError.new "invalid bool value #{item}"
           end
         elsif type.is_a?(Class) && type.respond_to?(:rlp_decode)
           type.rlp_decode(s)
@@ -76,7 +76,7 @@ module Ciri
         elsif type == Raw
           decode_stream(s)
         else
-          raise RLP::InvalidValueError.new "unknown type #{type}"
+          raise RLP::InvalidError.new "unknown type #{type}"
         end
       rescue
         STDERR.puts "when decoding #{s} into #{type}"
@@ -99,7 +99,7 @@ module Ciri
                   length = int_from_binary(length_binary)
                   s.read(length)
                 else
-                  raise InvalidValueError.new("invalid char #{c}")
+                  raise InvalidError.new("invalid char #{c}")
                 end
 
         decoder.call(list, StringIO.new(sub_s))

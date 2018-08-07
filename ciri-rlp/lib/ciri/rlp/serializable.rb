@@ -30,6 +30,12 @@ module Ciri
     class Raw
     end
 
+    class RawString
+    end
+
+    class RawList
+    end
+
     # Serializable module allow ruby objects serialize/deserialize to or from RLP encoding.
     # See Ciri::RLP::Serializable::TYPES for supported type.
     #
@@ -69,7 +75,7 @@ module Ciri
     #
     module Serializable
       # nil represent RLP raw value(string or array of string)
-      TYPES = [Raw, Integer, Bool].map {|key| [key, true]}.to_h.freeze
+      TYPES = [Raw, RawString, RawList, Integer, Bool].map {|key| [key, true]}.to_h.freeze
 
       # Schema specific columns types of classes, normally you should not use Serializable::Schema directly
       #

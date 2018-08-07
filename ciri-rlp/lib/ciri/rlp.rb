@@ -22,7 +22,7 @@ require_relative 'rlp/serializable'
 module Ciri
   module RLP
 
-    class InvalidValueError < StandardError
+    class InvalidError < StandardError
     end
 
     extend Encode
