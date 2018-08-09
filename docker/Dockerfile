@@ -34,7 +34,4 @@ ENV RUBY_THREAD_VM_STACK_SIZE=52428800
 
 # bundle install
 RUN bundle install
-# bundle install sub components
-RUN bundle install --gemfile ciri-utils/Gemfile
-RUN bundle install --gemfile ciri-rlp/Gemfile
-RUN bundle install --gemfile ciri-crypto/Gemfile
+

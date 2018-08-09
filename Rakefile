@@ -12,24 +12,16 @@ rescue LoadError
   nil
 end
 
-SUB_COMPONENTS = %w{ciri-utils ciri-rlp ciri-crypto}
-
 desc 'run quick spec'
 task :quick do
   exit(1) unless check_env
   run("rspec -t ~slow_tests")
-  SUB_COMPONENTS.each do |dir|
-    run("cd #{dir} && rake")
-  end
 end
 
 desc 'run all specs, include extreme slow tests'
 task :"spec:all" do
   exit(1) unless check_env
   run("rspec")
-  SUB_COMPONENTS.each do |dir|
-    run("cd #{dir} && rake")
-  end
 end
 
 namespace :docker do
