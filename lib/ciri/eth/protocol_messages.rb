@@ -15,7 +15,7 @@
 # limitations under the License.
 
 
-require 'ciri/chain'
+require 'ciri/pow_chain/chain'
 require 'ciri/rlp'
 require 'stringio'
 
@@ -65,11 +65,11 @@ module Ciri
       CODE = 0x00
 
       schema [
-               {protocol_version: Integer},
-               {network_id: Integer},
-               {total_difficulty: Integer},
-               :current_block,
-               :genesis_block,
+                 {protocol_version: Integer},
+                 {network_id: Integer},
+                 {total_difficulty: Integer},
+                 :current_block,
+                 :genesis_block,
              ]
     end
 
@@ -79,10 +79,10 @@ module Ciri
       CODE = 0x03
 
       schema [
-               {hash_or_number: HashOrNumber},
-               {amount: Integer},
-               {skip: Integer},
-               {reverse: Ciri::RLP::Bool},
+                 {hash_or_number: HashOrNumber},
+                 {amount: Integer},
+                 {skip: Integer},
+                 {reverse: Ciri::RLP::Bool},
              ]
     end
 
@@ -96,11 +96,11 @@ module Ciri
       end
 
       def rlp_encode
-        Ciri::RLP.encode(@headers, [Chain::Header])
+        Ciri::RLP.encode(@headers, [POWChain::Header])
       end
 
       def self.rlp_decode(payload)
-        new headers: Ciri::RLP.decode(payload, [Chain::Header])
+        new headers: Ciri::RLP.decode(payload, [POWChain::Header])
       end
     end
 
@@ -129,8 +129,8 @@ module Ciri
         include RLP::Serializable
 
         schema [
-                 {transactions: [Chain::Transaction]},
-                 {ommers: [Chain::Header]},
+                   {transactions: [POWChain::Transaction]},
+                   {ommers: [POWChain::Header]},
                ]
       end
 

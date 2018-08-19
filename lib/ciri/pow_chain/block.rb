@@ -15,25 +15,27 @@
 # limitations under the License.
 
 
-require 'spec_helper'
-require 'ciri/ethash'
+require 'ciri/rlp'
+require_relative 'header'
+require_relative 'transaction'
+require 'forwardable'
 
-RSpec.describe Ciri::Ethash do
+module Ciri
+  module POWChain
 
-  it 'mkcache_bytes' do
-    bytes = Ciri::Ethash.mkcache_bytes(15)
-    expect(bytes.size).to eq 16776896
+    # structure for ethereum block
+    class Block
+      include RLP::Serializable
+      schema [
+                 {header: Header},
+                 {transactions: [Transaction]},
+                 {ommers: [Header]}, # or uncles
+             ]
+
+      extend Forwardable
+
+      def_delegators :header, :number, :get_hash, :mining_hash, :parent_hash
+    end
+
   end
-
-  it 'hashimoto_light' do
-    cache = Ciri::Ethash.mkcache_bytes(1024)
-    block_number = 1024
-    header = "~~~~~X~~~~~~~~~~~~~~~~~~~~~~~~~~".b
-
-    mix_hash, result = Ciri::Ethash.hashimoto_light(block_number, cache, header, 0)
-
-    expect(mix_hash.size).to eq 32
-    expect(result.size).to eq 32
-  end
-
 end

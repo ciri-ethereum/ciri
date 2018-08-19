@@ -15,27 +15,25 @@
 # limitations under the License.
 
 
-require 'ciri/rlp'
-require_relative 'header'
-require_relative 'transaction'
-require 'forwardable'
+require 'spec_helper'
+require 'ciri/pow_chain/ethash/ffi_ethash'
 
-module Ciri
-  class Chain
+RSpec.describe Ciri::POWChain::Ethash::FFIEthash do
 
-    # structure for ethereum block
-    class Block
-      include RLP::Serializable
-      schema [
-               {header: Header},
-               {transactions: [Transaction]},
-               {ommers: [Header]}, # or uncles
-             ]
-
-      extend Forwardable
-
-      def_delegators :header, :number, :get_hash, :mining_hash, :parent_hash
-    end
-
+  it 'mkcache_bytes' do
+    bytes = Ciri::POWChain::Ethash::FFIEthash.mkcache_bytes(15)
+    expect(bytes.size).to eq 16776896
   end
+
+  it 'hashimoto_light' do
+    cache = Ciri::POWChain::Ethash::FFIEthash.mkcache_bytes(1024)
+    block_number = 1024
+    header = "~~~~~X~~~~~~~~~~~~~~~~~~~~~~~~~~".b
+
+    mix_hash, result = Ciri::POWChain::Ethash::FFIEthash.hashimoto_light(block_number, cache, header, 0)
+
+    expect(mix_hash.size).to eq 32
+    expect(result.size).to eq 32
+  end
+
 end

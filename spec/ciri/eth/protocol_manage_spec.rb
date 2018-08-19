@@ -20,7 +20,7 @@ require 'ciri/devp2p/rlpx'
 require 'ciri/devp2p/peer'
 require 'ciri/devp2p/protocol'
 require 'ciri/devp2p/protocol_io'
-require 'ciri/chain'
+require 'ciri/pow_chain/chain'
 require 'ciri/db/backend/rocks'
 require 'ciri/key'
 require 'socket'
@@ -33,7 +33,7 @@ RSpec.describe Ciri::Eth::ProtocolManage do
   let(:tmp_dir) {Dir.mktmpdir}
   let(:store) {Ciri::DB::Backend::Rocks.new tmp_dir}
   let(:fork_config) {Ciri::Forks::Config.new([[0, Ciri::Forks::Frontier::Schema.new]])}
-  let(:chain) {Ciri::Chain.new(store, genesis: blocks[0], network_id: 0, fork_config: fork_config)}
+  let(:chain) {Ciri::POWChain::Chain.new(store, genesis: blocks[0], network_id: 0, fork_config: fork_config)}
 
   before {Ciri::Actor.default_executor = Concurrent::CachedThreadPool.new}
 

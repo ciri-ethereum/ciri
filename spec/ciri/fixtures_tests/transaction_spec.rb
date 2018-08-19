@@ -16,12 +16,12 @@
 
 
 require 'spec_helper'
-require 'ciri/chain/transaction'
+require 'ciri/pow_chain/transaction'
 require 'ciri/utils'
 require 'ciri/db/backend/memory'
 require 'ciri/forks'
 
-RSpec.describe Ciri::Chain::Transaction do
+RSpec.describe Ciri::POWChain::Transaction do
 
   before(:all) do
     prepare_ethereum_fixtures
@@ -68,9 +68,9 @@ RSpec.describe Ciri::Chain::Transaction do
           end
 
           error_or_nil = begin
-            raise Ciri::Chain::Transaction::InvalidError if transaction.nil?
+            raise Ciri::POWChain::Transaction::InvalidError if transaction.nil?
             transaction.validate!
-          rescue Ciri::Chain::Transaction::InvalidError => e
+          rescue Ciri::POWChain::Transaction::InvalidError => e
             e
           end
 

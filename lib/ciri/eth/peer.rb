@@ -15,7 +15,7 @@
 # limitations under the License.
 
 
-require 'ciri/chain'
+require 'ciri/pow_chain/chain'
 require 'forwardable'
 require_relative 'protocol_messages'
 

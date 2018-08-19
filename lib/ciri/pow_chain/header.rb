@@ -18,28 +18,28 @@
 require 'ciri/rlp'
 
 module Ciri
-  class Chain
+  module POWChain
 
     # block header
     class Header
       include RLP::Serializable
 
       schema [
-               {parent_hash: RLP::RawString},
-               {ommers_hash: RLP::RawString},
-               {beneficiary: RLP::RawString},
-               {state_root: RLP::RawString},
-               {transactions_root: RLP::RawString},
-               {receipts_root: RLP::RawString},
-               {logs_bloom: RLP::RawString},
-               {difficulty: Integer},
-               {number: Integer},
-               {gas_limit: Integer},
-               {gas_used: Integer},
-               {timestamp: Integer},
-               {extra_data: RLP::RawString},
-               {mix_hash: RLP::RawString},
-               {nonce: RLP::RawString},
+                 {parent_hash: RLP::RawString},
+                 {ommers_hash: RLP::RawString},
+                 {beneficiary: RLP::RawString},
+                 {state_root: RLP::RawString},
+                 {transactions_root: RLP::RawString},
+                 {receipts_root: RLP::RawString},
+                 {logs_bloom: RLP::RawString},
+                 {difficulty: Integer},
+                 {number: Integer},
+                 {gas_limit: Integer},
+                 {gas_used: Integer},
+                 {timestamp: Integer},
+                 {extra_data: RLP::RawString},
+                 {mix_hash: RLP::RawString},
+                 {nonce: RLP::RawString},
              ]
 
       # header hash
@@ -51,7 +51,6 @@ module Ciri
       def mining_hash
         Utils.keccak(rlp_encode skip_keys: [:mix_hash, :nonce])
       end
-
     end
 
   end

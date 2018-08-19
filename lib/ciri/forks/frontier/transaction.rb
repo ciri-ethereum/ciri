@@ -15,12 +15,12 @@
 # limitations under the License.
 
 
-require 'ciri/chain/transaction'
+require 'ciri/pow_chain/transaction'
 
 module Ciri
   module Forks
     module Frontier
-      class Transaction < Chain::Transaction
+      class Transaction < POWChain::Transaction
 
         def validate!
           validate_sender!

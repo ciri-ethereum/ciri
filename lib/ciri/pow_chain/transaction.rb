@@ -22,8 +22,7 @@ require 'ciri/types/address'
 require 'ciri/types/uint'
 
 module Ciri
-  class Chain
-
+  module POWChain
     class Transaction
 
       include Types
@@ -125,7 +124,6 @@ module Ciri
       def eip_155_signed_transaction?
         v >= EIP155_CHAIN_ID_OFFSET
       end
-
     end
 
   end
