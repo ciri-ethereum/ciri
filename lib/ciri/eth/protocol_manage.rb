@@ -16,7 +16,7 @@
 
 
 require 'ciri/actor'
-require 'ciri/chain'
+require 'ciri/pow_chain/chain'
 require_relative 'peer'
 require_relative 'synchronizer'
 

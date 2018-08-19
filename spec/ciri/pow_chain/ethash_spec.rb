@@ -16,10 +16,10 @@
 
 
 require 'spec_helper'
-require 'ciri/pow'
+require 'ciri/pow_chain/ethash'
 require 'ciri/utils'
 
-RSpec.describe Ciri::POW do
+RSpec.describe Ciri::POWChain::Ethash do
 
   it 'check_pow' do
     block_number = 1
@@ -30,16 +30,16 @@ RSpec.describe Ciri::POW do
 
     # not satisfy difficulty
     expect do
-      Ciri::POW.check_pow(block_number, mining, mix_hash, nonce, 2 ** 256)
-    end.to raise_error(Ciri::POW::InvalidError)
+      Ciri::POWChain::Ethash.check_pow(block_number, mining, mix_hash, nonce, 2 ** 256)
+    end.to raise_error(Ciri::POWChain::Ethash::InvalidError)
 
     # not satisfy mix_hash
     expect do
-      Ciri::POW.check_pow(block_number, mining, "\x00".b * 32, nonce, difficulty)
-    end.to raise_error(Ciri::POW::InvalidError)
+      Ciri::POWChain::Ethash.check_pow(block_number, mining, "\x00".b * 32, nonce, difficulty)
+    end.to raise_error(Ciri::POWChain::Ethash::InvalidError)
 
     expect do
-      Ciri::POW.check_pow(block_number, mining, mix_hash, nonce, difficulty)
+      Ciri::POWChain::Ethash.check_pow(block_number, mining, mix_hash, nonce, difficulty)
     end.to_not raise_error
 
   end
@@ -49,17 +49,17 @@ RSpec.describe Ciri::POW do
     mining = "\x00".b * 32
     difficulty = 1
 
-    mix_hash, nonce = Ciri::POW.mine_pow_nonce(block_number, mining, difficulty)
+    mix_hash, nonce = Ciri::POWChain::Ethash.mine_pow_nonce(block_number, mining, difficulty)
 
     expect do
-      Ciri::POW.check_pow(block_number, mining, mix_hash, nonce, difficulty)
+      Ciri::POWChain::Ethash.check_pow(block_number, mining, mix_hash, nonce, difficulty)
     end.to_not raise_error
   end
 
-  context 'check pow with real blocks' do
+  context 'check pow_chain with real blocks' do
     let(:blocks) {load_blocks('blocks')}
 
-    it 'check blocks pow' do
+    it 'check blocks pow_chain' do
 
       blocks[1..5].each do |block|
         block_number = block.header.number
@@ -69,7 +69,7 @@ RSpec.describe Ciri::POW do
         difficulty = block.header.difficulty
 
         expect do
-          Ciri::POW.check_pow(block_number, mining, mix_hash, nonce, difficulty)
+          Ciri::POWChain::Ethash.check_pow(block_number, mining, mix_hash, nonce, difficulty)
         end.to_not raise_error
       end
 

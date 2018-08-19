@@ -22,7 +22,7 @@ require 'ciri/types/account'
 require 'ciri/forks/frontier'
 require 'ciri/utils'
 require 'ciri/db/backend/memory'
-require 'ciri/chain/transaction'
+require 'ciri/pow_chain/transaction'
 require 'ciri/key'
 
 RSpec.describe Ciri::EVM do
@@ -43,7 +43,7 @@ RSpec.describe Ciri::EVM do
 
   def build_transaction(transaction_data, args)
     key = Ciri::Key.new(raw_private_key: Ciri::Utils.to_bytes(transaction_data['secretKey']))
-    transaction = Ciri::Chain::Transaction.new(
+    transaction = Ciri::POWChain::Transaction.new(
         data: Ciri::Utils.to_bytes(transaction_data['data'][args['data']]),
         gas_limit: Ciri::Utils.hex_to_number(transaction_data['gasLimit'][args['gas']]),
         gas_price: Ciri::Utils.hex_to_number(transaction_data['gasPrice']),

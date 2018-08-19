@@ -18,7 +18,7 @@
 require 'yaml'
 require 'json'
 
-require 'ciri/chain'
+require 'ciri/pow_chain/chain'
 
 module FixtureHelpers
   FIXTURE_DIR = "spec/fixtures"
@@ -68,8 +68,8 @@ module FixtureHelpers
     %i{difficulty gas_used gas_limit number timestamp}.each do |k|
       data[k] = Ciri::Utils.hex_to_number(data[k]) if data.has_key?(k) && !data[k].is_a?(Integer)
     end
-    data = data.select {|k, v| Ciri::Chain::Header.schema.keys.include? k}.to_h
-    Ciri::Chain::Header.new(**data)
+    data = data.select {|k, v| Ciri::POWChain::Header.schema.keys.include? k}.to_h
+    Ciri::POWChain::Header.new(**data)
   end
 
   def fixture_to_block(b, data = nil)
@@ -78,7 +78,7 @@ module FixtureHelpers
     transactions = data[:transactions]
     uncles = data[:uncles].map {|u| fixture_to_block(u).header}
 
-    Ciri::Chain::Block.new(header: header, transactions: transactions, ommers: uncles)
+    Ciri::POWChain::Block.new(header: header, transactions: transactions, ommers: uncles)
   end
 
   TRANSACTION_MAPPING = {}
@@ -95,7 +95,7 @@ module FixtureHelpers
       data[k] = Ciri::Utils.hex_to_number(data[k]) if data.has_key?(k)
     end
 
-    Ciri::Chain::Transaction.new(**data)
+    Ciri::POWChain::Transaction.new(**data)
   end
 
   def fixture_normalize(b, mapping = {})
@@ -107,7 +107,7 @@ module FixtureHelpers
   end
 
   def load_blocks(file)
-    require 'ciri/chain'
+    require 'ciri/pow_chain/chain'
 
     fixture(file).map do |b|
       fixture_to_block(b)

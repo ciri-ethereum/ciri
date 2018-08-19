@@ -159,7 +159,7 @@ module Ciri
             (start_height..end_height).each do |height|
               header = peer_entry.fetch_peer_header height
               bodies = peer_entry.fetch_peer_body([header.get_hash])
-              block = Chain::Block.new(header: header, transactions: bodies[0].transactions, ommers: bodies[0].ommers)
+              block = POWChain::Block.new(header: header, transactions: bodies[0].transactions, ommers: bodies[0].ommers)
               # insert to chain....
               chain.write_block(block)
               local_header = header

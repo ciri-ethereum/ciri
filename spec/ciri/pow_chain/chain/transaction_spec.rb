@@ -15,13 +15,13 @@
 # limitations under the License.
 
 require 'spec_helper'
-require 'ciri/chain/transaction'
+require 'ciri/pow_chain/transaction'
 require 'ciri/key'
 
-RSpec.describe Ciri::Chain::Transaction do
+RSpec.describe Ciri::POWChain::Transaction do
 
   it 'sign' do
-    t = Ciri::Chain::Transaction.new(nonce: 1, gas_price: 1, gas_limit: 5, to: 0x00, value: 0)
+    t = Ciri::POWChain::Transaction.new(nonce: 1, gas_price: 1, gas_limit: 5, to: 0x00, value: 0)
     key = Ciri::Key.random
     t.sign_with_key! key
     expect(t.sender.to_s).to eq Ciri::Utils.keccak(key.raw_public_key[1..-1])[-20..-1]

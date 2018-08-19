@@ -17,19 +17,18 @@
 
 require 'spec_helper'
 require 'ciri/core_ext'
-require 'ciri/chain'
+require 'ciri/pow_chain/chain'
 require 'ciri/evm'
 require 'ciri/evm/state'
 require 'ciri/types/account'
 require 'ciri/forks/frontier'
 require 'ciri/utils'
 require 'ciri/db/backend/memory'
-require 'ciri/chain/transaction'
 require 'ciri/key'
 
 using Ciri::CoreExt
 
-RSpec.describe Ciri::Chain do
+RSpec.describe Ciri::POWChain::Chain do
 
   before(:all) do
     prepare_ethereum_fixtures
@@ -64,7 +63,7 @@ RSpec.describe Ciri::Chain do
     columns[:timestamp] = data['timestamp'].decode_hex.decode_big_endian
     columns[:ommers_hash] = data['uncleHash'].decode_hex
 
-    header = Ciri::Chain::Header.new(**columns)
+    header = Ciri::POWChain::Header.new(**columns)
     unless Ciri::Utils.to_hex(header.get_hash) == data['hash']
       p columns
     end
@@ -154,20 +153,20 @@ RSpec.describe Ciri::Chain do
         prepare_state(state, t)
 
         genesis = if t['genesisRLP']
-                    Ciri::Chain::Block.rlp_decode(t['genesisRLP'].decode_hex)
+                    Ciri::POWChain::Block.rlp_decode(t['genesisRLP'].decode_hex)
                   elsif t['genesisBlockHeader']
-                    Ciri::Chain::Block.new(header: parse_header(t['genesisBlockHeader']), transactions: [], ommers: [])
+                    Ciri::POWChain::Block.new(header: parse_header(t['genesisBlockHeader']), transactions: [], ommers: [])
                   end
 
         fork_config = extract_fork_config(t)
-        chain = Ciri::Chain.new(db, genesis: genesis, network_id: 0, fork_config: fork_config)
+        chain = Ciri::POWChain::Chain.new(db, genesis: genesis, network_id: 0, fork_config: fork_config)
 
         # run block
         t['blocks'].each do |b|
           begin
-            block = Ciri::Chain::Block.rlp_decode b['rlp'].decode_hex
+            block = Ciri::POWChain::Block.rlp_decode b['rlp'].decode_hex
             chain.import_block(block)
-          rescue Ciri::Chain::InvalidBlockError,
+          rescue Ciri::POWChain::Chain::InvalidBlockError,
               Ciri::RLP::InvalidError,
               Ciri::EVM::Error,
               Ciri::Types::Errors::InvalidError => e

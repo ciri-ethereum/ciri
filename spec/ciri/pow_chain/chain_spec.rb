@@ -16,15 +16,15 @@
 
 require 'spec_helper'
 require 'ciri/db/backend/memory'
-require 'ciri/chain'
+require 'ciri/pow_chain/chain'
 require 'ciri/utils'
 
-RSpec.describe Ciri::Chain do
+RSpec.describe Ciri::POWChain::Chain do
   let(:store) {Ciri::DB::Backend::Memory.new}
   let(:fork_config) {Ciri::Forks::Config.new([[0, Ciri::Forks::Frontier::Schema.new]])}
 
-  context Ciri::Chain::HeaderChain do
-    let(:header_chain) {Ciri::Chain::HeaderChain.new(store, fork_config: fork_config)}
+  context Ciri::POWChain::HeaderChain do
+    let(:header_chain) {Ciri::POWChain::HeaderChain.new(store, fork_config: fork_config)}
     let(:headers) do
       load_blocks('blocks').map(&:header)
     end
@@ -79,12 +79,12 @@ RSpec.describe Ciri::Chain do
     end
   end
 
-  context Ciri::Chain do
+  context Ciri::POWChain::Chain do
     let(:blocks) do
       load_blocks('blocks')
     end
 
-    let(:chain) {Ciri::Chain.new(store, genesis: blocks[0], network_id: 0, fork_config: fork_config)}
+    let(:chain) {Ciri::POWChain::Chain.new(store, genesis: blocks[0], network_id: 0, fork_config: fork_config)}
 
     it 'genesis is current block' do
       expect(chain.genesis_hash).to eq chain.current_block.header.get_hash
@@ -93,7 +93,7 @@ RSpec.describe Ciri::Chain do
     it 'insert wrong order blocks' do
       expect do
         chain.insert_blocks(blocks[1..2].reverse)
-      end.to raise_error Ciri::Chain::InvalidBlockError
+      end.to raise_error Ciri::POWChain::Chain::InvalidBlockError
     end
 
     it 'insert blocks' do
@@ -113,7 +113,7 @@ RSpec.describe Ciri::Chain do
         load_blocks('chain_fork/forked_chain')
       end
 
-      let(:chain) {Ciri::Chain.new(store, genesis: main_chain_blocks[0], network_id: 0, fork_config: fork_config)}
+      let(:chain) {Ciri::POWChain::Chain.new(store, genesis: main_chain_blocks[0], network_id: 0, fork_config: fork_config)}
 
       it 'forked blocks should reorg current chain' do
         # initial main chain

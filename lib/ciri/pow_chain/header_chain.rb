@@ -2,7 +2,7 @@
 # store headers
 
 module Ciri
-  class Chain
+  module POWChain
     class HeaderChain
       HEAD = 'head'
       GENESIS = 'genesis'
@@ -55,10 +55,10 @@ module Ciri
         return false unless gas_limit >= 5000 && gas_limit > gas_limit_min && gas_limit < gas_limit_max
         return false unless calculate_difficulty(header, parent_header) == header.difficulty
 
-        # check pow
+        # check pow_chain
         begin
-          POW.check_pow(header.number, header.mining_hash, header.mix_hash, header.nonce, header.difficulty)
-        rescue POW::InvalidError
+          Ethash.check_pow(header.number, header.mining_hash, header.mix_hash, header.nonce, header.difficulty)
+        rescue Ethash::InvalidError
           return false
         end
 
@@ -107,7 +107,7 @@ module Ciri
         return 0 if header_hash.nil?
         RLP.decode(store[HEADER_PREFIX + header_hash + TD_SUFFIX], Integer)
       end
-
     end
+
   end
 end
