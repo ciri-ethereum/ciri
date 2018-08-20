@@ -3,9 +3,9 @@ Ciri
 [![Build Status](https://travis-ci.org/ciri-ethereum/ciri.svg?branch=master)](https://travis-ci.org/ciri-ethereum/ciri)
 [![Gitter](https://badges.gitter.im/join.svg)](https://gitter.im/ciri-ethereum/Lobby)
 
-Ciri is an ongoing Ethereum implementation.
+Ciri is an ongoing Ethereum 2.0 implementation.
 
-It aims to be a feature complete Ethereum implementation and expects to achieve both research-friendly and high-performance.
+It aims to be a research-friendly implementation and expects to support complete features.
 As you see, it's still under development.
 
 See [How to learn Ethereum and contribute to Ciri](https://github.com/ciri-ethereum/ciri/wiki#how-to-learn-ethereum-and-contribute-to-ciri).
