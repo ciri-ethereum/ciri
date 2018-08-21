@@ -11,5 +11,6 @@
 .rspec_status
 
 .vscode
+*.swp
 tags
 
