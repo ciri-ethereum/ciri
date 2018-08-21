@@ -67,6 +67,10 @@ module Ciri
       end
     end
 
+    class UInt8 < UInt
+      @size = 8
+    end
+
     class UInt32 < UInt
       @size = 32
     end

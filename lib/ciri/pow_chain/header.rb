@@ -25,21 +25,21 @@ module Ciri
       include RLP::Serializable
 
       schema [
-                 {parent_hash: RLP::RawString},
-                 {ommers_hash: RLP::RawString},
-                 {beneficiary: RLP::RawString},
-                 {state_root: RLP::RawString},
-                 {transactions_root: RLP::RawString},
-                 {receipts_root: RLP::RawString},
-                 {logs_bloom: RLP::RawString},
+                 {parent_hash: RLP::Bytes},
+                 {ommers_hash: RLP::Bytes},
+                 {beneficiary: RLP::Bytes},
+                 {state_root: RLP::Bytes},
+                 {transactions_root: RLP::Bytes},
+                 {receipts_root: RLP::Bytes},
+                 {logs_bloom: RLP::Bytes},
                  {difficulty: Integer},
                  {number: Integer},
                  {gas_limit: Integer},
                  {gas_used: Integer},
                  {timestamp: Integer},
-                 {extra_data: RLP::RawString},
-                 {mix_hash: RLP::RawString},
-                 {nonce: RLP::RawString},
+                 {extra_data: RLP::Bytes},
+                 {mix_hash: RLP::Bytes},
+                 {nonce: RLP::Bytes},
              ]
 
       # header hash
