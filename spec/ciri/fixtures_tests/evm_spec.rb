@@ -16,7 +16,7 @@
 
 
 require 'spec_helper'
-require 'ciri/evm/state'
+require 'ciri/state'
 require 'ciri/evm'
 require 'ciri/evm/execution_context'
 require 'ciri/types/account'
@@ -44,7 +44,7 @@ RSpec.describe Ciri::EVM do
 
       it "#{prefix} #{name}", **tags do
         db = Ciri::DB::Backend::Memory.new
-        state = Ciri::EVM::State.new(db)
+        state = Ciri::State.new(db)
         # pre
         t['pre'].each do |address, v|
           address = Ciri::Utils.to_bytes(address)

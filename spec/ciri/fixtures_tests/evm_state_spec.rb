@@ -17,7 +17,7 @@
 
 require 'spec_helper'
 require 'ciri/evm'
-require 'ciri/evm/state'
+require 'ciri/state'
 require 'ciri/types/account'
 require 'ciri/forks/frontier'
 require 'ciri/utils'
@@ -111,7 +111,7 @@ RSpec.describe Ciri::EVM do
             fork_schema = choose_fork_schema(fork_name)
             configs.each do |config|
               db = Ciri::DB::Backend::Memory.new
-              state = Ciri::EVM::State.new(db)
+              state = Ciri::State.new(db)
               prepare_state(state, t)
 
               indexes = config['indexes']
