@@ -17,7 +17,7 @@
 
 require 'forwardable'
 require 'ciri/evm'
-require 'ciri/evm/state'
+require 'ciri/state'
 require 'ciri/utils/logger'
 require 'ciri/forks'
 require 'ciri/types/receipt'
@@ -83,8 +83,8 @@ module Ciri
         end
 
         parent_header = @header_chain.get_header(block.header.parent_hash)
-        state = EVM::State.new(store, state_root: parent_header.state_root, chain: self)
-        evm = EVM.new(state: state, fork_schema: @fork_config.choose_fork(block.header.number))
+        state = State.new(store, state_root: parent_header.state_root)
+        evm = EVM.new(state: state, chain: self, fork_schema: @fork_config.choose_fork(block.header.number))
         # valid transactions and gas
         begin
           receipts = evm.transition(block)

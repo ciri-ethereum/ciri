@@ -295,7 +295,7 @@ module Ciri
         # here we compute distance of parent height and ancestor height
         # and use parent_hash to find ancestor hash
         distance = vm.block_info.number - height - 1
-        vm.push vm.state.get_ancestor_hash(vm.block_info.parent_hash, distance)
+        vm.push vm.get_ancestor_hash(vm.block_info.parent_hash, distance)
       end
 
       def_op :COINBASE, 0x41, 0, 1 do |vm|

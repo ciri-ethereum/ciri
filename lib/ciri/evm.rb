@@ -44,9 +44,10 @@ module Ciri
 
     attr_reader :state, :fork_schema
 
-    def initialize(state:, fork_schema: Ciri::Forks::Frontier::Schema.new)
+    def initialize(state:, chain: nil, fork_schema: Ciri::Forks::Frontier::Schema.new)
       @state = state
       @fork_schema = fork_schema
+      @chain = chain
     end
 
     # transition block
@@ -127,7 +128,7 @@ module Ciri
         instruction: instruction, gas_limit: gas_limit,
         block_info: block_info, fork_schema: fork_schema
       )
-      vm = Ciri::EVM::VM.new(state: state, burn_gas_on_exception: true)
+      vm = Ciri::EVM::VM.new(state: state, chain: @chain, burn_gas_on_exception: true)
 
       unless instruction.value > state.find_account(instruction.sender).balance
         state.increment_nonce(instruction.sender)

@@ -19,7 +19,7 @@ require 'spec_helper'
 require 'ciri/core_ext'
 require 'ciri/pow_chain/chain'
 require 'ciri/evm'
-require 'ciri/evm/state'
+require 'ciri/state'
 require 'ciri/types/account'
 require 'ciri/forks/frontier'
 require 'ciri/utils'
@@ -148,7 +148,7 @@ RSpec.describe Ciri::POWChain::Chain do
       # register rspec test case
       it "#{prefix} #{name}", **tags.dup do
         db = Ciri::DB::Backend::Memory.new
-        state = Ciri::EVM::State.new(db)
+        state = Ciri::State.new(db)
         # pre
         prepare_state(state, t)
 

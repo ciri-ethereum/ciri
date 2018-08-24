@@ -59,8 +59,9 @@ module Ciri
 
       attr_reader :state, :execution_context, :burn_gas_on_exception, :max_depth, :stack_size
 
-      def initialize(state:, burn_gas_on_exception: true, max_depth: 1024, stack_size: 1024)
+      def initialize(state:, chain: nil, burn_gas_on_exception: true, max_depth: 1024, stack_size: 1024)
         @state = state
+        @chain = chain
         @burn_gas_on_exception = burn_gas_on_exception
         @max_depth = max_depth
         @stack_size = stack_size
@@ -213,6 +214,18 @@ module Ciri
           account_dead?(address)
         end.each do |address|
           state.delete_account(address)
+        end
+      end
+
+      # get ancestor hash
+      def get_ancestor_hash(current_hash, ancestor_distance)
+        if ancestor_distance > 256 || ancestor_distance < 0
+          ''.b
+        elsif ancestor_distance == 0
+          current_hash
+        else
+          parent_hash = @chain.get_header(current_hash).parent_hash
+          get_ancestor_hash(parent_hash, ancestor_distance - 1)
         end
       end
 
