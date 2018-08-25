@@ -25,12 +25,12 @@ module Ciri
     class Account
       include RLP::Serializable
 
-      schema [
-               {nonce: Integer},
-               {balance: Integer},
-               :storage_root,
-               :code_hash
-             ]
+      schema(
+          nonce: Integer,
+          balance: Integer,
+          storage_root: RLP::Bytes,
+          code_hash: RLP::Bytes
+      )
 
       default_data code_hash: Utils::BLANK_SHA3, storage_root: Trie::BLANK_NODE_HASH
 

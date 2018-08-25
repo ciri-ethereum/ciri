@@ -22,10 +22,10 @@ module Ciri
   module DevP2P
     module RLPX
       MESSAGES = {
-        handshake: 0x00,
-        discover: 0x01,
-        ping: 0x02,
-        pong: 0x03
+          handshake: 0x00,
+          discover: 0x01,
+          ping: 0x02,
+          pong: 0x03
       }.freeze
 
       BASE_PROTOCOL_VERSION = 5
@@ -38,12 +38,12 @@ module Ciri
       class AuthMsgV4
         include Ciri::RLP::Serializable
 
-        schema [
-                 :signature,
-                 :initiator_pubkey,
-                 :nonce,
-                 {version: Integer}
-               ]
+        schema(
+            signature: RLP::Bytes,
+            initiator_pubkey: RLP::Bytes,
+            nonce: RLP::Bytes,
+            version: Integer
+        )
 
         # keep this field let client known how to format(plain or eip8)
         attr_accessor :got_plain
@@ -52,11 +52,11 @@ module Ciri
       class AuthRespV4
         include Ciri::RLP::Serializable
 
-        schema [
-                 :random_pubkey,
-                 :nonce,
-                 {version: Integer}
-               ]
+        schema(
+            random_pubkey: RLP::Bytes,
+            nonce: RLP::Bytes,
+            version: Integer
+        )
       end
     end
   end

@@ -30,13 +30,11 @@ module Ciri
       include RLP::Serializable
       include Types
 
-      schema [
-        {shard_id: [ValidatorRecord]},
-        {committee: [Int24]},
-      ]
+      schema(
+          shard_id: [ValidatorRecord],
+          committee: [Int24],
+      )
     end
 
   end
 end
-
-

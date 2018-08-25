@@ -26,11 +26,11 @@ module Ciri
     # structure for ethereum block
     class Block
       include RLP::Serializable
-      schema [
-                 {header: Header},
-                 {transactions: [Transaction]},
-                 {ommers: [Header]}, # or uncles
-             ]
+      schema(
+          header: Header,
+          transactions: [Transaction],
+          ommers: [Header], # or uncles
+      )
 
       extend Forwardable
 

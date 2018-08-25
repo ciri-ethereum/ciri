@@ -21,11 +21,15 @@ require 'ciri/types/address'
 require 'ciri/types/uint'
 
 module Ciri
-  class EVM
+  module Types
 
     class LogEntry
       include RLP::Serializable
-      schema [{address: Types::Address}, {topics: [Types::UInt32]}, :data]
+      schema(
+          address: Types::Address,
+          topics: [Types::UInt32],
+          data: RLP::Bytes
+      )
 
       def to_blooms
         [address.to_s, *topics.map {|t| Utils.big_endian_encode(t, size: 32)}]

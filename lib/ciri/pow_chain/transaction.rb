@@ -35,17 +35,17 @@ module Ciri
 
       include RLP::Serializable
 
-      schema [
-                 {nonce: Integer},
-                 {gas_price: Integer},
-                 {gas_limit: Integer},
-                 {to: Address},
-                 {value: Integer},
-                 :data,
-                 {v: Integer},
-                 {r: Integer},
-                 {s: Integer}
-             ]
+      schema(
+          nonce: Integer,
+          gas_price: Integer,
+          gas_limit: Integer,
+          to: Address,
+          value: Integer,
+          data: RLP::Bytes,
+          v: Integer,
+          r: Integer,
+          s: Integer
+      )
 
       default_data v: 0, r: 0, s: 0, data: "\x00".b
 

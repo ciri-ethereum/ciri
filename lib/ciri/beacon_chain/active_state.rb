@@ -30,13 +30,11 @@ module Ciri
       include RLP::Serializable
       include Types
 
-      schema [
-        {pending_attestations: [AttestationRecord]},
-        {recent_block_hashes: [Hash32]},
-      ]
+      schema(
+          pending_attestations: [AttestationRecord],
+          recent_block_hashes: [Hash32],
+      )
     end
 
   end
 end
-
-

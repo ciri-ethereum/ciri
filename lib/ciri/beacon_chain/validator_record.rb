@@ -29,18 +29,16 @@ module Ciri
       include RLP::Serializable
       include Types
 
-      schema [
-        {pubkey: Int256},
-        {withdrawal_shard: Int16},
-        {withdrawal_address: Address},
-        {random_commitment: Hash32},
-        {balance: Int64},
-        {start_dynasty: Int64},
-        {end_dynasty: Int64},
-      ]
+      schema(
+          pubkey: Int256,
+          withdrawal_shard: Int16,
+          withdrawal_address: Address,
+          random_commitment: Hash32,
+          balance: Int64,
+          start_dynasty: Int64,
+          end_dynasty: Int64,
+      )
     end
 
   end
 end
-
-

@@ -17,13 +17,13 @@
 
 require 'ciri/utils/logger'
 require 'ciri/core_ext'
+require 'ciri/types/log_entry'
 require_relative 'errors'
 require_relative 'execution_context'
 require_relative 'machine_state'
 require_relative 'instruction'
 require_relative 'sub_state'
 require_relative 'block_info'
-require_relative 'log_entry'
 require_relative 'op/errors'
 
 using Ciri::CoreExt
@@ -164,7 +164,7 @@ module Ciri
       end
 
       def add_log_entry(topics, log_data)
-        sub_state.log_series << LogEntry.new(address: instruction.address, topics: topics, data: log_data)
+        sub_state.log_series << Types::LogEntry.new(address: instruction.address, topics: topics, data: log_data)
       end
 
       # transact value from sender to target address

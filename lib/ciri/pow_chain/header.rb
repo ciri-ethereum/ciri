@@ -24,23 +24,23 @@ module Ciri
     class Header
       include RLP::Serializable
 
-      schema [
-                 {parent_hash: RLP::Bytes},
-                 {ommers_hash: RLP::Bytes},
-                 {beneficiary: RLP::Bytes},
-                 {state_root: RLP::Bytes},
-                 {transactions_root: RLP::Bytes},
-                 {receipts_root: RLP::Bytes},
-                 {logs_bloom: RLP::Bytes},
-                 {difficulty: Integer},
-                 {number: Integer},
-                 {gas_limit: Integer},
-                 {gas_used: Integer},
-                 {timestamp: Integer},
-                 {extra_data: RLP::Bytes},
-                 {mix_hash: RLP::Bytes},
-                 {nonce: RLP::Bytes},
-             ]
+      schema(
+          parent_hash: RLP::Bytes,
+          ommers_hash: RLP::Bytes,
+          beneficiary: RLP::Bytes,
+          state_root: RLP::Bytes,
+          transactions_root: RLP::Bytes,
+          receipts_root: RLP::Bytes,
+          logs_bloom: RLP::Bytes,
+          difficulty: Integer,
+          number: Integer,
+          gas_limit: Integer,
+          gas_used: Integer,
+          timestamp: Integer,
+          extra_data: RLP::Bytes,
+          mix_hash: RLP::Bytes,
+          nonce: RLP::Bytes,
+      )
 
       # header hash
       def get_hash

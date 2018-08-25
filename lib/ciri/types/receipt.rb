@@ -18,6 +18,7 @@
 require 'ciri/rlp'
 require 'ciri/bloom_filter'
 require 'ciri/types/uint'
+require 'ciri/types/log_entry'
 
 module Ciri
   module Types
@@ -26,12 +27,12 @@ module Ciri
 
       include RLP::Serializable
 
-      schema [
-               :state_root,
-               {gas_used: Integer},
-               {bloom: Types::UInt256},
-               :logs,
-             ]
+      schema(
+          state_root: RLP::Bytes,
+          gas_used: Integer,
+          bloom: Types::UInt256,
+          logs: [LogEntry],
+      )
 
       def initialize(state_root:, gas_used:, logs:, bloom: nil)
         bloom ||= begin
