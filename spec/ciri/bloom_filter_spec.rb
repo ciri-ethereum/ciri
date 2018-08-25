@@ -17,7 +17,7 @@
 
 require 'spec_helper'
 require 'ciri/bloom_filter'
-require 'ciri/evm/log_entry'
+require 'ciri/types/log_entry'
 require 'ciri/types/uint'
 require 'ciri/utils'
 
@@ -26,7 +26,7 @@ RSpec.describe Ciri::BloomFilter do
   it 'with log entry' do
     address = "\x00".b * 20
     topics = 5.times.map {rand(100)}
-    log_entry = Ciri::EVM::LogEntry.new(address: address, topics: topics, data: ''.b)
+    log_entry = Ciri::Types::LogEntry.new(address: address, topics: topics, data: ''.b)
 
     bloom_filter = Ciri::BloomFilter.from_iterable(log_entry.to_blooms)
     topics.each do |topic|

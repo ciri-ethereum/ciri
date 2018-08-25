@@ -32,20 +32,20 @@ module Ciri
       include RLP::Serializable
       include Types
 
-      schema [
-        {validators: [ValidatorRecord]},
-        {last_state_recalc: [Int64]},
-        {indices_for_slots: [[ShardAndCommittee]]},
-        {last_justified_slot: Int64},
-        {justified_streak: Int64},
-        {last_finalized_slot: Int64},
-        {current_dynasty: Int64},
-        {crosslinking_start_shard: Int16},
-        {crosslink_records: [CrosslinkRecord]},
-        {total_deposits: Int256},
-        {dynasty_seed: Hash32},
-        {dynasty_seed_last_reset: Int64},
-      ]
+      schema(
+          validators: [ValidatorRecord],
+          last_state_recalc: [Int64],
+          indices_for_slots: [[ShardAndCommittee]],
+          last_justified_slot: Int64,
+          justified_streak: Int64,
+          last_finalized_slot: Int64,
+          current_dynasty: Int64,
+          crosslinking_start_shard: Int16,
+          crosslink_records: [CrosslinkRecord],
+          total_deposits: Int256,
+          dynasty_seed: Hash32,
+          dynasty_seed_last_reset: Int64,
+      )
     end
 
   end

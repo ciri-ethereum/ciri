@@ -24,23 +24,23 @@ module Ciri
       class Cap
         include Ciri::RLP::Serializable
 
-        schema [
-                 :name,
-                 {version: Integer}
-               ]
+        schema(
+            name: RLP::Bytes,
+            version: Integer
+        )
       end
 
       # handle protocol handshake
       class ProtocolHandshake
         include Ciri::RLP::Serializable
 
-        schema [
-                 {version: Integer},
-                 :name,
-                 {caps: [Cap]},
-                 {listen_port: Integer},
-                 :id
-               ]
+        schema(
+            version: Integer,
+            name: RLP::Bytes,
+            caps: [Cap],
+            listen_port: Integer,
+            id: RLP::Bytes
+        )
         default_data(listen_port: 0)
       end
 

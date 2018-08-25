@@ -29,13 +29,11 @@ module Ciri
       include RLP::Serializable
       include Types
 
-      schema [
-        {dynasty: Int64},
-        {block_hash: Hash32},
-      ]
+      schema(
+          dynasty: Int64,
+          block_hash: Hash32,
+      )
     end
 
   end
 end
-
-

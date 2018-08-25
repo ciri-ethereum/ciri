@@ -29,14 +29,14 @@ module Ciri
       include RLP::Serializable
       include Types
 
-      schema [
-        {slot: Int64},
-        {shard_id: Int16},
-        {oblique_parent_hashes: [Hash32]},
-        {shard_block_hash: Hash32},
-        {attester_bitfield: Bytes},
-        {aggregate_sig: [Int256]},
-      ]
+      schema(
+          slot: Int64,
+          shard_id: Int16,
+          oblique_parent_hashes: [Hash32],
+          shard_block_hash: Hash32,
+          attester_bitfield: Bytes,
+          aggregate_sig: [Int256],
+      )
     end
 
   end

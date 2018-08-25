@@ -31,15 +31,15 @@ module Ciri
       include RLP::Serializable
       include Types
 
-      schema [
-        {parent_hash: Hash32},
-        {slot_number: Int64},
-        {randao_reveal: Hash32},
-        {attestations: [AttestationRecord]},
-        {pow_chain_ref: Hash32},
-        {active_state_root: Hash32},
-        {crystallized_state_root: Hash32},
-      ]
+      schema(
+          parent_hash: Hash32,
+          slot_number: Int64,
+          randao_reveal: Hash32,
+          attestations: [AttestationRecord],
+          pow_chain_ref: Hash32,
+          active_state_root: Hash32,
+          crystallized_state_root: Hash32,
+      )
     end
 
   end

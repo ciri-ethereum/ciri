@@ -64,13 +64,13 @@ module Ciri
 
       CODE = 0x00
 
-      schema [
-                 {protocol_version: Integer},
-                 {network_id: Integer},
-                 {total_difficulty: Integer},
-                 :current_block,
-                 :genesis_block,
-             ]
+      schema(
+          protocol_version: Integer,
+          network_id: Integer,
+          total_difficulty: Integer,
+          current_block: RLP::Bytes,
+          genesis_block: RLP::Bytes,
+      )
     end
 
     class GetBlockHeaders
@@ -78,12 +78,12 @@ module Ciri
 
       CODE = 0x03
 
-      schema [
-                 {hash_or_number: HashOrNumber},
-                 {amount: Integer},
-                 {skip: Integer},
-                 {reverse: Ciri::RLP::Bool},
-             ]
+      schema(
+          hash_or_number: HashOrNumber,
+          amount: Integer,
+          skip: Integer,
+          reverse: RLP::Bool,
+      )
     end
 
     class BlockHeaders
@@ -128,10 +128,10 @@ module Ciri
       class Bodies
         include RLP::Serializable
 
-        schema [
-                   {transactions: [POWChain::Transaction]},
-                   {ommers: [POWChain::Header]},
-               ]
+        schema(
+            transactions: [POWChain::Transaction],
+            ommers: [POWChain::Header],
+        )
       end
 
       attr_reader :bodies

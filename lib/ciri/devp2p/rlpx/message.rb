@@ -27,11 +27,11 @@ module Ciri
 
         attr_accessor :received_at
 
-        schema [
-                 {code: Integer},
-                 {size: Integer},
-                 :payload
-               ]
+        schema(
+            code: Integer,
+            size: Integer,
+            payload: RLP::Bytes
+        )
       end
 
     end
