@@ -3,19 +3,43 @@ Ciri
 [![Build Status](https://travis-ci.org/ciri-ethereum/ciri.svg?branch=master)](https://travis-ci.org/ciri-ethereum/ciri)
 [![Gitter](https://badges.gitter.im/join.svg)](https://gitter.im/ciri-ethereum/Lobby)
 
-Ciri is an ongoing Ethereum 2.0 implementation.
+What is Ciri?
+---------------
 
-It aims to be a research-friendly implementation and expects to support complete features.
-As you see, it's still under development.
+Ciri is an ongoing Ethereum implementation written in Ruby. 
 
-See [How to learn Ethereum and contribute to Ciri](https://github.com/ciri-ethereum/ciri/wiki#how-to-learn-ethereum-and-contribute-to-ciri).
+Ciri is aims to become a researcher-friendly Ethereum implementation, and also become a blockchain toolbox for developers to make developers easy to modify or build their own private/public chains in Ruby.
+
+The goals of Ciri:
+* Be a researcher-friendly Ethereum implementation, which mean Ciri should be easy to understand and modified.
+* Be a blockchain toolbox, provide components and low-level API to allow developers build their own private or public chain.
+* We want Ciri become a bridge to bring rubyist into Ethereum world!
+
+Where will this project going?
+---------------
+
+Ciri is already passes the Ethereum tests suite, the Ethereum 1.0 POW Chain is almost implemented, but we still need to implement several components(DevP2P, KeyStore, CLI ...) to support running an fully functionally Ethereum node on mainnet.
+
+The same time we are keeping an eye on Ethereum 2.0 specs: the shasper(sharding + casper) implementation, and pursuing to implement the lastest updated shasper specs.
+
+Ciri project need more contributors, see [How to learn Ethereum and contribute to Ciri](https://github.com/ciri-ethereum/ciri/wiki#how-to-learn-ethereum-and-contribute-to-ciri) and [Issues](https://github.com/ciri-ethereum/ciri/issues).
 
 See [projects](https://github.com/ciri-ethereum/ciri/projects) and [milestones](https://github.com/ciri-ethereum/ciri/milestones) for current development status.
 
-Roadmap
+See our [Roadmap](https://github.com/ciri-ethereum/ciri/wiki) on Wiki.
+
+Usage
 ---------------
 
-See [Roadmap](https://github.com/ciri-ethereum/ciri/wiki)  on Wiki
+Ciri is still under active development, It is recommandation to use the master branch.
+
+Add this line to your Gemfile:
+
+``` ruby
+gem 'ciri', github: 'ciri-ethereum/ciri'
+```
+
+See [examples](https://github.com/ciri-ethereum/ciri).
 
 Development
 ---------------
