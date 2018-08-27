@@ -11,7 +11,7 @@ Gem::Specification.new do |spec|
   spec.summary = %q{Ciri is an ongoing Ethereum implementation.}
   spec.description = %q{It aims to be a feature complete Ethereum implementation and expects to achieve both research-friendly and high-performance.}
   spec.homepage = "https://github.com/ciri-ethereum/ciri"
-  spec.license = "Apache 2.0"
+  spec.license = "MIT"
 
   spec.files = `git ls-files -z`.split("\x0").reject do |f|
     f.match(%r{^(test|spec|features)/})
