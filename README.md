@@ -10,8 +10,8 @@ Ciri is an ongoing Ethereum implementation written in Ruby. Ciri aims to become 
 
 The goals of Ciri:
 
-* Be a researcher-friendly Ethereum implementation，which means Ciri needs to be intelligible and easy to be modified.
-* Be a blockchain toolbox requests, provide components and low-level API for developers to build their own private or public chain.
+* Be a researcher-friendly Ethereum implementation, which means Ciri needs to be intelligible and easy to be modified.
+* Be a blockchain toolbox, provide components and low-level API for developers to build their own private or public chain.
 * In general, we want Ciri to build a bridge to bring rubyist into Ethereum world!
 
 Where will this project go?
@@ -143,7 +143,7 @@ RUBY_THREAD_VM_STACK_SIZE=52428800 bundle exec rake quick
 Why Ruby?
 ---------------
 
-> Because Ruby has its own built-in block support!
+> Because Ruby has built-in block support!
 
 Seriously, 
 
