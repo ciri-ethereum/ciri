@@ -8,30 +8,31 @@ What is Ciri?
 
 Ciri is an ongoing Ethereum implementation written in Ruby. 
 
-Ciri is aims to become a researcher-friendly Ethereum implementation, and also become a blockchain toolbox for developers to make developers easy to modify or build their own private/public chains in Ruby.
-
 The goals of Ciri:
-* Be a researcher-friendly Ethereum implementation, which mean Ciri should be easy to understand and modified.
-* Be a blockchain toolbox, provide components and low-level API to allow developers build their own private or public chain.
-* We want Ciri become a bridge to bring rubyist into Ethereum world!
 
-Where will this project going?
+Ciri aims to become a researcher-friendly Ethereum implementation and a blockchain toolbox for all developers to modify or build their own private/public chains more conveniently in Ruby.
+
+* Becoming a researcher-friendly Ethereum implementation means Ciri needs to be intelligible and easy to be modified.
+* Becoming a blockchain toolbox requests providing components and low-level API for developers to build their own private or public chain.
+* In general, we want Ciri to build a bridge to bring rubyist into Ethereum world!
+
+Where will this project go?
 ---------------
 
-Ciri is already passes the Ethereum tests suite, the Ethereum 1.0 POW Chain is almost implemented, but we still need to implement several components(DevP2P, KeyStore, CLI ...) to support running an fully functionally Ethereum node on mainnet.
+Ciri has already passed the Ethereum tests suite and the Ethereum 1.0 POW Chain is almost implemented. However, we still need to implement several components(DevP2P, KeyStore, CLI ...) to support running a fully functionally Ethereum node on the mainnet.
 
-The same time we are keeping an eye on Ethereum 2.0 specs: the shasper(sharding + casper) implementation, and pursuing to implement the lastest updated shasper specs.
+At the same time, we are keeping an eye on Ethereum 2.0 specs: the shasper(sharding + casper) implementation, and pursuing to implement the lastest updated shasper specs.
 
-Ciri project need more contributors, see [How to learn Ethereum and contribute to Ciri](https://github.com/ciri-ethereum/ciri/wiki#how-to-learn-ethereum-and-contribute-to-ciri) and [Issues](https://github.com/ciri-ethereum/ciri/issues).
+Ciri project wants more contributors and we highly welcome anyone to join in. If you are interested in Ciri project, please refer to [How to learn Ethereum and contribute to Ciri](https://github.com/ciri-ethereum/ciri/wiki#how-to-learn-ethereum-and-contribute-to-ciri) and [Issues](https://github.com/ciri-ethereum/ciri/issues).
 
-See [projects](https://github.com/ciri-ethereum/ciri/projects) and [milestones](https://github.com/ciri-ethereum/ciri/milestones) for current development status.
+Read [projects](https://github.com/ciri-ethereum/ciri/projects) and [milestones](https://github.com/ciri-ethereum/ciri/milestones) for current development status.
 
 See our [Roadmap](https://github.com/ciri-ethereum/ciri/wiki) on Wiki.
 
 Usage
 ---------------
 
-Ciri is still under active development, It is recommandation to use the master branch.
+Ciri is still under active development and the master branch is really recommended.
 
 Add this line to your Gemfile:
 
@@ -46,7 +47,7 @@ Development
 
 Ciri depends on [rocksdb](https://github.com/facebook/rocksdb), [secp256k1](https://github.com/bitcoin-core/secp256k1), [ethash](https://github.com/ethereum/ethash) and [snappy](https://github.com/google/snappy).
 
-It's a recommendation to [setup with docker](#setup-with-docker), it will help to save lots of time.
+It's a recommendation to [setup with docker](#setup-with-docker) because it will help to save lots of time.
 
 ### Setup with docker
 
@@ -144,7 +145,7 @@ RUBY_THREAD_VM_STACK_SIZE=52428800 bundle exec rake quick
 Why Ruby?
 ---------------
 
-> Because Ruby has built-in block support!
+> Because Ruby has its own built-in block support!
 
 Seriously, 
 
