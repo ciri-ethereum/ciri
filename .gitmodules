@@ -4,10 +4,6 @@
 [submodule "rocksdb"]
 	path = rocksdb
 	url = https://github.com/facebook/rocksdb.git
-[submodule "ethash"]
-	path = ethash
-	url = https://github.com/ciri-ethereum/ethash.git
-	branch = shared_library
 [submodule "fixtures"]
 	path = fixtures
 	url = https://github.com/ethereum/tests.git

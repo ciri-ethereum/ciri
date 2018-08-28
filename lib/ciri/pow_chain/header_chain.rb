@@ -57,8 +57,8 @@ module Ciri
 
         # check pow_chain
         begin
-          Ethash.check_pow(header.number, header.mining_hash, header.mix_hash, header.nonce, header.difficulty)
-        rescue Ethash::InvalidError
+          POW.check_pow(header.number, header.mining_hash, header.mix_hash, header.nonce, header.difficulty)
+        rescue POW::InvalidError
           return false
         end
 

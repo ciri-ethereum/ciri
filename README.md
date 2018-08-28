@@ -43,7 +43,7 @@ See [examples](https://github.com/ciri-ethereum/ciri).
 Development
 ---------------
 
-Ciri depends on [rocksdb](https://github.com/facebook/rocksdb), [secp256k1](https://github.com/bitcoin-core/secp256k1), [ethash](https://github.com/ethereum/ethash) and [snappy](https://github.com/google/snappy).
+Ciri depends on [rocksdb](https://github.com/facebook/rocksdb), [secp256k1](https://github.com/bitcoin-core/secp256k1) and [snappy](https://github.com/google/snappy).
 
 It's a recommendation to [setup with docker](#setup-with-docker) because it will help to save lots of time.
 
@@ -117,11 +117,6 @@ brew install rocksdb snappy
 ```
 
 then manually install
-
-ethash
-``` bash
-cd ethash/src/libethash && cmake CMakeLists.txt && make install
-```
 
 secp256k1
 ``` bash

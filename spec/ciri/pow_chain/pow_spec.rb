@@ -22,10 +22,10 @@
 
 
 require 'spec_helper'
-require 'ciri/pow_chain/ethash'
+require 'ciri/pow_chain/pow'
 require 'ciri/utils'
 
-RSpec.describe Ciri::POWChain::Ethash do
+RSpec.describe Ciri::POWChain::POW do
 
   it 'check_pow' do
     block_number = 1
@@ -36,16 +36,16 @@ RSpec.describe Ciri::POWChain::Ethash do
 
     # not satisfy difficulty
     expect do
-      Ciri::POWChain::Ethash.check_pow(block_number, mining, mix_hash, nonce, 2 ** 256)
-    end.to raise_error(Ciri::POWChain::Ethash::InvalidError)
+      Ciri::POWChain::POW.check_pow(block_number, mining, mix_hash, nonce, 2 ** 256)
+    end.to raise_error(Ciri::POWChain::POW::InvalidError)
 
     # not satisfy mix_hash
     expect do
-      Ciri::POWChain::Ethash.check_pow(block_number, mining, "\x00".b * 32, nonce, difficulty)
-    end.to raise_error(Ciri::POWChain::Ethash::InvalidError)
+      Ciri::POWChain::POW.check_pow(block_number, mining, "\x00".b * 32, nonce, difficulty)
+    end.to raise_error(Ciri::POWChain::POW::InvalidError)
 
     expect do
-      Ciri::POWChain::Ethash.check_pow(block_number, mining, mix_hash, nonce, difficulty)
+      Ciri::POWChain::POW.check_pow(block_number, mining, mix_hash, nonce, difficulty)
     end.to_not raise_error
 
   end
@@ -55,10 +55,10 @@ RSpec.describe Ciri::POWChain::Ethash do
     mining = "\x00".b * 32
     difficulty = 1
 
-    mix_hash, nonce = Ciri::POWChain::Ethash.mine_pow_nonce(block_number, mining, difficulty)
+    mix_hash, nonce = Ciri::POWChain::POW.mine_pow_nonce(block_number, mining, difficulty)
 
     expect do
-      Ciri::POWChain::Ethash.check_pow(block_number, mining, mix_hash, nonce, difficulty)
+      Ciri::POWChain::POW.check_pow(block_number, mining, mix_hash, nonce, difficulty)
     end.to_not raise_error
   end
 
@@ -75,7 +75,7 @@ RSpec.describe Ciri::POWChain::Ethash do
         difficulty = block.header.difficulty
 
         expect do
-          Ciri::POWChain::Ethash.check_pow(block_number, mining, mix_hash, nonce, difficulty)
+          Ciri::POWChain::POW.check_pow(block_number, mining, mix_hash, nonce, difficulty)
         end.to_not raise_error
       end
 

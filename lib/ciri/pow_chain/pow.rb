@@ -21,17 +21,18 @@
 # THE SOFTWARE.
 
 
-require_relative 'ethash/ffi_ethash'
 require 'ciri/utils'
 require 'lru_redux'
 require 'concurrent'
+require 'ethash'
 
 module Ciri
   module POWChain
 
-    # FFIEthash POW
+    # Ethash POW
     # see py-evm https://github.com/ethereum/py-evm/blob/026553da69bbea314fe26c8c34d453f66bfb4d30/evm/consensus/pow.py
-    module Ethash
+    module POW
+      EPOCH_LENGTH = 30000
 
       extend self
 
@@ -49,7 +50,7 @@ module Ciri
       @cache_by_seed = LruRedux::ThreadSafeCache.new(10)
 
       def get_cache(block_number)
-        epoch = block_number / FFIEthash::EPOCH_LENGTH
+        epoch = block_number / EPOCH_LENGTH
         while @cache_seeds.size <= epoch
           @cache_seeds.append(Utils.keccak(@cache_seeds[-1]))
         end
@@ -57,7 +58,7 @@ module Ciri
         seed = @cache_seeds[epoch]
 
         @cache_by_seed.getset(seed) do
-          FFIEthash.mkcache_bytes(block_number)
+          Ethash.mkcache_bytes(block_number)
         end
       end
 
@@ -67,13 +68,13 @@ module Ciri
         raise ArgumentError.new "nonce.length must equal to 8" if nonce_bytes.size != 8
 
         cache = get_cache(block_number)
-        out_mix_hash, out_result = FFIEthash.hashimoto_light(block_number, cache, mining_hash, Utils.big_endian_decode(nonce_bytes))
+        output = Ethash.hashimoto_light(block_number, cache, mining_hash, Utils.big_endian_decode(nonce_bytes))
 
-        if out_mix_hash != mix_hash
-          raise InvalidError.new("mix hash mismatch; #{Utils.to_hex(out_mix_hash)} != #{Utils.to_hex(mix_hash)}")
+        if output[:mixhash] != mix_hash
+          raise InvalidError.new("mix hash mismatch; #{Utils.to_hex(output[:mixhash])} != #{Utils.to_hex(mix_hash)}")
         end
 
-        result = Utils.big_endian_decode(out_result)
+        result = Utils.big_endian_decode(output[:result])
         unless result < 2 ** 256 / difficulty
           raise InvalidError.new("difficulty not enough, need difficulty #{difficulty}, but result #{result}")
         end
@@ -84,10 +85,10 @@ module Ciri
       def mine_pow_nonce(block_number, mining_hash, difficulty)
         cache = get_cache(block_number)
         MAX_TEST_MINE_ATTEMPTS.times do |nonce|
-          out_mix_hash, out_result = FFIEthash.hashimoto_light(block_number, cache, mining_hash, nonce)
-          result = Utils.big_endian_decode(out_result)
+          output = Ethash.hashimoto_light(block_number, cache, mining_hash, nonce)
+          result = Utils.big_endian_decode(output[:result])
           result_cap = 2 ** 256 / difficulty
-          return [out_mix_hash, Utils.big_endian_encode(nonce).rjust(8, "\x00")] if result <= result_cap
+          return [output[:mixhash], Utils.big_endian_encode(nonce).rjust(8, "\x00")] if result <= result_cap
         end
 
         raise GivingUpError.new("tries too many times, giving up")
