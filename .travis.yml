@@ -4,9 +4,11 @@ language: ruby
 services:
   - docker
 
+install:
+  - gem install rake
+
 before_install:
   - docker pull ciriethereum/ciri:latest
-  - gem install rake
 
 script:
   - rake docker:quick
