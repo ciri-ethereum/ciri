@@ -29,6 +29,7 @@ Gem::Specification.new do |spec|
   spec.add_dependency 'lru_redux', '~> 1.1.0'
   spec.add_dependency 'bitcoin-secp256k1', '~> 0.4.0'
   spec.add_dependency 'concurrent-ruby', '~> 1.0.5'
+  spec.add_dependency 'ethash', '~> 0.2.0'
   spec.add_dependency 'snappy', '~> 0.0.17'
 
   spec.add_development_dependency "bundler", "~> 1.16"

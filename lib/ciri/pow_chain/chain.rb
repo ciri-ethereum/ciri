@@ -31,7 +31,7 @@ require_relative 'header_chain'
 require_relative 'block'
 require_relative 'header'
 require_relative 'transaction'
-require_relative 'ethash'
+require_relative 'pow'
 
 module Ciri
   module POWChain
