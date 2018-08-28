@@ -6,14 +6,12 @@ Ciri
 What is Ciri?
 ---------------
 
-Ciri is an ongoing Ethereum implementation written in Ruby. 
+Ciri is an ongoing Ethereum implementation written in Ruby. Ciri aims to become a researcher-friendly Ethereum implementation and a blockchain toolbox for all developers to modify or build their own private/public chains more conveniently in Ruby.
 
 The goals of Ciri:
 
-Ciri aims to become a researcher-friendly Ethereum implementation and a blockchain toolbox for all developers to modify or build their own private/public chains more conveniently in Ruby.
-
-* Becoming a researcher-friendly Ethereum implementation means Ciri needs to be intelligible and easy to be modified.
-* Becoming a blockchain toolbox requests providing components and low-level API for developers to build their own private or public chain.
+* Be a researcher-friendly Ethereum implementation，which means Ciri needs to be intelligible and easy to be modified.
+* Be a blockchain toolbox requests, provide components and low-level API for developers to build their own private or public chain.
 * In general, we want Ciri to build a bridge to bring rubyist into Ethereum world!
 
 Where will this project go?
