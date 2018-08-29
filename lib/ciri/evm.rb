@@ -39,7 +39,7 @@ module Ciri
     include Utils::Logger
     extend Forwardable
 
-    ExecutionResult = Struct.new(:status, :state_root, :logs, :gas_used, :gas_price, :exception, keyword_init: true) do
+    ExecutionResult = Struct.new(:status, :state_root, :logs, :gas_used, :gas_price, :exception, :output, keyword_init: true) do
       def logs_hash
         # return nil unless vm
         Utils.keccak(RLP.encode_simple(logs))
@@ -181,7 +181,8 @@ module Ciri
         end
 
         ExecutionResult.new(status: context.status, state_root: state_root, logs: context.all_log_series,
-                            gas_used: gas_used, gas_price: t.gas_price, exception: context.exception)
+                            gas_used: gas_used, gas_price: t.gas_price, exception: context.exception,
+                            output: context.output)
       end
     end
 
