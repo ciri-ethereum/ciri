@@ -58,7 +58,7 @@ module Ciri
 
       # delegate methods to current execution_context
       def_delegators :execution_context, :instruction, :sub_state, :machine_state, :block_info, :fork_schema,
-                     :pc, :output, :exception, :set_output, :set_exception, :set_pc, :status, :depth,
+                     :pc, :output, :exception, :set_output, :set_exception, :clear_exception, :set_pc, :status, :depth,
                      :gas_limit, :refund_gas, :reset_refund_gas, :consume_gas, :remain_gas, :jump_to, :jump_pc
       def_delegators :instruction, :get_op, :get_code, :next_valid_instruction_pos, :get_data, :data, :sender, :destinations
       def_delegators :sub_state, :add_refund_account, :add_touched_account, :add_suicide_account
@@ -312,8 +312,6 @@ module Ciri
         if exception.is_a?(OP::RevertError)
           execution_context.revert_sub_state
           state.revert(snapshot)
-          # cleanup exception
-          set_exception(nil)
         elsif exception
           if burn_gas_on_exception
             debug("exception: #{exception}, burn gas #{remain_gas} to zero... op code: 0x#{get_op(pc).to_s(16)}")

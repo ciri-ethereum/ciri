@@ -38,7 +38,7 @@ Add this line to your Gemfile:
 gem 'ciri', github: 'ciri-ethereum/ciri'
 ```
 
-See [examples](https://github.com/ciri-ethereum/ciri).
+See [examples](/examples) and [spec](/spec) to learn how to use.
 
 Development
 ---------------

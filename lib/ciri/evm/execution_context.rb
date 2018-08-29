@@ -69,6 +69,10 @@ module Ciri
         @exception ||= e
       end
 
+      def clear_exception
+        @exception = nil
+      end
+
       def set_output(output)
         @output ||= output
       end
