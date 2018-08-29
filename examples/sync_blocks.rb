@@ -1,22 +1,17 @@
 require 'ciri'
-require 'ciri/pow_chain/transaction'
-require 'ciri/key'
+require 'ciri/devp2p/rlpx'
+require 'ciri/devp2p/rlpx/protocol_handshake'
+require 'ciri/devp2p/peer'
 require 'ciri/utils'
 
 include Ciri
 
-transaction = POWChain::Transaction.new(
-  nonce: 1,
-  gas_price: 10,
-  gas_limit: 21000,
-  to: "\x00".b * 20,
-  value: 10 ** 18
-)
+caps = [
+  Ciri::DevP2P::RLPX::Cap.new(name: 'eth', version: 63),
+  Ciri::DevP2P::RLPX::Cap.new(name: 'eth', version: 62),
+  Ciri::DevP2P::RLPX::Cap.new(name: 'hello', version: 1),
+]
+handshake = Ciri::DevP2P::RLPX::ProtocolHandshake.new(version: 4, name: 'test', caps: caps, id: 0)
 
-# generate sender priv_key
-priv_key = Key.random
-# sign transaction
-transaction.sign_with_key!(priv_key)
+# TODO complete this example
 
-sender = Utils.to_hex(transaction.sender)
-puts "#{sender}\n-> send #{transaction.value} to\n#{Utils.to_hex transaction.to}"
