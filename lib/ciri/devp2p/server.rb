@@ -48,13 +48,14 @@ module Ciri
       class UselessPeerError < Error
       end
 
-      attr_reader :handshake, :dial, :scheduler, :protocol_manage, :protocols
-      attr_accessor :bootstrap_nodes
+      attr_reader :handshake, :dial, :scheduler, :protocol_manage, :protocols, :bootstrap_nodes
 
-      def initialize(private_key:, protocol_manage:, node_name: 'Ciri')
+      def initialize(private_key:, protocol_manage:, bootstrap_nodes: [], node_name: 'Ciri')
         @private_key = private_key
         @node_name = node_name
+        @bootstrap_nodes = bootstrap_nodes
         @scheduler = Scheduler.new(self)
+        # TODO consider implement whisper and swarm protocols
         @protocol_manage = protocol_manage
         @protocols = protocol_manage.protocols
       end
@@ -63,11 +64,13 @@ module Ciri
         #TODO start dialer, discovery nodes and connect to them
         #TODO listen udp, for discovery protocol
 
+        # prepare handshake information
         server_node_id = NodeID.new(@private_key)
         caps = [Cap.new(name: 'eth', version: 63)]
         @handshake = ProtocolHandshake.new(version: BASE_PROTOCOL_VERSION, name: @node_name, id: server_node_id.id, caps: caps)
         # start listen tcp
         @dial = Dial.new(self)
+        info "#{bootstrap_nodes.size} bootstrap nodes"
         @protocol_manage.start
         @scheduler.start
       end
@@ -107,6 +110,7 @@ module Ciri
 
       # Discovery and dial new nodes
       class Dial
+
         def initialize(server)
           @server = server
           @cache = []
@@ -114,7 +118,8 @@ module Ciri
 
         # return new tasks to find peers
         def find_peer_tasks(running_count, peers, now)
-          node = @server.bootstrap_nodes[0]
+          return [] if @server.bootstrap_nodes.empty?
+          node = @server.bootstrap_nodes.sample
           return [] if @cache.include?(node)
           @cache << node
           [Task.new(name: 'find peer') {
@@ -154,6 +159,8 @@ module Ciri
             executor.post(task) do |task|
               task.call
               self << [:task_done, task]
+            rescue StandardError => e
+              self << [:raise_error, e]
             end
             @running_tasks << task
           end
