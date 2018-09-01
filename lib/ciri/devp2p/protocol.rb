@@ -35,16 +35,6 @@ module Ciri
         @name = name
         @version = version
         @length = length
-        @start = nil
-      end
-
-      def start=(start_proc)
-        @start = start_proc
-      end
-
-      def start(peer, io)
-        raise NotImplementedError.new('not set protocol start proc') unless @start
-        @start.call(peer, io)
       end
     end
 

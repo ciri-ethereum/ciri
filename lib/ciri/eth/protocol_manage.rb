@@ -23,7 +23,7 @@
 
 require 'ciri/actor'
 require 'ciri/pow_chain/chain'
-require_relative 'peer'
+require_relative 'protocol_context'
 require_relative 'synchronizer'
 
 module Ciri
@@ -47,11 +47,6 @@ module Ciri
         super()
       end
 
-      def protocols
-        @protocols.each {|p| p.start = proc {|peer, io| self << [:new_peer, peer, io]}}
-        @protocols
-      end
-
       def start
         # start syncing
         synchronizer.start
@@ -60,7 +55,7 @@ module Ciri
 
       # new peer come in
       def new_peer(peer, io)
-        peer = Peer.new(protocol_manage: self, peer: peer, io: io)
+        peer = ProtocolContext.new(protocol_manage: self, peer: peer, io: io)
         peer.handshake(1, chain.total_difficulty, chain.head.get_hash, chain.genesis_hash)
         @peers[peer] = true
 

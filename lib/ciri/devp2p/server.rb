@@ -51,9 +51,9 @@ module Ciri
       attr_reader :handshake, :dial, :scheduler, :protocol_manage, :protocols
       attr_accessor :bootstrap_nodes
 
-      def initialize(private_key:, protocol_manage:)
+      def initialize(private_key:, protocol_manage:, node_name: 'Ciri')
         @private_key = private_key
-        @name = 'ciri'
+        @node_name = node_name
         @scheduler = Scheduler.new(self)
         @protocol_manage = protocol_manage
         @protocols = protocol_manage.protocols
@@ -65,7 +65,7 @@ module Ciri
 
         server_node_id = NodeID.new(@private_key)
         caps = [Cap.new(name: 'eth', version: 63)]
-        @handshake = ProtocolHandshake.new(version: BASE_PROTOCOL_VERSION, name: @name, id: server_node_id.id, caps: caps)
+        @handshake = ProtocolHandshake.new(version: BASE_PROTOCOL_VERSION, name: @node_name, id: server_node_id.id, caps: caps)
         # start listen tcp
         @dial = Dial.new(self)
         @protocol_manage.start
@@ -178,6 +178,7 @@ module Ciri
           # run peer logic
           # do sub protocol handshake...
           executor.post {
+            register_peer_protocols(peer)
             peer.start
 
             exit_error = nil
@@ -190,6 +191,12 @@ module Ciri
             self << [:remove_peer, peer, exit_error]
           }
           debug("add peer: #{peer}")
+        end
+
+        def register_peer_protocols(peer)
+          peer.protocol_ios.each do |protocol_io|
+            @server.protocol_manager << [:new_peer, peer, protocol_io]
+          end
         end
 
         def remove_peer(peer, *args)
