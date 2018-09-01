@@ -51,26 +51,15 @@ RSpec.describe Ciri::DevP2P::Peer do
     end.new
   end
 
-  let(:mock_protocol) do
-    Class.new(Ciri::DevP2P::Protocol) do
-      attr_reader :peer, :protocol_io
-
-      def start(peer, io)
-        @peer = peer
-        @protocol_io = io
-      end
-    end
-  end
-
   it 'handle msg by code' do
-    protocol_1 = mock_protocol.new(name: 'eth', version: 63, length: 17)
-    protocol_2 = mock_protocol.new(name: 'eth', version: 62, length: 8)
-    protocol_3 = mock_protocol.new(name: 'hello', version: 1, length: 16)
+    protocol_1 = Ciri::DevP2P::Protocol.new(name: 'eth', version: 63, length: 17)
+    protocol_2 = Ciri::DevP2P::Protocol.new(name: 'eth', version: 62, length: 8)
+    protocol_3 = Ciri::DevP2P::Protocol.new(name: 'hello', version: 1, length: 16)
 
     caps = [
-      Ciri::DevP2P::RLPX::Cap.new(name: 'eth', version: 63),
-      Ciri::DevP2P::RLPX::Cap.new(name: 'eth', version: 62),
-      Ciri::DevP2P::RLPX::Cap.new(name: 'hello', version: 1),
+        Ciri::DevP2P::RLPX::Cap.new(name: 'eth', version: 63),
+        Ciri::DevP2P::RLPX::Cap.new(name: 'eth', version: 62),
+        Ciri::DevP2P::RLPX::Cap.new(name: 'hello', version: 1),
     ]
     handshake = Ciri::DevP2P::RLPX::ProtocolHandshake.new(version: 4, name: 'test', caps: caps, id: 0)
 
@@ -91,18 +80,18 @@ RSpec.describe Ciri::DevP2P::Peer do
     expect {peer.wait}.to raise_error(StandardError)
 
     # 'eth' protocol
-    expect(protocol_1.peer).to be peer
-    expect(protocol_1.protocol_io.read_msg).to eq msg_1
-    expect(protocol_1.protocol_io.read_msg).to eq msg_2
-    expect(protocol_1.protocol_io.msg_queue.empty?).to be_truthy
+    protocol_io_1 = peer.protocol_ios.find {|p| p.protocol == protocol_1}
+    expect(protocol_io_1.read_msg).to eq msg_1
+    expect(protocol_io_1.read_msg).to eq msg_2
+    expect(protocol_io_1.msg_queue.empty?).to be_truthy
 
     # old 'eth' protocol
-    expect(protocol_2.peer).to be peer
-    expect(protocol_2.protocol_io.msg_queue.empty?).to be_truthy
+    protocol_io_2 = peer.protocol_ios.find {|p| p.protocol == protocol_2}
+    expect(protocol_io_2).to be_nil
 
     # 'hello' protocol
-    expect(protocol_3.peer).to be peer
-    expect(protocol_3.protocol_io.read_msg).to eq msg_3
-    expect(protocol_3.protocol_io.msg_queue.empty?).to be_truthy
+    protocol_io_3 = peer.protocol_ios.find {|p| p.protocol == protocol_3}
+    expect(protocol_io_3.read_msg).to eq msg_3
+    expect(protocol_io_3.msg_queue.empty?).to be_truthy
   end
 end

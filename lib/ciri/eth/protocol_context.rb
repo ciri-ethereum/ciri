@@ -29,7 +29,7 @@ module Ciri
   module Eth
 
     # eth protocol peer
-    class Peer
+    class ProtocolContext
       attr_reader :io, :total_difficulty, :status
 
       extend Forwardable

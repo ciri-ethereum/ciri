@@ -64,7 +64,6 @@ module Ciri
       # handle msg, handle sub protocols
       def start
         executor.post {read_loop}
-        start_protocols
         super
       end
 
@@ -79,10 +78,8 @@ module Ciri
         self << [:raise_error, e]
       end
 
-      def start_protocols
-        @protocols.each do |protocol|
-          protocol.start(self, @protocol_io_hash[protocol.name])
-        end
+      def protocol_ios
+        @protocol_io_hash.values
       end
 
       def handle(msg)
