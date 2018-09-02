@@ -12,6 +12,9 @@ rescue LoadError
   nil
 end
 
+require 'fileutils'
+require 'tmpdir'
+
 desc 'run quick spec'
 task :quick do
   exit(1) unless check_env
@@ -22,6 +25,26 @@ desc 'run all specs, include extreme slow tests'
 task :"spec:all" do
   exit(1) unless check_env
   run("rspec")
+end
+
+namespace :install do
+  desc "Build and install secp256k1 shared library"
+  task :secp256k1 do
+    Dir.mktmpdir do |path|
+      source_dir = "secp256k1"
+      build_dir = "#{path}/#{source_dir}"
+      FileUtils.copy_entry source_dir, build_dir
+      Dir.chdir(build_dir)
+      run("./autogen.sh")
+      run("./configure --enable-module-recovery --enable-experimental --enable-module-ecdh")
+      run("make")
+      run("make install")
+    end
+    puts "Success installed secp256k1"
+  end
+
+  desc "Build and install all"
+  task all: [:secp256k1, :install]
 end
 
 namespace :docker do

@@ -10,11 +10,9 @@ RUN make shared_lib
 RUN make install-shared
 
 # install bitcoin secp256k1
-COPY ./secp256k1 /build/secp256k1
-WORKDIR /build/secp256k1
-RUN ./autogen.sh
-RUN ./configure --enable-module-recovery --enable-experimental --enable-module-ecdh
-RUN make && make install
+COPY . /app
+WORKDIR /app
+RUN rake install:secp256k1
 
 # Runtime image
 FROM ruby:2.6.0-preview2
