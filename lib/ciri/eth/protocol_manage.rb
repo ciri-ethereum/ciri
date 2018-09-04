@@ -21,7 +21,8 @@
 # THE SOFTWARE.
 
 
-require 'ciri/actor'
+require 'async'
+require 'async/queue'
 require 'ciri/pow_chain/chain'
 require_relative 'protocol_context'
 require_relative 'synchronizer'
@@ -34,42 +35,47 @@ module Ciri
 
       MAX_RESPONSE_HEADERS = 10
 
-      include Ciri::Actor
-
       attr_reader :protocols, :synchronizer, :chain
 
       def initialize(protocols:, chain:)
         @protocols = protocols
         @peers = {}
         @chain = chain
-
+        @queue = Async::Queue.new
         @synchronizer = Synchronizer.new(chain: chain)
-        super()
       end
 
-      def start
-        # start syncing
-        synchronizer.start
-        super
+      def run(task: Async::Task.current)
+        task.async {handle_new_peer}
       end
 
       # new peer come in
-      def new_peer(peer, io)
-        peer = ProtocolContext.new(protocol_manage: self, peer: peer, io: io)
-        peer.handshake(1, chain.total_difficulty, chain.head.get_hash, chain.genesis_hash)
-        @peers[peer] = true
-
-        # register peer to synchronizer
-        synchronizer << [:register_peer, peer]
-        # start handle peer messages
-        executor.post {handle_peer(peer)}
+      def new_peer(peer, protocol_io)
+        @queue.enqueue([peer, protocol_io])
       end
 
-      def handle_peer(peer)
-        handle_msg(peer, peer.io.read_msg) while true
+      private
+
+      def handle_new_peer(task: Async::Task.current)
+        while (peer, protocol_io = @queue.dequeue)
+          proto = ProtocolContext.new(protocol_manage: self, peer: peer, io: protocol_io)
+          proto.handshake(1, chain.total_difficulty, chain.head.get_hash, chain.genesis_hash)
+          @peers[proto] = true
+          # register peer to synchronizer
+          task.async do
+            synchronizer.register_peer(proto)
+          end
+          # start handle messages
+          task.async do
+            while (msg = proto.io.read_msg)
+              handle_msg(proto, msg)
+            end
+          end
+
+        end
       end
 
-      def handle_msg(peer, msg)
+      def handle_msg(peer, msg, task: Async::Task.current)
         case msg.code
         when GetBlockHeaders::CODE
           get_header_msg = GetBlockHeaders.rlp_decode(msg.payload)
@@ -103,10 +109,14 @@ module Ciri
           peer.io.send_data(BlockHeaders::CODE, headers_msg)
         when BlockHeaders::CODE
           headers = BlockHeaders.rlp_decode(msg.payload).headers
-          synchronizer << [:receive_headers, peer, headers] unless headers.empty?
+          unless headers.empty?
+            task.async {synchronizer.receive_headers(peer, headers)}
+          end
         when BlockBodies::CODE
           bodies = BlockBodies.rlp_decode(msg.payload).bodies
-          synchronizer << [:receive_bodies, peer, bodies] unless bodies.empty?
+          unless bodies.empty?
+            task.async {synchronizer.receive_bodies(peer, bodies)}
+          end
         else
           raise StandardError, "unknown code #{msg.code}, #{msg}"
         end

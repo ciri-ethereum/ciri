@@ -22,7 +22,7 @@
 
 
 require 'spec_helper'
-require 'ciri/actor'
+require 'async'
 require 'ciri/eth/protocol_manage'
 require 'ciri/devp2p/server'
 require 'ciri/devp2p/protocol'
@@ -31,12 +31,6 @@ require 'ciri/devp2p/rlpx/protocol_handshake'
 require 'concurrent'
 
 RSpec.describe Ciri::DevP2P::Server do
-  before {Ciri::Actor.default_executor = Concurrent::CachedThreadPool.new}
-  after do
-    Ciri::Actor.default_executor.kill
-    Ciri::Actor.default_executor = nil
-  end
-
   let(:key) do
     Ciri::Key.random
   end
@@ -58,9 +52,8 @@ RSpec.describe Ciri::DevP2P::Server do
     )
     server = Ciri::DevP2P::Server.new(private_key: key, protocol_manage: protocol_manage, bootstrap_nodes: [boot_node])
     allow(server).to receive(:setup_connection) {|node| raise StandardError.new("setup connection error ip:#{node.ip}, tcp_port:#{node.tcp_port}")}
-    server.start
     expect do
-      server.scheduler.wait
+      server.run
     end.to raise_error(StandardError, "setup connection error ip:#{boot_node.ip}, tcp_port:#{boot_node.tcp_port}")
   end
 end

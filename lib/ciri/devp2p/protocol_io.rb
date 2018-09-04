@@ -21,7 +21,8 @@
 # THE SOFTWARE.
 
 
-require 'ciri/actor'
+require 'async/queue'
+require 'async/semaphore'
 require_relative 'rlpx/message'
 
 module Ciri
@@ -35,33 +36,41 @@ module Ciri
       class InvalidMessageCode < Error
       end
 
-      attr_reader :protocol, :offset, :msg_queue
+      attr_reader :protocol, :offset
 
       def initialize(protocol, offset, frame_io)
         @protocol = protocol
         @offset = offset
         @frame_io = frame_io
-        @msg_queue = Queue.new
-        @mutex = Mutex.new
+        @msg_queue = Async::Queue.new
+        @semaphore = Async::Semaphore.new
       end
 
       def send_data(code, data)
-        @mutex.synchronize do
+        @semaphore.acquire do
           msg = RLPX::Message.new(code: code, size: data.size, payload: data)
           write_msg(msg)
         end
       end
 
       def write_msg(msg)
-        raise InvalidMessageCode, "code #{code} must less than length #{protocol.length}" if msg.code > protocol.length
+        raise InvalidMessageCode, "code #{msg.code} must less than length #{protocol.length}" if msg.code > protocol.length
         msg.code += offset
         @frame_io.write_msg(msg)
       end
 
       def read_msg
-        msg = msg_queue.pop
+        msg = @msg_queue.dequeue
         msg.code -= offset
         msg
+      end
+
+      def receive_msg(msg)
+        @msg_queue.enqueue msg
+      end
+
+      def empty?
+        @msg_queue.empty?
       end
     end
 

@@ -22,19 +22,12 @@
 
 
 require 'spec_helper'
-require 'ciri/actor'
 require 'ciri/devp2p/peer'
 require 'ciri/devp2p/protocol'
 require 'ciri/devp2p/rlpx/protocol_handshake'
 require 'concurrent'
 
 RSpec.describe Ciri::DevP2P::Peer do
-  before {Ciri::Actor.default_executor = Concurrent::CachedThreadPool.new}
-  after do
-    Ciri::Actor.default_executor.kill
-    Ciri::Actor.default_executor = nil
-  end
-
   # mock connection
   let(:connection) do
     Class.new do
@@ -74,16 +67,15 @@ RSpec.describe Ciri::DevP2P::Peer do
     connection.queue << msg_3
 
     peer = Ciri::DevP2P::Peer.new(connection, handshake, [protocol_1, protocol_2, protocol_3])
-    peer.start
 
     # peer read all messages
-    expect {peer.wait}.to raise_error(StandardError)
+    expect {peer.read_loop}.to raise_error(StandardError)
 
     # 'eth' protocol
     protocol_io_1 = peer.protocol_ios.find {|p| p.protocol == protocol_1}
     expect(protocol_io_1.read_msg).to eq msg_1
     expect(protocol_io_1.read_msg).to eq msg_2
-    expect(protocol_io_1.msg_queue.empty?).to be_truthy
+    expect(protocol_io_1.empty?).to be_truthy
 
     # old 'eth' protocol
     protocol_io_2 = peer.protocol_ios.find {|p| p.protocol == protocol_2}
@@ -92,6 +84,6 @@ RSpec.describe Ciri::DevP2P::Peer do
     # 'hello' protocol
     protocol_io_3 = peer.protocol_ios.find {|p| p.protocol == protocol_3}
     expect(protocol_io_3.read_msg).to eq msg_3
-    expect(protocol_io_3.msg_queue.empty?).to be_truthy
+    expect(protocol_io_3.empty?).to be_truthy
   end
 end

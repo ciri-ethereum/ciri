@@ -22,9 +22,9 @@
 # THE SOFTWARE.
 
 
-require 'concurrent'
+require 'async'
+require 'async/io/tcp_socket'
 require 'forwardable'
-require 'ciri/actor'
 require 'ciri/utils/logger'
 require_relative 'rlpx/connection'
 require_relative 'rlpx/protocol_handshake'
@@ -48,7 +48,7 @@ module Ciri
       class UselessPeerError < Error
       end
 
-      attr_reader :handshake, :dial, :scheduler, :protocol_manage, :protocols, :bootstrap_nodes
+      attr_reader :handshake, :scheduler, :protocol_manage, :protocols, :bootstrap_nodes
 
       def initialize(private_key:, protocol_manage:, bootstrap_nodes: [], node_name: 'Ciri')
         @private_key = private_key
@@ -60,27 +60,30 @@ module Ciri
         @protocols = protocol_manage.protocols
       end
 
-      def start
+      # return reactor to wait
+      def run
         #TODO start dialer, discovery nodes and connect to them
         #TODO listen udp, for discovery protocol
 
         # prepare handshake information
         server_node_id = NodeID.new(@private_key)
         caps = [Cap.new(name: 'eth', version: 63)]
-        @handshake = ProtocolHandshake.new(version: BASE_PROTOCOL_VERSION, name: @node_name, id: server_node_id.id, caps: caps)
-        # start listen tcp
-        @dial = Dial.new(self)
-        info "#{bootstrap_nodes.size} bootstrap nodes"
-        @protocol_manage.start
-        @scheduler.start
+        @handshake = ProtocolHandshake.new(version: BASE_PROTOCOL_VERSION, name: @name, id: server_node_id.id, caps: caps)
+
+        # start server
+        Async::Reactor.run do |task|
+          eth_protocol_task = task.async {@protocol_manage.run}
+          scheduler_task = task.async {@scheduler.run}
+          [eth_protocol_task, scheduler_task].each(&:wait)
+        end
       end
 
       def setup_connection(node)
-        socket = TCPSocket.new(node.ip, node.tcp_port)
+        socket = Async::IO::TCPSocket.new(node.ip, node.tcp_port)
         c = Connection.new(socket)
         c.encryption_handshake!(private_key: @private_key, node_id: node.node_id)
         remote_handshake = c.protocol_handshake!(handshake)
-        scheduler << [:add_peer, c, remote_handshake]
+        [c, remote_handshake]
       end
 
       def protocol_handshake_checks(handshake)
@@ -94,44 +97,26 @@ module Ciri
         1
       end
 
-      # scheduler task
-      class Task
-        attr_reader :name
-
-        def initialize(name:, &blk)
-          @name = name
-          @blk = blk
-        end
-
-        def call(*args)
-          @blk.call(*args)
-        end
-      end
-
-      # Discovery and dial new nodes
-      class Dial
-
-        def initialize(server)
-          @server = server
-          @cache = []
-        end
-
-        # return new tasks to find peers
-        def find_peer_tasks(running_count, peers, now)
-          return [] if @server.bootstrap_nodes.empty?
-          node = @server.bootstrap_nodes.sample
-          return [] if @cache.include?(node)
-          @cache << node
-          [Task.new(name: 'find peer') {
-            @server.setup_connection(node)
-          }]
-        end
-      end
-
       class Scheduler
-        include Actor
-        include Utils::Logger
 
+        # Discovery and dial new nodes
+        class Dial
+          def initialize(server)
+            @server = server
+            @cache = Set.new
+          end
+
+          # return new tasks to find peers
+          def find_peers(running_count, peers, now)
+            node = @server.bootstrap_nodes[0]
+            return [] if @cache.include?(node)
+            @cache << node
+            connection_and_handshake = @server.setup_connection(node)
+            [connection_and_handshake]
+          end
+        end
+
+        include Utils::Logger
         extend Forwardable
 
         attr_reader :server
@@ -139,65 +124,28 @@ module Ciri
 
         def initialize(server)
           @server = server
-          @queued_tasks = []
-          @running_tasks = []
+          @running_dialing = 0
           @peers = {}
-          # init actor
-          super()
+          @dial = Dial.new(server)
         end
 
-        # called by actor loop
-        def loop_callback
-          schedule_tasks
-          yield(wait_message: false)
-        end
-
-        def start_tasks(tasks)
-          tasks = tasks.dup
-          while @running_tasks.size < MAX_ACTIVE_DIAL_TASKS
-            break unless (task = tasks.pop)
-            executor.post(task) do |task|
-              task.call
-              self << [:task_done, task]
-            rescue StandardError => e
-              self << [:raise_error, e]
-            end
-            @running_tasks << task
-          end
-          tasks
-        end
-
-        # invoke tasks, and prepare search peer tasks
-        def schedule_tasks
-          @queued_tasks = start_tasks(@queued_tasks)
-          if @queued_tasks.size < MAX_ACTIVE_DIAL_TASKS
-            tasks = server.dial.find_peer_tasks(@running_tasks.size + @queued_tasks.size, @peers, Time.now)
-            @queued_tasks += tasks
+        def run(task: Async::Task.current)
+          schedule_dialing_tasks
+          # search peers every 15 seconds
+          task.reactor.every(15) do
+            schedule_dialing_tasks
           end
         end
 
         private
 
-        def add_peer(connection, handshake)
-          server.protocol_handshake_checks(handshake)
-          peer = Peer.new(connection, handshake, server.protocols)
-          @peers[peer.node_id] = peer
-          # run peer logic
-          # do sub protocol handshake...
-          executor.post {
-            register_peer_protocols(peer)
-            peer.start
-
-            exit_error = nil
-            begin
-              peer.wait
-            rescue StandardError => e
-              exit_error = e
-            end
-            # remove peer
-            self << [:remove_peer, peer, exit_error]
-          }
-          debug("add peer: #{peer}")
+        def schedule_dialing_tasks
+          return unless @running_dialing < MAX_ACTIVE_DIAL_TASKS
+          @running_dialing += 1
+          @dial.find_peers(@running_dialing, @peers, Time.now).each do |conn, handshake|
+            new_peer_connected(conn, handshake)
+          end
+          @running_dialing -= 1
         end
 
         def register_peer_protocols(peer)
@@ -206,13 +154,18 @@ module Ciri
           end
         end
 
-        def remove_peer(peer, *args)
-          error, * = args
-          debug("remove peer: #{peer}, error: #{error}")
+        def new_peer_connected(connection, handshake, task: Async::Task.current)
+          server.protocol_handshake_checks(handshake)
+          peer = Peer.new(connection, handshake, server.protocols)
+          @peers[peer.node_id] = peer
+          # run peer logic
+          task.async do
+            handling_peer(peer)
+          end
         end
 
-        def task_done(task, *args)
-          debug("task done: #{task.name}")
+        def handling_peer(peer, task: Async::Task.current)
+          peer.read_loop
         end
 
       end

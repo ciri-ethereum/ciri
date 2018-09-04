@@ -21,7 +21,6 @@
 # THE SOFTWARE.
 
 
-require_relative 'actor'
 require_relative 'eth/protocol_messages'
 require_relative 'eth/protocol_manage'
 
