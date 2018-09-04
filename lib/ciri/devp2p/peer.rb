@@ -22,7 +22,7 @@
 # THE SOFTWARE.
 
 
-require 'ciri/actor'
+require 'async'
 require 'ciri/utils'
 require_relative 'rlpx'
 require_relative 'protocol_io'
@@ -38,8 +38,6 @@ module Ciri
       class UnknownMessageCodeError < StandardError
       end
 
-      include Actor
-
       attr_reader :connection
 
       def initialize(connection, handshake, protocols)
@@ -47,7 +45,6 @@ module Ciri
         @handshake = handshake
         @protocols = protocols
         @protocol_io_hash = make_protocol_io_hash(protocols, handshake.caps, connection)
-        super()
       end
 
       def to_s
@@ -60,13 +57,6 @@ module Ciri
         @node_id ||= RLPX::NodeID.from_raw_id(@handshake.id)
       end
 
-      # start peer
-      # handle msg, handle sub protocols
-      def start
-        executor.post {read_loop}
-        super
-      end
-
       # read and handle msg
       def read_loop
         loop do
@@ -74,8 +64,6 @@ module Ciri
           msg.received_at = Time.now
           handle(msg)
         end
-      rescue StandardError => e
-        self << [:raise_error, e]
       end
 
       def protocol_ios
@@ -93,7 +81,7 @@ module Ciri
           if (protocol_io = find_protocol_io_by_msg_code(msg.code)).nil?
             raise UnknownMessageCodeError.new("can't find protocol with msg code #{msg.code}")
           end
-          protocol_io.msg_queue << msg
+          protocol_io.receive_msg msg
         end
       end
 

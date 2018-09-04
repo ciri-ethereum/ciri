@@ -21,6 +21,8 @@
 # THE SOFTWARE.
 
 
+require 'async'
+require 'async/queue'
 require 'lru_redux'
 require 'ciri/utils/logger'
 
@@ -29,7 +31,6 @@ module Ciri
 
     # Synchronizer sync blocks with peers
     class Synchronizer
-      include Ciri::Actor
       include Ciri::Utils::Logger
 
       HEADER_FETCH_COUNT = 10
@@ -40,37 +41,25 @@ module Ciri
 
         def initialize(peer)
           @peer = peer
-          @header_queue = Queue.new
-          @body_queue = Queue.new
+          @header_queue = Async::Queue.new
+          @body_queue = Async::Queue.new
           @lru_cache = LruRedux::Cache.new(HEADER_FETCH_COUNT * 2)
         end
 
         def receive_header
-          header_queue.pop
+          header_queue.dequeue
         end
 
-        def receive_header_in(timeout)
-          wait_seconds = 0
-          while header_queue.empty?
-            sleep(0.1)
-            wait_seconds += 0.1
-            raise Timeout::Error.new("can't receive body in #{timeout}") if wait_seconds > timeout
-          end
-          header_queue.pop(true)
+        def receive_header_in(timeout, task: Async::Task.current)
+          task.timeout(timeout) {header_queue.dequeue}
         end
 
         def receive_body
-          body_queue.pop
+          body_queue.dequeue
         end
 
-        def receive_body_in(timeout)
-          wait_seconds = 0
-          while body_queue.empty?
-            sleep(0.1)
-            wait_seconds += 0.1
-            raise Timeout::Error.new("can't receive body in #{timeout}") if wait_seconds > timeout
-          end
-          body_queue.pop(true)
+        def receive_body_in(timeout, task: Async::Task.current)
+          task.timeout(timeout) {body_queue.dequeue}
         end
 
         def fetch_peer_header(hash_or_number)
@@ -94,8 +83,9 @@ module Ciri
         end
 
         def fetch_peer_body(hashes)
-          # clear body queue for receive
-          body_queue.clear
+          # TODO make sure we received correct message
+          # current implementation assume next received body msg is we request, but we can't make sure
+          # at least make sure the message we received is from same peer we request
           peer.send_msg(GetBlockBodies, hashes: hashes)
           receive_body_in(10)
         end
@@ -110,14 +100,14 @@ module Ciri
       end
 
       def receive_headers(peer, headers)
-        headers.each {|header| @peers[peer].header_queue << header}
+        headers.each {|header| @peers[peer].header_queue.enqueue header}
       end
 
       def receive_bodies(peer, bodies)
-        @peers[peer].body_queue << bodies
+        @peers[peer].body_queue.enqueue bodies
       end
 
-      def register_peer(peer)
+      def register_peer(peer, task: Async::Task.current)
         @peers[peer] = PeerEntry.new(peer)
 
         # request block headers if chain td less than peer
@@ -131,13 +121,12 @@ module Ciri
       MAX_BLOCKS_SYNCING = 50
 
       # check and start syncing peer
-      def start_syncing(peer)
+      def start_syncing(peer, task: Async::Task.current)
         peer_entry = @peers[peer]
         return if peer_entry.syncing
 
         peer_entry.syncing = true
-
-        executor.post do
+        task.async do
           peer_max_header = peer_header = peer_entry.receive_header
           local_header = chain.head
           start_height = [peer_header.number, local_header.number].min

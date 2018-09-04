@@ -21,6 +21,7 @@
 # THE SOFTWARE.
 
 require 'spec_helper'
+require 'async/queue'
 require 'ciri/eth/protocol_manage'
 require 'ciri/devp2p/rlpx'
 require 'ciri/devp2p/peer'
@@ -29,7 +30,6 @@ require 'ciri/devp2p/protocol_io'
 require 'ciri/pow_chain/chain'
 require 'ciri/db/backend/rocks'
 require 'ciri/key'
-require 'socket'
 
 RSpec.describe Ciri::Eth::ProtocolManage do
 
@@ -41,119 +41,134 @@ RSpec.describe Ciri::Eth::ProtocolManage do
   let(:fork_config) {Ciri::Forks::Config.new([[0, Ciri::Forks::Frontier::Schema.new]])}
   let(:chain) {Ciri::POWChain::Chain.new(store, genesis: blocks[0], network_id: 0, fork_config: fork_config)}
 
-  before {Ciri::Actor.default_executor = Concurrent::CachedThreadPool.new}
-
   after do
-    # clear actor threads
-    Ciri::Actor.default_executor.kill
-    Ciri::Actor.default_executor = nil
     # clear db
     store.close
     FileUtils.remove_entry tmp_dir
   end
 
+  # a fake frame_io to simulate the connection
   let(:mock_frame_io) do
     Class.new do
-      def initialize(io)
-        @io = io
+      def initialize(read:, write:, name: '')
+        @read = read
+        @write = write
+        @name = name
       end
 
       def write_msg(msg)
         content = msg.rlp_encode
-        @io.write "#{content.length};#{content}"
+        @write.enqueue "#{content.length};#{content}"
       end
 
       def read_msg
-        len = @io.readline(sep = ';').to_i
-        Ciri::DevP2P::RLPX::Message.rlp_decode @io.read(len)
+        io = StringIO.new(@read.dequeue)
+        len = io.readline(sep = ';').to_i
+        Ciri::DevP2P::RLPX::Message.rlp_decode io.read(len)
       end
 
     end
   end
 
   it 'handle eth protocol, and start syncing blocks' do
-    conn1, conn2 = UNIXSocket.pair
-    frame_io1 = mock_frame_io.new(conn1)
-    frame_io2 = mock_frame_io.new(conn2)
+    queue1, queue2 = 2.times.map {Async::Queue.new}
+    peer_frame_io = mock_frame_io.new(read: queue1, write: queue2, name: 'peer')
+    host_frame_io = mock_frame_io.new(read: queue2, write: queue1, name: 'host')
 
     eth_protocol = Ciri::DevP2P::Protocol.new(name: 'eth', version: 63, length: 17)
     protocol_manage = Ciri::Eth::ProtocolManage.new(protocols: [eth_protocol], chain: chain)
-    protocol_manage.start
 
     caps = [Ciri::DevP2P::RLPX::Cap.new(name: 'eth', version: 63)]
     peer_id = Ciri::Key.random.raw_public_key[1..-1]
     hs = Ciri::DevP2P::RLPX::ProtocolHandshake.new(version: 0, name: 'test', caps: caps, listen_port: 30303, id: peer_id)
-    peer = Ciri::DevP2P::Peer.new(frame_io1, hs, protocol_manage.protocols)
-    peer.start
+    peer = Ciri::DevP2P::Peer.new(peer_frame_io, hs, protocol_manage.protocols)
+    peer_protocol_io = peer.instance_variable_get(:@protocol_io_hash).values.first
+    host_protocol_io = Ciri::DevP2P::ProtocolIO.new(eth_protocol, Ciri::DevP2P::RLPX::BASE_PROTOCOL_LENGTH, host_frame_io)
 
-    read_msg = proc do
-      msg = frame_io2.read_msg
-      msg.code -= Ciri::DevP2P::RLPX::BASE_PROTOCOL_LENGTH
-      msg
-    end
-    write_msg = proc do |code, m|
-      payload = m.rlp_encode
-      msg = Ciri::DevP2P::RLPX::Message.new(code: Ciri::DevP2P::RLPX::BASE_PROTOCOL_LENGTH + code, payload: payload, size: payload.size)
-      peer << [:handle, msg]
-    end
+    Async::Reactor.run do |task|
+      # start eth protocol
+      task.async do
+        protocol_manage.run
+        protocol_manage.new_peer(peer, peer_protocol_io)
+      end
 
-    # receive status from peer
-    status = Ciri::Eth::Status.rlp_decode read_msg[].payload
-    expect(status.network_id).to eq 1
-    expect(status.total_difficulty).to eq chain.total_difficulty
-    expect(status.genesis_block).to eq chain.genesis.get_hash
+      # start peer handling loop
+      task.async do
+        peer.read_loop
+      end
 
-    # send status to peer
-    status = Ciri::Eth::Status.new(
-      protocol_version: status.protocol_version,
-      network_id: status.network_id,
-      total_difficulty: 68669161470,
-      current_block: blocks[3].get_hash,
-      genesis_block: status.genesis_block)
-    write_msg[Ciri::Eth::Status::CODE, status]
-
-    # should receive get_header
-    msg = read_msg[]
-    get_block_bodies = Ciri::Eth::GetBlockHeaders.rlp_decode msg.payload
-    # peer should request for current head
-    expect(get_block_bodies.hash_or_number).to eq blocks[3].get_hash
-
-    block_headers = Ciri::Eth::BlockHeaders.new(headers: [blocks[3].header])
-    write_msg[Ciri::Eth::BlockHeaders::CODE, block_headers]
-
-    # simulate peer actions, until peer synced latest block
-    last_header = loop do
-      get_block_bodies = Ciri::Eth::GetBlockHeaders.new(hash_or_number: Ciri::Eth::HashOrNumber.new(3),
-                                                        amount: 1, skip: 0, reverse: false)
-      write_msg[Ciri::Eth::GetBlockHeaders::CODE, get_block_bodies]
-
-      msg = read_msg[]
-      case msg.code
-      when Ciri::Eth::GetBlockHeaders::CODE
-        get_block_bodies = Ciri::Eth::GetBlockHeaders.rlp_decode msg.payload
-        block = blocks.find {|b| b.get_hash == get_block_bodies.hash_or_number || b.number == get_block_bodies.hash_or_number}
-        headers = block ? [block.header] : []
-        block_headers = Ciri::Eth::BlockHeaders.new(headers: headers)
-        write_msg[Ciri::Eth::BlockHeaders::CODE, block_headers]
-      when Ciri::Eth::GetBlockBodies::CODE
-        get_block_bodies = Ciri::Eth::GetBlockBodies.rlp_decode msg.payload
-        bodies = []
-        get_block_bodies.hashes.each do |hash|
-          b = blocks.find {|b| hash == b.get_hash}
-          bodies << Ciri::Eth::BlockBodies::Bodies.new(transactions: b.transactions, ommers: b.ommers)
+      # our test cases
+      task.async do |task|
+        read_msg = proc do
+          msg = host_frame_io.read_msg
+          # minus offset
+          msg.code -= Ciri::DevP2P::RLPX::BASE_PROTOCOL_LENGTH
+          msg
         end
-        block_bodies = Ciri::Eth::BlockBodies.new(bodies: bodies)
-        write_msg[Ciri::Eth::BlockBodies::CODE, block_bodies]
-      when Ciri::Eth::BlockHeaders::CODE
-        block_headers = Ciri::Eth::BlockHeaders.rlp_decode msg.payload
-        break block_headers.headers[0] if !block_headers.headers.empty? && block_headers.headers[0].number == 3
-      else
-        raise "unknown code #{msg.code}"
+        write_msg = proc do |code, m|
+          payload = m.rlp_encode
+          host_protocol_io.send_data(code, payload)
+        end
+
+        # receive status from peer
+        status = Ciri::Eth::Status.rlp_decode read_msg[].payload
+        expect(status.network_id).to eq 1
+        expect(status.total_difficulty).to eq chain.total_difficulty
+        expect(status.genesis_block).to eq chain.genesis.get_hash
+
+        # send status to peer
+        status = Ciri::Eth::Status.new(
+            protocol_version: status.protocol_version,
+            network_id: status.network_id,
+            total_difficulty: 68669161470,
+            current_block: blocks[3].get_hash,
+            genesis_block: status.genesis_block)
+        write_msg[Ciri::Eth::Status::CODE, status]
+
+        # should receive get_header
+        msg = read_msg[]
+        get_block_bodies = Ciri::Eth::GetBlockHeaders.rlp_decode msg.payload
+        # peer should request for current head
+        expect(get_block_bodies.hash_or_number).to eq blocks[3].get_hash
+
+        block_headers = Ciri::Eth::BlockHeaders.new(headers: [blocks[3].header])
+        write_msg[Ciri::Eth::BlockHeaders::CODE, block_headers]
+
+        # simulate peer actions, until peer synced latest block
+        last_header = loop do
+          get_block_bodies = Ciri::Eth::GetBlockHeaders.new(hash_or_number: Ciri::Eth::HashOrNumber.new(3),
+                                                            amount: 1, skip: 0, reverse: false)
+          write_msg[Ciri::Eth::GetBlockHeaders::CODE, get_block_bodies]
+
+          msg = read_msg[]
+          case msg.code
+          when Ciri::Eth::GetBlockHeaders::CODE
+            get_block_bodies = Ciri::Eth::GetBlockHeaders.rlp_decode msg.payload
+            block = blocks.find {|b| b.get_hash == get_block_bodies.hash_or_number || b.number == get_block_bodies.hash_or_number}
+            headers = block ? [block.header] : []
+            block_headers = Ciri::Eth::BlockHeaders.new(headers: headers)
+            write_msg[Ciri::Eth::BlockHeaders::CODE, block_headers]
+          when Ciri::Eth::GetBlockBodies::CODE
+            get_block_bodies = Ciri::Eth::GetBlockBodies.rlp_decode msg.payload
+            bodies = []
+            get_block_bodies.hashes.each do |hash|
+              b = blocks.find {|b| hash == b.get_hash}
+              bodies << Ciri::Eth::BlockBodies::Bodies.new(transactions: b.transactions, ommers: b.ommers)
+            end
+            block_bodies = Ciri::Eth::BlockBodies.new(bodies: bodies)
+            write_msg[Ciri::Eth::BlockBodies::CODE, block_bodies]
+          when Ciri::Eth::BlockHeaders::CODE
+            block_headers = Ciri::Eth::BlockHeaders.rlp_decode msg.payload
+            break block_headers.headers[0] if !block_headers.headers.empty? && block_headers.headers[0].number == 3
+          else
+            raise "unknown code #{msg.code}"
+          end
+        end
+
+        expect(last_header).to eq blocks[3].header
+        task.reactor.stop
       end
     end
-
-    expect(last_header).to eq blocks[3].header
-
   end
 
 end
