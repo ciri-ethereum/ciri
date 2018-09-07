@@ -116,11 +116,10 @@ On a mac you can install `rocksdb` and `snappy` with homebrew
 brew install rocksdb snappy
 ```
 
-then manually install
+Build and install `secp256k1`
 
-secp256k1
 ``` bash
-cd secp256k1 && ./autogen.sh && ./configure --enable-module-recovery --enable-experimental --enable-module-ecdh && make && make install
+cd ciri && rake install:secp256k1
 ```
 
 For linux users, remember to check [Dockerfile](/docker) instructions for hint.
