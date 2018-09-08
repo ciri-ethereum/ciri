@@ -154,6 +154,10 @@ module Ciri
           end
         end
 
+        def deregister_peer_protocols(peer)
+          @server.protocol_manage.remove_peer(peer)
+        end
+
         def new_peer_connected(connection, handshake, task: Async::Task.current)
           server.protocol_handshake_checks(handshake)
           peer = Peer.new(connection, handshake, server.protocols)
@@ -166,8 +170,16 @@ module Ciri
           end
         end
 
+        def remove_peer(peer)
+          @peers.delete(peer.node_id)
+          deregister_peer_protocols(peer)
+        end
+
         def handling_peer(peer, task: Async::Task.current)
-          peer.read_loop
+          peer.start_handling
+        rescue Exception => e
+          remove_peer(peer)
+          error("remove peer #{peer}, error: #{e}")
         end
 
       end

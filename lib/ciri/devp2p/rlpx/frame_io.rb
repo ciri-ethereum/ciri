@@ -22,6 +22,7 @@
 
 
 require 'stringio'
+require 'forwardable'
 require 'ciri/core_ext'
 require 'ciri/rlp/serializable'
 require_relative 'error'
@@ -36,6 +37,8 @@ module Ciri
     module RLPX
 
       class FrameIO
+        extend Forwardable
+        def_delegators :@io, :closed?, :close
 
         # max message size, took 3 byte to store message size, equal to uint24 max size
         MAX_MESSAGE_SIZE = (1 << 24) - 1

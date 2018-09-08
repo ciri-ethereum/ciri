@@ -24,6 +24,7 @@
 
 require 'async'
 require 'ciri/utils'
+require 'ciri/rlp'
 require_relative 'rlpx'
 require_relative 'protocol_io'
 
@@ -58,12 +59,27 @@ module Ciri
       end
 
       # read and handle msg
-      def read_loop
-        loop do
-          msg = connection.read_msg
-          msg.received_at = Time.now
-          handle(msg)
+      def start_handling(ping_interval: 15, task: Async::Task.current)
+        ping_timer = task.reactor.every(ping_interval) do
+          ping
         end
+
+        message_service = task.async do
+          loop do
+            msg = connection.read_msg
+            msg.received_at = Time.now
+            handle(msg)
+          end
+        end
+
+        message_service.wait
+      rescue StandardError => e
+        # clear up
+        ping_timer.cancel
+        message_service.stop if message_service&.running?
+        connection.close unless connection.closed?
+        # raise error
+        raise
       end
 
       def protocol_ios
@@ -72,10 +88,12 @@ module Ciri
 
       def handle(msg)
         if msg.code == RLPX::MESSAGES[:ping]
-          #TODO send pong
+          pong
         elsif msg.code == RLPX::MESSAGES[:discover]
           reason = RLP.decode_with_type(msg.payload, Integer)
           raise DiscoverError.new("receive error discovery message, reason: #{reason}")
+        elsif msg.code == RLPX::MESSAGES[:pong]
+          # TODO update peer node
         else
           # send msg to sub protocol
           if (protocol_io = find_protocol_io_by_msg_code(msg.code)).nil?
@@ -86,6 +104,18 @@ module Ciri
       end
 
       private
+
+      BLANK_PAYLOAD = RLP.encode([]).freeze
+
+      # response pong to message
+      def ping
+        connection.send_data(RLPX::MESSAGES[:ping], BLANK_PAYLOAD)
+      end
+
+      # response pong to message
+      def pong
+        connection.send_data(RLPX::MESSAGES[:pong], BLANK_PAYLOAD)
+      end
 
       def find_protocol_io_by_msg_code(code)
         @protocol_io_hash.values.find do |protocol_io|

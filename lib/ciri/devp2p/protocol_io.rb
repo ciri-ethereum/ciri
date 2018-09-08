@@ -21,6 +21,7 @@
 # THE SOFTWARE.
 
 
+require 'forwardable'
 require 'async/queue'
 require 'async/semaphore'
 require_relative 'rlpx/message'

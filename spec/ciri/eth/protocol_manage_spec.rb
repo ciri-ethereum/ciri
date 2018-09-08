@@ -56,6 +56,11 @@ RSpec.describe Ciri::Eth::ProtocolManage do
         @name = name
       end
 
+      def send_data(code, data)
+        msg = Ciri::DevP2P::RLPX::Message.new(code: code, size: data.size, payload: data)
+        write_msg(msg)
+      end
+
       def write_msg(msg)
         content = msg.rlp_encode
         @write.enqueue "#{content.length};#{content}"
@@ -94,7 +99,7 @@ RSpec.describe Ciri::Eth::ProtocolManage do
 
       # start peer handling loop
       task.async do
-        peer.read_loop
+        peer.start_handling
       end
 
       # our test cases
@@ -166,6 +171,8 @@ RSpec.describe Ciri::Eth::ProtocolManage do
         end
 
         expect(last_header).to eq blocks[3].header
+        # A hack to cancel timers from reactor, so we don't need to wait for timers
+        task.reactor.instance_variable_get(:@timers).cancel
         task.reactor.stop
       end
     end
