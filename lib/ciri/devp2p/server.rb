@@ -68,7 +68,7 @@ module Ciri
         # prepare handshake information
         server_node_id = NodeID.new(@private_key)
         caps = [Cap.new(name: 'eth', version: 63)]
-        @handshake = ProtocolHandshake.new(version: BASE_PROTOCOL_VERSION, name: @name, id: server_node_id.id, caps: caps)
+        @handshake = ProtocolHandshake.new(version: BASE_PROTOCOL_VERSION, name: @node_name, id: server_node_id.id, caps: caps)
 
         # start server
         Async::Reactor.run do |task|
@@ -150,7 +150,7 @@ module Ciri
 
         def register_peer_protocols(peer)
           peer.protocol_ios.each do |protocol_io|
-            @server.protocol_manager << [:new_peer, peer, protocol_io]
+            @server.protocol_manage.new_peer(peer, protocol_io)
           end
         end
 
@@ -158,8 +158,10 @@ module Ciri
           server.protocol_handshake_checks(handshake)
           peer = Peer.new(connection, handshake, server.protocols)
           @peers[peer.node_id] = peer
+          debug "connect to new peer #{peer}"
           # run peer logic
           task.async do
+            register_peer_protocols(peer)
             handling_peer(peer)
           end
         end

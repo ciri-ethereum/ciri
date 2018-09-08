@@ -57,6 +57,19 @@ module Ciri
       def mining_hash
         Utils.keccak(rlp_encode skip_keys: [:mix_hash, :nonce])
       end
+
+      def inspect
+        h = {}
+        self.class.schema.keys.each do |key|
+          key_schema = self.class.schema[key]
+          h[key] = if key_schema.type == RLP::Bytes
+                     Utils.to_hex serializable_attributes[key]
+                   else
+                     serializable_attributes[key]
+                   end
+        end
+        h
+      end
     end
 
   end

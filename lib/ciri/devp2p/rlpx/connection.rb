@@ -75,6 +75,7 @@ module Ciri
         end
 
         private
+
         def receiver_enc_handshake(receiver)
           auth_msg_binary, auth_packet = read_enc_handshake_msg(ENC_AUTH_MSG_LENGTH, receiver.private_key)
           auth_msg = AuthMsgV4.rlp_decode(auth_msg_binary)
