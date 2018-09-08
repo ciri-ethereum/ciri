@@ -39,7 +39,7 @@ module Ciri
 
       def initialize(protocols:, chain:)
         @protocols = protocols
-        @peers = {}
+        @peer_tasks = Hash.new {[]}
         @chain = chain
         @queue = Async::Queue.new
         @synchronizer = Synchronizer.new(chain: chain)
@@ -54,23 +54,31 @@ module Ciri
         @queue.enqueue([peer, protocol_io])
       end
 
+      def remove_peer(peer)
+        tasks = @peer_tasks.delete(peer) || []
+        tasks.each(&:stop)
+      end
+
       private
 
       def handle_new_peer(task: Async::Task.current)
         while (peer, protocol_io = @queue.dequeue)
           proto = ProtocolContext.new(protocol_manage: self, peer: peer, io: protocol_io)
           proto.handshake(1, chain.total_difficulty, chain.head.get_hash, chain.genesis_hash)
-          @peers[proto] = true
-          # register peer to synchronizer
-          task.async do
-            synchronizer.register_peer(proto)
-          end
-          # start handle messages
-          task.async do
-            while (msg = proto.io.read_msg)
-              handle_msg(proto, msg)
+          peer_proto_task = task.async do
+            # register peer to synchronizer
+            task.async do
+              synchronizer.register_peer(proto)
+            end
+            # start handle messages
+            task.async do
+              while (msg = proto.io.read_msg)
+                handle_msg(proto, msg)
+              end
             end
           end
+
+          @peer_tasks[peer] << peer_proto_task
 
         end
       end

@@ -22,6 +22,7 @@
 
 
 require 'spec_helper'
+require 'async'
 require 'ciri/devp2p/peer'
 require 'ciri/devp2p/protocol'
 require 'ciri/devp2p/rlpx/protocol_handshake'
@@ -38,8 +39,15 @@ RSpec.describe Ciri::DevP2P::Peer do
       end
 
       def read_msg
-        raise StandardError if queue.empty?
+        raise StandardError.new("empty queue") if queue.empty?
         queue.shift
+      end
+
+      def close
+      end
+
+      def closed?
+        @queue.empty?
       end
     end.new
   end
@@ -68,22 +76,31 @@ RSpec.describe Ciri::DevP2P::Peer do
 
     peer = Ciri::DevP2P::Peer.new(connection, handshake, [protocol_1, protocol_2, protocol_3])
 
-    # peer read all messages
-    expect {peer.read_loop}.to raise_error(StandardError)
+    Async::Reactor.run do |task|
+      task.reactor.after(5) do
+        raise StandardError.new("test timeout.. must something be wrong")
+      end
 
-    # 'eth' protocol
-    protocol_io_1 = peer.protocol_ios.find {|p| p.protocol == protocol_1}
-    expect(protocol_io_1.read_msg).to eq msg_1
-    expect(protocol_io_1.read_msg).to eq msg_2
-    expect(protocol_io_1.empty?).to be_truthy
+      task.async do
+        # peer read all messages
+        expect {peer.start_handling}.to raise_error(StandardError, "empty queue")
 
-    # old 'eth' protocol
-    protocol_io_2 = peer.protocol_ios.find {|p| p.protocol == protocol_2}
-    expect(protocol_io_2).to be_nil
+        # 'eth' protocol
+        protocol_io_1 = peer.protocol_ios.find {|p| p.protocol == protocol_1}
+        expect(protocol_io_1.read_msg).to eq msg_1
+        expect(protocol_io_1.read_msg).to eq msg_2
+        expect(protocol_io_1.empty?).to be_truthy
 
-    # 'hello' protocol
-    protocol_io_3 = peer.protocol_ios.find {|p| p.protocol == protocol_3}
-    expect(protocol_io_3.read_msg).to eq msg_3
-    expect(protocol_io_3.empty?).to be_truthy
+        # old 'eth' protocol
+        protocol_io_2 = peer.protocol_ios.find {|p| p.protocol == protocol_2}
+        expect(protocol_io_2).to be_nil
+
+        # 'hello' protocol
+        protocol_io_3 = peer.protocol_ios.find {|p| p.protocol == protocol_3}
+        expect(protocol_io_3.read_msg).to eq msg_3
+        expect(protocol_io_3.empty?).to be_truthy
+        task.reactor.stop
+      end
+    end
   end
 end
