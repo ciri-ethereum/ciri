@@ -22,11 +22,14 @@
 
 
 require 'stringio'
+require 'ciri/core_ext'
 require 'ciri/rlp/serializable'
 require_relative 'error'
 require_relative 'message'
 
 require 'snappy'
+
+using Ciri::CoreExt
 
 module Ciri
   module DevP2P
@@ -159,7 +162,10 @@ module Ciri
 
         private
         def read(length)
-          if (buf = @io.read(length)).nil?
+          # Async::IO::TCPSocket#read(n) may return not enough bytes
+          # use @io.buffer to use Async::IO::Stream#read which can guarantee return enough bytes
+          # FIXME remove buffer after Async::IO fix this issue
+          if (buf = (@io.respond_to?(:buffer) ? @io.buffer : @io).read(length)).nil?
             @io.close
             raise EOFError.new('read EOF, connection closed')
           end
