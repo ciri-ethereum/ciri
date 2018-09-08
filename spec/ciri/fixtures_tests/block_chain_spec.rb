@@ -36,6 +36,8 @@ using Ciri::CoreExt
 
 RSpec.describe Ciri::POWChain::Chain do
 
+  include Ciri::Utils::Logger
+
   before(:all) do
     prepare_ethereum_fixtures
   end
@@ -71,7 +73,7 @@ RSpec.describe Ciri::POWChain::Chain do
 
     header = Ciri::POWChain::Header.new(**columns)
     unless Ciri::Utils.to_hex(header.get_hash) == data['hash']
-      p columns
+      error columns
     end
     header
   end
@@ -176,7 +178,7 @@ RSpec.describe Ciri::POWChain::Chain do
               Ciri::RLP::InvalidError,
               Ciri::EVM::Error,
               Ciri::Types::Errors::InvalidError => e
-            p e
+            error e
             expect(b['blockHeader']).to be_nil
             expect(b['transactions']).to be_nil
             expect(b['uncleHeaders']).to be_nil
