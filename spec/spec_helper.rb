@@ -19,6 +19,6 @@ RSpec.configure do |config|
 
   # set logger
   require 'ciri/utils/logger'
-  level = %w{1 yes true}.include?(ENV['DEBUG']) ? :debug : :info
+  level = %w{1 yes true}.include?(ENV['DEBUG']) ? :debug : :fatal
   Ciri::Utils::Logger.setup(level: level)
 end
