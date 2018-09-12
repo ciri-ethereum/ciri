@@ -55,7 +55,7 @@ RSpec.describe Ciri::DevP2P::RLPX::Connection do
 
     # start initiator handshakes
     thr = Thread.new {
-      initiator.encryption_handshake!(private_key: pk1, node_id: receive_node_id)
+      initiator.encryption_handshake!(private_key: pk1, remote_node_id: receive_node_id)
       initiator.protocol_handshake!(initiator_protocol_handshake)
     }
 

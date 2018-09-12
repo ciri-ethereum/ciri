@@ -59,9 +59,9 @@ module Ciri
         end
 
         # Encryption handshake, exchange keys with node, must been invoked before other operations
-        def encryption_handshake!(private_key:, node_id: nil)
-          enc_handshake = EncryptionHandshake.new(private_key: private_key, remote_id: node_id)
-          secrets = node_id.nil? ? receiver_enc_handshake(enc_handshake) : initiator_enc_handshake(enc_handshake)
+        def encryption_handshake!(private_key:, remote_node_id: nil)
+          enc_handshake = EncryptionHandshake.new(private_key: private_key, remote_id: remote_node_id)
+          secrets = remote_node_id.nil? ? receiver_enc_handshake(enc_handshake) : initiator_enc_handshake(enc_handshake)
           @frame_io = FrameIO.new(@io, secrets)
         end
 
