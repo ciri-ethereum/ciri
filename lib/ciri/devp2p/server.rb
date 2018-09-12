@@ -23,6 +23,7 @@
 
 
 require 'async'
+require 'async/io'
 require 'async/io/tcp_socket'
 require 'forwardable'
 require 'ciri/utils/logger'
@@ -48,16 +49,20 @@ module Ciri
       class UselessPeerError < Error
       end
 
-      attr_reader :handshake, :scheduler, :protocol_manage, :protocols, :bootstrap_nodes
+      attr_reader :handshake, :scheduler, :protocol_manage, :bootstrap_nodes, :dial
 
-      def initialize(private_key:, protocol_manage:, bootstrap_nodes: [], node_name: 'Ciri')
+      def initialize(private_key:, protocol_manage:, bootstrap_nodes: [],
+                     node_name: 'Ciri', tcp_host: '127.0.0.1', tcp_port: 33033)
         @private_key = private_key
         @node_name = node_name
         @bootstrap_nodes = bootstrap_nodes
-        @scheduler = Scheduler.new(self)
         # TODO consider implement whisper and swarm protocols
         @protocol_manage = protocol_manage
-        @protocols = protocol_manage.protocols
+        @tcp_host = tcp_host
+        @tcp_port = tcp_port
+        @dial = Dial.new(bootstrap_nodes: bootstrap_nodes, private_key: private_key)
+        @network_state = NetworkState.new(protocol_manage)
+        @scheduler = Scheduler.new(@network_state, @dial)
       end
 
       # return reactor to wait
@@ -72,61 +77,118 @@ module Ciri
 
         # start server
         Async::Reactor.run do |task|
-          eth_protocol_task = task.async {@protocol_manage.run}
-          scheduler_task = task.async {@scheduler.run}
-          [eth_protocol_task, scheduler_task].each(&:wait)
+          # wait sub tasks
+          task.async do
+            task.async {@protocol_manage.run}
+            task.async {@scheduler.run}
+            task.async {start_accept}
+          end.wait
         end
       end
 
-      def setup_connection(node)
-        socket = Async::IO::TCPSocket.new(node.ip, node.tcp_port)
-        c = Connection.new(socket)
-        c.encryption_handshake!(private_key: @private_key, node_id: node.node_id)
-        remote_handshake = c.protocol_handshake!(handshake)
-        [c, remote_handshake]
-      end
-
-      def protocol_handshake_checks(handshake)
-        if !protocols.empty? && count_matching_protocols(protocols, handshake.caps) == 0
-          raise UselessPeerError.new('discovery useless peer')
+      # start listen and accept clients
+      def start_accept(task: Async::Task.current)
+        endpoint = Async::IO::Endpoint.tcp(@tcp_host, @tcp_port)
+        info("start accept connections -- listen on #@tcp_host:#@tcp_port")
+        endpoint.accept do |client|
+          c = Connection.new(client)
+          c.encryption_handshake!(private_key: @private_key)
+          remote_handshake = c.protocol_handshake!(handshake)
+          @network_state.new_peer_connected(c, remote_handshake)
         end
       end
 
-      def count_matching_protocols(protocols, caps)
-        #TODO implement this
-        1
+      class NetworkState
+        attr_reader :peers
+
+        def initialize(protocol_manage)
+          @protocol_manage = protocol_manage
+          @peers = {}
+        end
+
+        def register_peer_protocols(peer)
+          peer.protocol_ios.each do |protocol_io|
+            @protocol_manage.new_peer(peer, protocol_io)
+          end
+        end
+
+        def deregister_peer_protocols(peer)
+          @protocol_manage.remove_peer(peer)
+        end
+
+        def new_peer_connected(connection, handshake, task: Async::Task.current)
+          protocol_handshake_checks(handshake)
+          peer = Peer.new(connection, handshake, @protocol_manage.protocols)
+          @peers[peer.node_id] = peer
+          debug "connect to new peer #{peer}"
+          # run peer logic
+          task.async do
+            register_peer_protocols(peer)
+            handling_peer(peer)
+          end
+        end
+
+        def remove_peer(peer)
+          @peers.delete(peer.node_id)
+          deregister_peer_protocols(peer)
+        end
+
+        private
+
+        def handling_peer(peer, task: Async::Task.current)
+          peer.start_handling
+        rescue Exception => e
+          remove_peer(peer)
+          error("remove peer #{peer}, error: #{e}")
+        end
+
+        def protocol_handshake_checks(handshake)
+          if @protocol_manage.protocols && count_matching_protocols(@protocol_manage.protocols, handshake.caps) == 0
+            raise UselessPeerError.new('discovery useless peer')
+          end
+        end
+
+        def count_matching_protocols(protocols, caps)
+          #TODO implement this
+          1
+        end
+      end
+
+      # Discovery and dial new nodes
+      class Dial
+        def initialize(bootstrap_nodes: [], private_key:)
+          @bootstrap_nodes = bootstrap_nodes
+          @private_key = private_key
+          @cache = Set.new
+        end
+
+        # return new tasks to find peers
+        def find_peers(running_count, peers, now)
+          node = @bootstrap_nodes.sample
+          return [] if @cache.include?(node)
+          @cache << node
+          connection_and_handshake = setup_connection(node)
+          [connection_and_handshake]
+        end
+
+        # setup a new connection to node
+        def setup_connection(node)
+          socket = Async::IO::TCPSocket.new(node.ip, node.tcp_port)
+          c = Connection.new(socket)
+          c.encryption_handshake!(private_key: @private_key, remote_node_id: node.node_id)
+          remote_handshake = c.protocol_handshake!(handshake)
+          [c, remote_handshake]
+        end
       end
 
       class Scheduler
-
-        # Discovery and dial new nodes
-        class Dial
-          def initialize(server)
-            @server = server
-            @cache = Set.new
-          end
-
-          # return new tasks to find peers
-          def find_peers(running_count, peers, now)
-            node = @server.bootstrap_nodes[0]
-            return [] if @cache.include?(node)
-            @cache << node
-            connection_and_handshake = @server.setup_connection(node)
-            [connection_and_handshake]
-          end
-        end
-
         include Utils::Logger
-        extend Forwardable
 
-        attr_reader :server
-        def_delegators :server
-
-        def initialize(server)
-          @server = server
+        def initialize(network_state, dial)
+          @network_state = network_state
           @running_dialing = 0
           @peers = {}
-          @dial = Dial.new(server)
+          @dial = dial
         end
 
         def run(task: Async::Task.current)
@@ -142,46 +204,11 @@ module Ciri
         def schedule_dialing_tasks
           return unless @running_dialing < MAX_ACTIVE_DIAL_TASKS
           @running_dialing += 1
-          @dial.find_peers(@running_dialing, @peers, Time.now).each do |conn, handshake|
-            new_peer_connected(conn, handshake)
+          @dial.find_peers(@running_dialing, @network_state.peers, Time.now).each do |conn, handshake|
+            @network_state.new_peer_connected(conn, handshake)
           end
           @running_dialing -= 1
         end
-
-        def register_peer_protocols(peer)
-          peer.protocol_ios.each do |protocol_io|
-            @server.protocol_manage.new_peer(peer, protocol_io)
-          end
-        end
-
-        def deregister_peer_protocols(peer)
-          @server.protocol_manage.remove_peer(peer)
-        end
-
-        def new_peer_connected(connection, handshake, task: Async::Task.current)
-          server.protocol_handshake_checks(handshake)
-          peer = Peer.new(connection, handshake, server.protocols)
-          @peers[peer.node_id] = peer
-          debug "connect to new peer #{peer}"
-          # run peer logic
-          task.async do
-            register_peer_protocols(peer)
-            handling_peer(peer)
-          end
-        end
-
-        def remove_peer(peer)
-          @peers.delete(peer.node_id)
-          deregister_peer_protocols(peer)
-        end
-
-        def handling_peer(peer, task: Async::Task.current)
-          peer.start_handling
-        rescue Exception => e
-          remove_peer(peer)
-          error("remove peer #{peer}, error: #{e}")
-        end
-
       end
 
     end
