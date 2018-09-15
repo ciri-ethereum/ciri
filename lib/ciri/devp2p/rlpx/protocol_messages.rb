@@ -27,12 +27,13 @@ require 'ciri/rlp/serializable'
 module Ciri
   module DevP2P
     module RLPX
-      MESSAGES = {
-          handshake: 0x00,
-          discover: 0x01,
-          ping: 0x02,
-          pong: 0x03
-      }.freeze
+      # RLPX protocol code
+      module Code
+        HANDSHAKE = 0x00
+        DISCOVER = 0x01
+        PING = 0x02
+        PONG = 0x03
+      end
 
       BASE_PROTOCOL_VERSION = 5
       BASE_PROTOCOL_LENGTH = 16

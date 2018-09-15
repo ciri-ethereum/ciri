@@ -67,7 +67,7 @@ module Ciri
 
         # protocol handshake
         def protocol_handshake!(our_hs)
-          @frame_io.send_data(MESSAGES[:handshake], our_hs.rlp_encode)
+          @frame_io.send_data(Code::HANDSHAKE, our_hs.rlp_encode)
           remote_hs = read_protocol_handshake
           # enable snappy compress if remote peer support
           @frame_io.snappy = remote_hs.version >= SNAPPY_PROTOCOL_VERSION
@@ -136,11 +136,11 @@ module Ciri
           if msg.size > BASE_PROTOCOL_MAX_MSG_SIZE
             raise MessageOverflowError.new("message size #{msg.size} is too big")
           end
-          if msg.code == MESSAGES[:discovery]
+          if msg.code == Code::DISCOVER
             payload = RLP.decode(msg.payload)
             raise UnexpectedMessageError.new("expected handshake, get discovery, reason: #{payload}")
           end
-          if msg.code != MESSAGES[:handshake]
+          if msg.code != Code::HANDSHAKE
             raise UnexpectedMessageError.new("expected handshake, get #{msg.code}")
           end
           ProtocolHandshake.rlp_decode(msg.payload)
