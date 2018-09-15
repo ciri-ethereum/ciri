@@ -30,7 +30,7 @@ module Ciri
       # RLPX protocol code
       module Code
         HANDSHAKE = 0x00
-        DISCOVER = 0x01
+        DISCONNECT = 0x01
         PING = 0x02
         PONG = 0x03
       end
