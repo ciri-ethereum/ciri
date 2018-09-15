@@ -87,12 +87,12 @@ module Ciri
       end
 
       def handle(msg)
-        if msg.code == RLPX::MESSAGES[:ping]
+        if msg.code == RLPX::Code::PING
           pong
-        elsif msg.code == RLPX::MESSAGES[:discover]
+        elsif msg.code == RLPX::Code::DISCOVER
           reason = RLP.decode_with_type(msg.payload, Integer)
           raise DiscoverError.new("receive error discovery message, reason: #{reason}")
-        elsif msg.code == RLPX::MESSAGES[:pong]
+        elsif msg.code == RLPX::Code::PONG
           # TODO update peer node
         else
           # send msg to sub protocol
@@ -109,12 +109,12 @@ module Ciri
 
       # response pong to message
       def ping
-        connection.send_data(RLPX::MESSAGES[:ping], BLANK_PAYLOAD)
+        connection.send_data(RLPX::Code::PING, BLANK_PAYLOAD)
       end
 
       # response pong to message
       def pong
-        connection.send_data(RLPX::MESSAGES[:pong], BLANK_PAYLOAD)
+        connection.send_data(RLPX::Code::PONG, BLANK_PAYLOAD)
       end
 
       def find_protocol_io_by_msg_code(code)
