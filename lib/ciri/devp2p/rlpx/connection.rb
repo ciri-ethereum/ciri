@@ -136,9 +136,9 @@ module Ciri
           if msg.size > BASE_PROTOCOL_MAX_MSG_SIZE
             raise MessageOverflowError.new("message size #{msg.size} is too big")
           end
-          if msg.code == Code::DISCOVER
+          if msg.code == Code::DISCONNECT
             payload = RLP.decode(msg.payload)
-            raise UnexpectedMessageError.new("expected handshake, get discovery, reason: #{payload}")
+            raise UnexpectedMessageError.new("expected handshake, get disconnect, reason: #{payload}")
           end
           if msg.code != Code::HANDSHAKE
             raise UnexpectedMessageError.new("expected handshake, get #{msg.code}")

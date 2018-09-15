@@ -34,7 +34,7 @@ module Ciri
     # represent a connected remote node
     class Peer
 
-      class DiscoverError < StandardError
+      class DisconnectError < StandardError
       end
       class UnknownMessageCodeError < StandardError
       end
@@ -89,9 +89,9 @@ module Ciri
       def handle(msg)
         if msg.code == RLPX::Code::PING
           pong
-        elsif msg.code == RLPX::Code::DISCOVER
+        elsif msg.code == RLPX::Code::DISCONNECT
           reason = RLP.decode_with_type(msg.payload, Integer)
-          raise DiscoverError.new("receive error discovery message, reason: #{reason}")
+          raise DisconnectError.new("receive disconnect message, reason: #{reason}")
         elsif msg.code == RLPX::Code::PONG
           # TODO update peer node
         else
