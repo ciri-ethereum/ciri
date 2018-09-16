@@ -58,9 +58,13 @@ module Ciri
         @bootstrap_nodes = bootstrap_nodes
         # TODO consider implement whisper and swarm protocols
         @protocol_manage = protocol_manage
+        # prepare handshake information
+        server_node_id = NodeID.new(@private_key)
+        caps = [Cap.new(name: 'eth', version: 63)]
+        @handshake = ProtocolHandshake.new(version: BASE_PROTOCOL_VERSION, name: @node_name, id: server_node_id.id, caps: caps)
         @tcp_host = tcp_host
         @tcp_port = tcp_port
-        @dial = Dial.new(bootstrap_nodes: bootstrap_nodes, private_key: private_key)
+        @dial = Dial.new(bootstrap_nodes: bootstrap_nodes, private_key: private_key, handshake: @handshake)
         @network_state = NetworkState.new(protocol_manage)
         @scheduler = Scheduler.new(@network_state, @dial)
       end
@@ -69,11 +73,6 @@ module Ciri
       def run
         #TODO start dialer, discovery nodes and connect to them
         #TODO listen udp, for discovery protocol
-
-        # prepare handshake information
-        server_node_id = NodeID.new(@private_key)
-        caps = [Cap.new(name: 'eth', version: 63)]
-        @handshake = ProtocolHandshake.new(version: BASE_PROTOCOL_VERSION, name: @node_name, id: server_node_id.id, caps: caps)
 
         # start server
         Async::Reactor.run do |task|
@@ -99,6 +98,8 @@ module Ciri
       end
 
       class NetworkState
+        include Utils::Logger
+
         attr_reader :peers
 
         def initialize(protocol_manage)
@@ -156,9 +157,12 @@ module Ciri
 
       # Discovery and dial new nodes
       class Dial
-        def initialize(bootstrap_nodes: [], private_key:)
+        include RLPX
+
+        def initialize(bootstrap_nodes: [], private_key:, handshake:)
           @bootstrap_nodes = bootstrap_nodes
           @private_key = private_key
+          @handshake = handshake
           @cache = Set.new
         end
 
@@ -173,10 +177,12 @@ module Ciri
 
         # setup a new connection to node
         def setup_connection(node)
-          socket = Async::IO::TCPSocket.new(node.ip, node.tcp_port)
+          # connect tcp socket
+          # Async::IO::Stream provide synchronize read interface, so we wrap async socket into it.
+          socket = Async::IO::Stream.new(Async::IO::Endpoint.tcp(node.ip, node.tcp_port).connect, block_size: 0)
           c = Connection.new(socket)
           c.encryption_handshake!(private_key: @private_key, remote_node_id: node.node_id)
-          remote_handshake = c.protocol_handshake!(handshake)
+          remote_handshake = c.protocol_handshake!(@handshake)
           [c, remote_handshake]
         end
       end
