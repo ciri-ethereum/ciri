@@ -38,7 +38,7 @@ module Ciri
       class Connection
         extend Forwardable
 
-        def_delegators :@frame_io, :read_msg, :write_msg, :send_data
+        def_delegators :@frame_io, :read_msg, :write_msg, :send_data, :closed?, :close
 
         class Error < RLPX::Error
         end
