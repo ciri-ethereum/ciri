@@ -38,7 +38,7 @@ module Ciri
 
       class FrameIO
         extend Forwardable
-        def_delegators :@io, :closed?, :close
+        def_delegators :@io, :closed?, :close, :flush
 
         # max message size, took 3 byte to store message size, equal to uint24 max size
         MAX_MESSAGE_SIZE = (1 << 24) - 1
@@ -118,6 +118,8 @@ module Ciri
             write_frame("\x00".b * (16 - need_padding))
           end
           finish_write_frame
+          # because we use Async::IO::Stream as IO object, we must invoke flush to make sure data is send
+          flush
         end
 
         def read_msg
