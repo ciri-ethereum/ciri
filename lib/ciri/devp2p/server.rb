@@ -178,8 +178,8 @@ module Ciri
         # setup a new connection to node
         def setup_connection(node)
           # connect tcp socket
-          # Async::IO::Stream provide synchronize read interface, so we wrap async socket into it.
-          socket = Async::IO::Stream.new(Async::IO::Endpoint.tcp(node.ip, node.tcp_port).connect, block_size: 0)
+          # Use Stream to buffer IO operation
+          socket = Async::IO::Stream.new(Async::IO::Endpoint.tcp(node.ip, node.tcp_port).connect)
           c = Connection.new(socket)
           c.encryption_handshake!(private_key: @private_key, remote_node_id: node.node_id)
           remote_handshake = c.protocol_handshake!(@handshake)

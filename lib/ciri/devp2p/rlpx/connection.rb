@@ -89,6 +89,7 @@ module Ciri
                               seal_eip8(auth_ack_msg_plain_text, receiver)
                             end
           @io.write(auth_ack_packet)
+          @io.flush
 
           receiver.extract_secrets(auth_packet, auth_ack_packet, initiator: false)
         end
@@ -99,6 +100,7 @@ module Ciri
           # seal eip8
           auth_packet = seal_eip8(auth_msg_plain_text, initiator)
           @io.write(auth_packet)
+          @io.flush
 
           auth_ack_mgs_binary, auth_ack_packet = read_enc_handshake_msg(ENC_AUTH_RESP_MSG_LENGTH, initiator.private_key)
           auth_ack_msg = AuthRespV4.rlp_decode auth_ack_mgs_binary
