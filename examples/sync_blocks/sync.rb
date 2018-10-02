@@ -54,11 +54,11 @@ eth_protocol = DevP2P::Protocol.new(name: 'eth', version: 63, length: 17)
 protocol_manage = Eth::ProtocolManage.new(protocols: [eth_protocol], chain: chain)
 
 # init node
-bootstrap_nodes = [get_target_node]
+bootnodes = [get_target_node]
 
 # init server
 private_key = Ciri::Key.random
-server = Ciri::DevP2P::Server.new(private_key: private_key, protocol_manage: protocol_manage, bootstrap_nodes: bootstrap_nodes)
+server = Ciri::DevP2P::Server.new(private_key: private_key, protocol_manage: protocol_manage, bootnodes: bootnodes)
 
 puts "start syncing server"
 
