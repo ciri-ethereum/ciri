@@ -48,6 +48,12 @@ module Ciri
         end
       end
 
+      # get id of node in bytes form
+      def id
+        node_id.id
+      end
+
+      # get NodeID object
       def node_id
         @node_id ||= RLPX::NodeID.from_raw_id(@handshake.id)
       end

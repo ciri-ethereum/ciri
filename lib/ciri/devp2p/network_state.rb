@@ -46,7 +46,7 @@ module Ciri
       def new_peer_connected(connection, handshake, task: Async::Task.current)
         protocol_handshake_checks(handshake)
         peer = Peer.new(connection, handshake, @protocol_manage.protocols)
-        @peers[peer.node_id] = peer
+        @peers[peer.id] = peer
         debug "connect to new peer #{peer}"
         # run peer logic
         task.async do
@@ -56,7 +56,7 @@ module Ciri
       end
 
       def remove_peer(peer)
-        @peers.delete(peer.node_id)
+        @peers.delete(peer.id)
         deregister_peer_protocols(peer)
       end
 
