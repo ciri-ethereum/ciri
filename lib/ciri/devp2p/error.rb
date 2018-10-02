@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+
 # Copyright (c) 2018 by Jiang Jinyang <jjyruby@gmail.com>
 # 
 # Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -21,39 +22,14 @@
 # THE SOFTWARE.
 
 
-require 'spec_helper'
-require 'async'
-require 'ciri/eth/protocol_manage'
-require 'ciri/devp2p/server'
-require 'ciri/devp2p/protocol'
-require 'ciri/devp2p/rlpx/node'
-require 'ciri/devp2p/rlpx/protocol_handshake'
-require 'concurrent'
+module Ciri
+  module DevP2P
 
-RSpec.describe Ciri::DevP2P::Server do
-  let(:key) do
-    Ciri::Key.random
-  end
+    class Error < StandardError; end
+    class UselessPeerError < Error; end
+    class DisconnectError < Error; end
+    class UnknownMessageCodeError < Error; end
 
-  let (:eth_protocol) do
-    Ciri::DevP2P::Protocol.new(name: 'eth', version: 63, length: 17)
-  end
-
-  let(:protocol_manage) do
-    Ciri::Eth::ProtocolManage.new(protocols: [eth_protocol], chain: nil)
-  end
-
-  it 'connecting to bootnodes after started' do
-    bootnode = Ciri::DevP2P::RLPX::Node.new(
-        node_id: Ciri::DevP2P::RLPX::NodeID.new(key),
-        ip: "localhost",
-        udp_port: 42,
-        tcp_port: 42,
-    )
-    server = Ciri::DevP2P::Server.new(private_key: key, protocol_manage: protocol_manage, bootnodes: [bootnode], tcp_port: 0)
-    allow(server.dialer).to receive(:dial) {|node| raise StandardError.new("dial error ip:#{node.ip}, tcp_port:#{node.tcp_port}")}
-    expect do
-      server.run
-    end.to raise_error(StandardError, "dial error ip:#{bootnode.ip}, tcp_port:#{bootnode.tcp_port}")
   end
 end
+

@@ -31,6 +31,10 @@ module Ciri
   module Eth
 
     # ProtocolManage
+    # ProtocolManage is a composition of several protocols,
+    # it can auto handling different protocols run upon DevP2P, for example: ETH, Swarm, wisper
+    # Currently, only ETH protocol is implemented.
+    # TODO consider implement whisper and swarm protocols
     class ProtocolManage
 
       MAX_RESPONSE_HEADERS = 10
@@ -83,6 +87,8 @@ module Ciri
         end
       end
 
+      # handling ETH message protocols
+      # https://github.com/ethereum/wiki/wiki/Ethereum-Wire-Protocol
       def handle_msg(peer, msg, task: Async::Task.current)
         case msg.code
         when GetBlockHeaders::CODE
@@ -133,3 +139,4 @@ module Ciri
 
   end
 end
+

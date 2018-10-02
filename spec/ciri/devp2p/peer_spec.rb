@@ -29,78 +29,46 @@ require 'ciri/devp2p/rlpx/protocol_handshake'
 require 'concurrent'
 
 RSpec.describe Ciri::DevP2P::Peer do
-  # mock connection
-  let(:connection) do
-    Class.new do
-      attr_reader :queue
+  let(:eth_protocol) {Ciri::DevP2P::Protocol.new(name: 'eth', version: 63, length: 17)}
+  let(:old_eth_protocol) {Ciri::DevP2P::Protocol.new(name: 'eth', version: 62, length: 8)}
+  let(:hello_protocol) {Ciri::DevP2P::Protocol.new(name: 'hello', version: 1, length: 16)}
+  let(:caps) {[
+    Ciri::DevP2P::RLPX::Cap.new(name: 'eth', version: 63),
+    Ciri::DevP2P::RLPX::Cap.new(name: 'eth', version: 62),
+    Ciri::DevP2P::RLPX::Cap.new(name: 'hello', version: 1),
+  ]}
+  let(:handshake){Ciri::DevP2P::RLPX::ProtocolHandshake.new(version: 4, name: 'test', caps: caps, id: 0)}
+  let(:protocols){[
+    eth_protocol,
+    old_eth_protocol,
+    hello_protocol
+  ]}
 
-      def initialize
-        @queue = []
+  it 'find_protocol_io_by_msg_code' do
+    IO.pipe do |io, io2|
+      peer = Ciri::DevP2P::Peer.new(io, handshake, protocols)
+      base_offset = Ciri::DevP2P::RLPX::BASE_PROTOCOL_LENGTH
+
+      # According to the offset of DEVP2P message code,
+      # we should fetch ETH protocl first which offset range is 1...17
+      (1...17).each do |raw_code|
+        expect(peer.find_protocol_io_by_msg_code(raw_code + base_offset).protocol).to eq eth_protocol
       end
-
-      def read_msg
-        raise StandardError.new("empty queue") if queue.empty?
-        queue.shift
-      end
-
-      def close
-      end
-
-      def closed?
-        @queue.empty?
-      end
-    end.new
-  end
-
-  it 'handle msg by code' do
-    protocol_1 = Ciri::DevP2P::Protocol.new(name: 'eth', version: 63, length: 17)
-    protocol_2 = Ciri::DevP2P::Protocol.new(name: 'eth', version: 62, length: 8)
-    protocol_3 = Ciri::DevP2P::Protocol.new(name: 'hello', version: 1, length: 16)
-
-    caps = [
-        Ciri::DevP2P::RLPX::Cap.new(name: 'eth', version: 63),
-        Ciri::DevP2P::RLPX::Cap.new(name: 'eth', version: 62),
-        Ciri::DevP2P::RLPX::Cap.new(name: 'hello', version: 1),
-    ]
-    handshake = Ciri::DevP2P::RLPX::ProtocolHandshake.new(version: 4, name: 'test', caps: caps, id: 0)
-
-
-    msg_1 = Ciri::DevP2P::RLPX::Message.new(code: 16, payload: "test_1".b, size: 6)
-    msg_2 = Ciri::DevP2P::RLPX::Message.new(code: 32, payload: "test_2".b, size: 6)
-    msg_3 = Ciri::DevP2P::RLPX::Message.new(code: 33, payload: "test_hello".b, size: 10)
-
-    # send messages to connection
-    connection.queue << msg_1
-    connection.queue << msg_2
-    connection.queue << msg_3
-
-    peer = Ciri::DevP2P::Peer.new(connection, handshake, [protocol_1, protocol_2, protocol_3])
-
-    Async::Reactor.run do |task|
-      task.reactor.after(5) do
-        raise StandardError.new("test timeout.. must something be wrong")
-      end
-
-      task.async do
-        # peer read all messages
-        expect {peer.start_handling}.to raise_error(StandardError, "empty queue")
-
-        # 'eth' protocol
-        protocol_io_1 = peer.protocol_ios.find {|p| p.protocol == protocol_1}
-        expect(protocol_io_1.read_msg).to eq msg_1
-        expect(protocol_io_1.read_msg).to eq msg_2
-        expect(protocol_io_1.empty?).to be_truthy
-
-        # old 'eth' protocol
-        protocol_io_2 = peer.protocol_ios.find {|p| p.protocol == protocol_2}
-        expect(protocol_io_2).to be_nil
-
-        # 'hello' protocol
-        protocol_io_3 = peer.protocol_ios.find {|p| p.protocol == protocol_3}
-        expect(protocol_io_3.read_msg).to eq msg_3
-        expect(protocol_io_3.empty?).to be_truthy
-        task.reactor.stop
+      # the hello protocol offset range is 17...17 + 16
+      (17...17 + 16).each do |raw_code|
+        expect(peer.find_protocol_io_by_msg_code(raw_code + base_offset).protocol).to eq hello_protocol
       end
     end
   end
+
+  it 'disconnect a peer' do
+    IO.pipe do |io, io2|
+      peer = Ciri::DevP2P::Peer.new(io, handshake, protocols)
+      expect(peer.disconnected?).to be_falsey
+      peer.disconnect
+      expect(peer.disconnected?).to be_truthy
+    end
+  end
+
 end
+

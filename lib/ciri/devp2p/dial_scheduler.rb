@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+
 # Copyright (c) 2018 by Jiang Jinyang <jjyruby@gmail.com>
 # 
 # Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -21,62 +22,47 @@
 # THE SOFTWARE.
 
 
-require 'ciri/key'
-require 'ciri/utils'
+require 'async'
+require 'ciri/utils/logger'
 
 module Ciri
   module DevP2P
-    module RLPX
 
-      # present node id
-      class NodeID
+    # DialScheduler
+    # establish outoging connections
+    class DialScheduler
+      include Utils::Logger
 
-        class << self
-          def from_raw_id(raw_id)
-            NodeID.new(Ciri::Key.new(raw_public_key: "\x04".b + raw_id))
-          end
-        end
+      MAX_ACTIVE_DIAL_TASKS = 16
 
-        attr_reader :public_key
+      def initialize(network_state, dialer, discovery_service)
+        @network_state = network_state
+        @running_dialing = 0
+        @dialer = dialer
+        @discovery_service = discovery_service
+      end
 
-        alias key public_key
-
-        def initialize(public_key)
-          unless public_key.is_a?(Ciri::Key)
-            raise TypeError.new("expect Ciri::Key but get #{public_key.class}")
-          end
-          @public_key = public_key
-        end
-
-        def id
-          @id ||= key.raw_public_key[1..-1]
-        end
-
-        def == (other)
-          self.class == other.class && id == other.id
-        end
-
-        def to_s
-          Ciri::Utils.to_hex id
+      def run(task: Async::Task.current)
+        schedule_dialing_tasks
+        # search peers every 15 seconds
+        task.reactor.every(15) do
+          schedule_dialing_tasks
         end
       end
 
-      class Node
-        attr_reader :node_id, :ip, :udp_port, :tcp_port, :added_at
+      private
 
-        def initialize(node_id:, ip:, udp_port:, tcp_port:, added_at: nil)
-          @node_id = node_id
-          @ip = ip
-          @udp_port = udp_port
-          @tcp_port = tcp_port
-          @added_at = added_at
+      def schedule_dialing_tasks
+        return unless @running_dialing < MAX_ACTIVE_DIAL_TASKS
+        @running_dialing += 1
+        @discovery_service.find_peers(@running_dialing, @network_state.peers, Time.now).each do |node|
+          conn, handshake = @dialer.dial(node)
+          @network_state.new_peer_connected(conn, handshake)
         end
-
-        def == (other)
-          self.class == other.class && node_id == other.node_id
-        end
+        @running_dialing -= 1
       end
-
     end
+
   end
 end
+
