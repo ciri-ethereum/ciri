@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+
 # Copyright (c) 2018 by Jiang Jinyang <jjyruby@gmail.com>
 # 
 # Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -21,62 +22,54 @@
 # THE SOFTWARE.
 
 
-require 'ciri/key'
-require 'ciri/utils'
+require 'async'
+require 'ciri/utils/logger'
 
 module Ciri
   module DevP2P
-    module RLPX
 
-      # present node id
-      class NodeID
+    # implement the DiscV4 protocol
+    # https://github.com/ethereum/devp2p/blob/master/discv4.md
+    class DiscoveryService
+      include Utils::Logger
 
-        class << self
-          def from_raw_id(raw_id)
-            NodeID.new(Ciri::Key.new(raw_public_key: "\x04".b + raw_id))
-          end
-        end
+      #TODO implement peer_store
+      # we should consider search from peer_store instead connect to bootnodes everytime 
+      def initialize(bootnodes:[],discovery_interval_secs: 15)
+        @bootnodes = bootnodes
+        @discovery_interval_secs = discovery_interval_secs
+        @cache = Set.new
+      end
 
-        attr_reader :public_key
+      # find discovered peers
+      # TODO consider implement this method in peerstore
+      # TODO implement this
+      def find_peers(running_count, peers, now)
+        node = @bootnodes.sample
+        return [] if @cache.include?(node)
+        @cache << node
+        [node]
+      end
 
-        alias key public_key
-
-        def initialize(public_key)
-          unless public_key.is_a?(Ciri::Key)
-            raise TypeError.new("expect Ciri::Key but get #{public_key.class}")
-          end
-          @public_key = public_key
-        end
-
-        def id
-          @id ||= key.raw_public_key[1..-1]
-        end
-
-        def == (other)
-          self.class == other.class && id == other.id
-        end
-
-        def to_s
-          Ciri::Utils.to_hex id
+      def run(task: Async::Task.current)
+        # start listening
+        task.async {start_listen}
+        # search peers every x seconds
+        task.reactor.every(@discovery_interval_secs) do
+          perform_discovery
         end
       end
 
-      class Node
-        attr_reader :node_id, :ip, :udp_port, :tcp_port, :added_at
-
-        def initialize(node_id:, ip:, udp_port:, tcp_port:, added_at: nil)
-          @node_id = node_id
-          @ip = ip
-          @udp_port = udp_port
-          @tcp_port = tcp_port
-          @added_at = added_at
-        end
-
-        def == (other)
-          self.class == other.class && node_id == other.node_id
-        end
+      private
+      def start_listen(task: Async::Task.current)
+        #TODO implement listen server for discovery
       end
 
+      def perform_discovery
+        #TODO implement discovery nodes
+      end
     end
+
   end
 end
+

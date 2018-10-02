@@ -22,7 +22,6 @@
 # THE SOFTWARE.
 
 
-require 'async'
 require 'ciri/utils'
 require 'ciri/rlp'
 require_relative 'rlpx'
@@ -33,11 +32,6 @@ module Ciri
 
     # represent a connected remote node
     class Peer
-
-      class DisconnectError < StandardError
-      end
-      class UnknownMessageCodeError < StandardError
-      end
 
       attr_reader :connection
 
@@ -57,73 +51,31 @@ module Ciri
       def node_id
         @node_id ||= RLPX::NodeID.from_raw_id(@handshake.id)
       end
+      
+      # disconnect peer connections
+      def disconnect
+        @connection.close
+      end
 
-      # read and handle msg
-      def start_handling(ping_interval: 15, task: Async::Task.current)
-        ping_timer = task.reactor.every(ping_interval) do
-          ping
-        end
-
-        message_service = task.async do
-          loop do
-            msg = connection.read_msg
-            msg.received_at = Time.now
-            handle(msg)
-          end
-        end
-
-        message_service.wait
-      rescue StandardError => e
-        # clear up
-        ping_timer.cancel
-        message_service.stop if message_service&.running?
-        connection.close unless connection.closed?
-        # raise error
-        raise
+      def disconnected?
+        @connection.closed?
       end
 
       def protocol_ios
         @protocol_io_hash.values
       end
 
-      def handle(msg)
-        if msg.code == RLPX::Code::PING
-          pong
-        elsif msg.code == RLPX::Code::DISCONNECT
-          reason = RLP.decode_with_type(msg.payload, Integer)
-          raise DisconnectError.new("receive disconnect message, reason: #{reason}")
-        elsif msg.code == RLPX::Code::PONG
-          # TODO update peer node
-        else
-          # send msg to sub protocol
-          if (protocol_io = find_protocol_io_by_msg_code(msg.code)).nil?
-            raise UnknownMessageCodeError.new("can't find protocol with msg code #{msg.code}")
-          end
-          protocol_io.receive_msg msg
+      # find ProtocolIO by raw message code
+      # used by DEVP2P to find stream of sub-protocol
+      def find_protocol_io_by_msg_code(raw_code)
+        @protocol_io_hash.values.find do |protocol_io|
+          offset = protocol_io.offset
+          protocol = protocol_io.protocol
+          raw_code >= offset && raw_code < offset + protocol.length
         end
       end
 
       private
-
-      BLANK_PAYLOAD = RLP.encode([]).freeze
-
-      # response pong to message
-      def ping
-        connection.send_data(RLPX::Code::PING, BLANK_PAYLOAD)
-      end
-
-      # response pong to message
-      def pong
-        connection.send_data(RLPX::Code::PONG, BLANK_PAYLOAD)
-      end
-
-      def find_protocol_io_by_msg_code(code)
-        @protocol_io_hash.values.find do |protocol_io|
-          offset = protocol_io.offset
-          protocol = protocol_io.protocol
-          code >= offset && code < offset + protocol.length
-        end
-      end
 
       # return protocol_io_hash
       # handle multiple sub protocols upon one io
@@ -153,3 +105,4 @@ module Ciri
 
   end
 end
+
