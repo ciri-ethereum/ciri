@@ -27,6 +27,7 @@ require 'ciri/devp2p/rlpx'
 require 'ciri/devp2p/peer'
 require 'ciri/devp2p/protocol'
 require 'ciri/devp2p/protocol_io'
+require 'ciri/devp2p/network_state'
 require 'ciri/pow_chain/chain'
 require 'ciri/db/backend/rocks'
 require 'ciri/key'
@@ -86,21 +87,22 @@ RSpec.describe Ciri::Eth::ProtocolManage do
     caps = [Ciri::DevP2P::RLPX::Cap.new(name: 'eth', version: 63)]
     peer_id = Ciri::Key.random.raw_public_key[1..-1]
     hs = Ciri::DevP2P::RLPX::ProtocolHandshake.new(version: 0, name: 'test', caps: caps, listen_port: 30303, id: peer_id)
-    peer = Ciri::DevP2P::Peer.new(peer_frame_io, hs, protocol_manage.protocols)
-    peer_protocol_io = peer.instance_variable_get(:@protocol_io_hash).values.first
     host_protocol_io = Ciri::DevP2P::ProtocolIO.new(eth_protocol, Ciri::DevP2P::RLPX::BASE_PROTOCOL_LENGTH, host_frame_io)
+    peer_protocol_io  = nil
+    network_state = Ciri::DevP2P::NetworkState.new(protocol_manage)
 
     Async::Reactor.run do |task|
       # start eth protocol
       task.async do
         protocol_manage.run
-        protocol_manage.new_peer(peer, peer_protocol_io)
       end
 
-      # start peer handling loop
+      # setup peer
       task.async do
-        peer.start_handling
-      end
+        network_state.new_peer_connected(peer_frame_io, hs)
+      end.wait
+
+      peer_protocol_io = network_state.peers[peer_id].instance_variable_get(:@protocol_io_hash).values.first
 
       # our test cases
       task.async do |task|

@@ -59,6 +59,9 @@ module Ciri
         def to_s
           Ciri::Utils.to_hex id
         end
+
+        alias to_str to_s
+
       end
 
       class Node
