@@ -48,7 +48,7 @@ module Ciri
       DEFAULT_MAX_PENDING_PEERS = 50
       DEFAULT_DIAL_RATIO = 3
 
-      attr_reader :handshake, :dial_scheduler, :protocol_manage, :dialer
+      attr_reader :handshake, :dial_scheduler, :protocol_manage, :dialer, :local_address
 
       def initialize(private_key:, protocol_manage:, bootnodes: [],
                      node_name: 'Ciri', tcp_host: '127.0.0.1', tcp_port: 33033)
@@ -88,12 +88,16 @@ module Ciri
       # start listen and accept clients
       def start_listen(task: Async::Task.current)
         endpoint = Async::IO::Endpoint.tcp(@tcp_host, @tcp_port)
-        info("start accept connections -- listen on #@tcp_host:#@tcp_port")
-        endpoint.accept do |client|
-          c = Connection.new(client)
-          c.encryption_handshake!(private_key: @private_key)
-          remote_handshake = c.protocol_handshake!(handshake)
-          @network_state.new_peer_connected(c, remote_handshake)
+        endpoint.bind do |socket|
+          @local_address = socket.local_address
+          info("start accept connections -- listen on #@local_address")
+          socket.listen(Socket::SOMAXCONN)
+          socket.accept_each do |client|
+            c = Connection.new(client)
+            c.encryption_handshake!(private_key: @private_key)
+            remote_handshake = c.protocol_handshake!(handshake)
+            @network_state.new_peer_connected(c, remote_handshake)
+          end
         end
       end
 
