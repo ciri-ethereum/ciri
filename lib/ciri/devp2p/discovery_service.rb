@@ -24,6 +24,7 @@
 
 require 'async'
 require 'ciri/utils/logger'
+require_relative 'discovery'
 
 module Ciri
   module DevP2P
@@ -32,19 +33,25 @@ module Ciri
     # https://github.com/ethereum/devp2p/blob/master/discv4.md
     class DiscoveryService
       include Utils::Logger
+      # use message classes defined in Discovery
+      include Discovery
+
+      UDP_MAXLEN=1280
 
       #TODO implement peer_store
       # we should consider search from peer_store instead connect to bootnodes everytime 
-      def initialize(bootnodes:[],discovery_interval_secs: 15)
+      def initialize(host:, port:, bootnodes:[], discovery_interval_secs: 15)
         @bootnodes = bootnodes
         @discovery_interval_secs = discovery_interval_secs
         @cache = Set.new
+        @host = host
+        @port = port
       end
 
-      # find discovered peers
+      # find outgoing peers, should return in order from higher score to lower
       # TODO consider implement this method in peerstore
       # TODO implement this
-      def find_peers(running_count, peers, now)
+      def find_outgoing_peers(running_count, peers, now)
         node = @bootnodes.sample
         return [] if @cache.include?(node)
         @cache << node
@@ -62,7 +69,40 @@ module Ciri
 
       private
       def start_listen(task: Async::Task.current)
-        #TODO implement listen server for discovery
+        endpoint = Async::IO::Endpoint.udp(@host, @port)
+        endpoint.bind do |socket|
+          @local_address = socket.local_address
+          debug "start discovery server on #{@local_address.getnameinfo.join(":")}"
+
+          loop do
+            # read discovery message
+            packet, address = socket.recvfrom(UDP_MAXLEN)
+            handle_request(packet, address)
+          end
+        end
+      end
+
+      # TODO consider implement a denylist to record bad nodes address
+      def handle_request(packet, address)
+        msg = Message.decode_message(packet)
+        case msg.packet_type
+        when Ping::CODE
+          socket.send("discovery", 0, address[3], address[1])
+        when Pong::CODE
+        when FindNode::CODE
+        when Neighbors::CODE
+        else
+          # TODO add address to denylist
+          raise UnknownMessageCodeError.new("can't handle unknown code in discovery protocol, code: #{msg.packet_type}")
+        end
+      rescue StandardError => e
+        #TODO add address to denylist
+        error("discovery error: #{e} from address: #{address}")
+      end
+
+      # find nerly neighbours
+      def find_neighbours(raw_node_id)
+        #TODO implement
       end
 
       def perform_discovery

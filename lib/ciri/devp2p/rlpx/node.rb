@@ -52,15 +52,17 @@ module Ciri
           @id ||= key.raw_public_key[1..-1]
         end
 
+        alias to_bytes id
+
         def == (other)
           self.class == other.class && id == other.id
         end
 
-        def to_s
+        def to_hex
           Ciri::Utils.to_hex id
         end
 
-        alias to_str to_s
+        alias to_s to_hex
 
       end
 

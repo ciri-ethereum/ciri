@@ -51,7 +51,7 @@ module Ciri
       attr_reader :handshake, :dial_scheduler, :protocol_manage, :dialer, :local_address
 
       def initialize(private_key:, protocol_manage:, bootnodes: [],
-                     node_name: 'Ciri', tcp_host: '127.0.0.1', tcp_port: 33033)
+                     node_name: 'Ciri', host: '127.0.0.1', port: 33033)
         @private_key = private_key
         @node_name = node_name
         @protocol_manage = protocol_manage
@@ -59,12 +59,11 @@ module Ciri
         server_node_id = NodeID.new(@private_key)
         caps = [Cap.new(name: 'eth', version: 63)]
         @handshake = ProtocolHandshake.new(version: BASE_PROTOCOL_VERSION, name: @node_name, id: server_node_id.id, caps: caps)
-        @tcp_host = tcp_host
-        @tcp_port = tcp_port
+        @host = host
+        @port = port
         @dialer = Dialer.new(private_key: private_key, handshake: @handshake)
         @network_state = NetworkState.new(protocol_manage)
-        @discovery_service = DiscoveryService.new(bootnodes: bootnodes)
-        @dial_scheduler = DialScheduler.new(@network_state, @dialer, @discovery_service)
+        @bootnodes = bootnodes
       end
 
       # return reactor to wait
@@ -78,8 +77,19 @@ module Ciri
           task.async do
             # start ETH protocol, @protocol_manage is basicly ETH protocol now
             task.async {@protocol_manage.run}
-            task.async {@discovery_service.run}
-            task.async {@dial_scheduler.run}
+            task.async do
+              # Wait for server started listen
+              # we use listened port to start DiscoveryService to allow 0 port
+              task.sleep(0.5) until @local_address
+
+              # start discovery service
+              @discovery_service = DiscoveryService.new(bootnodes: @bootnodes, host: @host, port: @local_address.ip_port)
+              task.async { @discovery_service.run }
+
+              # start dial outgoing nodes
+              @dial_scheduler = DialScheduler.new(@network_state, @dialer, @discovery_service)
+              task.async {@dial_scheduler.run}
+            end
             task.async {start_listen}
           end.wait
         end
@@ -87,10 +97,10 @@ module Ciri
 
       # start listen and accept clients
       def start_listen(task: Async::Task.current)
-        endpoint = Async::IO::Endpoint.tcp(@tcp_host, @tcp_port)
+        endpoint = Async::IO::Endpoint.tcp(@host, @port)
         endpoint.bind do |socket|
           @local_address = socket.local_address
-          info("start accept connections -- listen on #@local_address")
+          info("start accept connections -- listen on #{@local_address.getnameinfo.join(":")}")
           socket.listen(Socket::SOMAXCONN)
           socket.accept_each do |client|
             c = Connection.new(client)
