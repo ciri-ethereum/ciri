@@ -50,7 +50,7 @@ RSpec.describe Ciri::DevP2P::Server do
         udp_port: 42,
         tcp_port: 42,
     )
-    server = Ciri::DevP2P::Server.new(private_key: key, protocol_manage: protocol_manage, bootnodes: [bootnode], tcp_port: 0)
+    server = Ciri::DevP2P::Server.new(private_key: key, protocol_manage: protocol_manage, bootnodes: [bootnode], port: 0)
     allow(server.dialer).to receive(:dial) {|node| raise StandardError.new("dial error ip:#{node.ip}, tcp_port:#{node.tcp_port}")}
     expect do
       server.run
