@@ -46,6 +46,7 @@ module Ciri
         @cache = Set.new
         @host = host
         @port = port
+        @known_peers = KnownPeers.new
       end
 
       # find outgoing peers, should return in order from higher score to lower
@@ -82,15 +83,36 @@ module Ciri
         end
       end
 
+      MESSAGE_EXPIRATION_IN = 10 * 60 # set 10 minutes later to expiration message
+
       # TODO consider implement a denylist to record bad nodes address
-      def handle_request(packet, address)
-        msg = Message.decode_message(packet)
+      def handle_request(raw_packet, address)
+        msg = Message.decode_message(raw_packet)
+        msg.validate
+        if msg.packet.expiration < now
+          trace("ignore expired message, sender: #{msg.sender}, expired_at: #{msg.packet.expiration}")
+          return
+        end
         case msg.packet_type
         when Ping::CODE
-          socket.send("discovery", 0, address[3], address[1])
+          # respond pong
+          pong = Pong.new(to: To.from_inet_addr(address), 
+                          ping_hash: msg.message_hash, 
+                          expiration: Time.now.to_i + MESSAGE_EXPIRATION_IN)
+          pong_msg = Message.pack(pong).encode_message
+          socket.send(pong_msg, 0, address[3], address[1])
         when Pong::CODE
+          # check pong
+          unless @known_peers.has_ping?(msg.sender.to_bytes, msg.packet.ping_hash)
+            # update peer last seen
+            @kown_peers.update_last_seen(msg.sender.to_bytes)
+          end
         when FindNode::CODE
+          #TODO
+          @kown_peers.update_last_seen(msg.sender.to_bytes)
         when Neighbors::CODE
+          #TODO
+          @kown_peers.update_last_seen(msg.sender.to_bytes)
         else
           # TODO add address to denylist
           raise UnknownMessageCodeError.new("can't handle unknown code in discovery protocol, code: #{msg.packet_type}")
@@ -98,6 +120,35 @@ module Ciri
       rescue StandardError => e
         #TODO add address to denylist
         error("discovery error: #{e} from address: #{address}")
+      end
+
+      class KnownPeers
+        PEER_LAST_SEEN_VALID = 12 * 3600 # 12 hour
+        PING_EXPIRATION_IN = 10 * 60 # allow ping
+
+        def initialize
+          #TODO how to recycle memory?
+          @peers = {}
+        end
+        
+        def has_ping?(raw_node_id, ping_hash)
+          #TODO
+        end
+
+        # record ping message
+        def ping_to(raw_node_id, ping_hash, expired_at: Time.now.to_i + PING_EXPIRATION_IN)
+          #TODO
+        end
+
+        def update_last_seen(raw_node_id, at: Time.now.to_i)
+          @peers[raw_node_id] = at
+        end
+
+        def has_seen?(raw_node_id, in: PEER_LAST_SEEN_VALID)
+          seen = (last_seen_at = @peers[raw_node_id]) && (last_seen_at + PEER_LAST_SEEN_VALID > Time.now.to_i)
+          # convert to bool
+          !!seen
+        end
       end
 
       # find nerly neighbours

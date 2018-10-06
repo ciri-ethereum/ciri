@@ -27,6 +27,7 @@ require 'ciri/key'
 require 'ciri/devp2p/rlpx/node'
 require 'ciri/rlp'
 require 'ciri/devp2p/error'
+require 'ipaddr'
 
 module Ciri
   module DevP2P
@@ -70,6 +71,15 @@ module Ciri
           packet_class.rlp_decode @packet_data
         end
 
+        # validate message hash and signature
+        def validate
+          #TODO
+        end
+
+        #TODO encode message to string
+        def encode_message
+        end
+
         class << self
           # return a Message
           def decode_message(raw_bytes)
@@ -79,6 +89,11 @@ module Ciri
             packet_type = raw_bytes[97]
             packet_data = raw_bytes[98..-1]
             Message.new(message_hash: hash, signature: signature, packet_type: packet_type, packet_data: packet_data)
+          end
+
+          # return a new message instance include packet
+          def pack(packet)
+            #TODO
           end
         end
       end
@@ -109,6 +124,10 @@ module Ciri
           recipient_tcp_port: Integer,
         )
         default_data(recipient_tcp_port: 0)
+
+        def self.from_inet_addr(address)
+          new(recipient_ip: IPAddr.new(address[3]).to_i, recipient_udp_port: address[1])
+        end
       end
 
       class Ping
