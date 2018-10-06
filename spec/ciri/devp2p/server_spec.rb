@@ -57,3 +57,4 @@ RSpec.describe Ciri::DevP2P::Server do
     end.to raise_error(StandardError, "dial error ip:#{bootnode.ip}, tcp_port:#{bootnode.tcp_port}")
   end
 end
+
