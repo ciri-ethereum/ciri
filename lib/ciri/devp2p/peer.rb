@@ -55,7 +55,7 @@ module Ciri
 
       # get NodeID object
       def node_id
-        @node_id ||= RLPX::NodeID.from_raw_id(@handshake.id)
+        @node_id ||= NodeID.from_raw_id(@handshake.id)
       end
       
       # disconnect peer connections

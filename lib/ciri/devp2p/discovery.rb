@@ -24,9 +24,9 @@
 
 require 'ciri/utils/logger'
 require 'ciri/key'
-require 'ciri/devp2p/rlpx/node'
 require 'ciri/rlp'
-require 'ciri/devp2p/error'
+require 'ciri/devp2p/node'
+require 'ciri/devp2p/errors'
 require 'ipaddr'
 
 module Ciri
@@ -36,7 +36,8 @@ module Ciri
     # https://github.com/ethereum/devp2p/blob/master/discv4.md
     module Discovery
       class Message
-        include RLPX
+
+        MAX_LEN=1280
 
         attr_reader :message_hash, :packet_type, :packet_data
 
@@ -49,8 +50,11 @@ module Ciri
 
         # compute key and return NodeID
         def sender
-          public_key = Key.ecdsa_recover(@packet_type + @packet_data, @signature)
-          NodeID.new(public_key)
+          @sender ||= begin
+                        encoded_packet_type = Utils.big_endian_encode(packet_type)
+                        public_key = Key.ecdsa_recover(Utils.keccak(encoded_packet_type + packet_data), @signature)
+                        NodeID.new(public_key)
+                      end
         end
 
         def packet
@@ -73,11 +77,22 @@ module Ciri
 
         # validate message hash and signature
         def validate
-          #TODO
+          raise InvalidMessageError.new("mismatch hash") if message_hash != Utils.keccak(signature + packet_type + packet_data)
+          begin
+            sender
+          rescue StandardError => e
+            raise InvalidMessageError.new("recover sender error: #{e}")
+          end
         end
 
-        #TODO encode message to string
+        # encode message to string
         def encode_message
+          buf = String.new
+          buf << message_hash
+          buf << @signature
+          buf << packet_type
+          buf << packet_data
+          buf
         end
 
         class << self
@@ -86,14 +101,22 @@ module Ciri
             hash = raw_bytes[0...32]
             # signature is 65 length r,s,v
             signature = raw_bytes[32...97]
-            packet_type = raw_bytes[97]
+            packet_type = Utils.big_endian_decode raw_bytes[97]
             packet_data = raw_bytes[98..-1]
             Message.new(message_hash: hash, signature: signature, packet_type: packet_type, packet_data: packet_data)
           end
 
           # return a new message instance include packet
-          def pack(packet)
-            #TODO
+          def pack(packet, private_key:)
+            packet_data = Ciri::RLP.encode(packet)
+            packet_type = packet.class.code
+            encoded_packet_type = Utils.big_endian_encode(packet_type)
+            signature = private_key.ecdsa_signature(Utils.keccak(encoded_packet_type + packet_data)).to_s
+            hash = Utils.keccak(signature + encoded_packet_type + packet_data)
+            if (msg_size=hash.size + signature.size + encoded_packet_type.size + packet_data.size) > MAX_LEN
+              raise InvalidMessageError.new("failed to pack, message size is too long, size: #{msg_size}, max_len: #{MAX_LEN}")
+            end
+            Message.new(message_hash: hash, signature: signature, packet_type: packet_type, packet_data: packet_data)
           end
         end
       end
@@ -130,7 +153,14 @@ module Ciri
         end
       end
 
-      class Ping
+      # abstract class
+      class Packet
+        def self.code
+          self::CODE
+        end
+      end
+
+      class Ping < Packet
         include Ciri::RLP::Serializable
 
         CODE = 0x01
@@ -145,7 +175,7 @@ module Ciri
         default_data(version: 0)
       end
 
-      class Pong
+      class Pong < Packet
         include Ciri::RLP::Serializable
 
         CODE = 0x02
@@ -157,7 +187,7 @@ module Ciri
         )
       end
 
-      class FindNode
+      class FindNode < Packet
         include Ciri::RLP::Serializable
 
         CODE = 0x03
@@ -168,7 +198,7 @@ module Ciri
         )
       end
 
-      class Neighbors
+      class Neighbors < Packet
         include Ciri::RLP::Serializable
 
         CODE = 0x04

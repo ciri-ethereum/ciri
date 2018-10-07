@@ -26,7 +26,7 @@ require 'async'
 require 'ciri/eth/protocol_manage'
 require 'ciri/devp2p/server'
 require 'ciri/devp2p/protocol'
-require 'ciri/devp2p/rlpx/node'
+require 'ciri/devp2p/node'
 require 'ciri/devp2p/rlpx/protocol_handshake'
 require 'concurrent'
 
@@ -44,8 +44,8 @@ RSpec.describe Ciri::DevP2P::Server do
   end
 
   it 'connecting to bootnodes after started' do
-    bootnode = Ciri::DevP2P::RLPX::Node.new(
-        node_id: Ciri::DevP2P::RLPX::NodeID.new(key),
+    bootnode = Ciri::DevP2P::Node.new(
+        node_id: Ciri::DevP2P::NodeID.new(key),
         ip: "localhost",
         udp_port: 42,
         tcp_port: 42,

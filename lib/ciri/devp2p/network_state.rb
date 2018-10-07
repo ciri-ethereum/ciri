@@ -25,7 +25,7 @@
 require 'async'
 require 'ciri/utils/logger'
 require_relative 'peer'
-require_relative 'error'
+require_relative 'errors'
 
 module Ciri
   module DevP2P

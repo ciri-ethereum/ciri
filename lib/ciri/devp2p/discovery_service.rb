@@ -36,8 +36,6 @@ module Ciri
       # use message classes defined in Discovery
       include Discovery
 
-      UDP_MAXLEN=1280
-
       #TODO implement peer_store
       # we should consider search from peer_store instead connect to bootnodes everytime 
       def initialize(host:, port:, bootnodes:[], discovery_interval_secs: 15)
@@ -77,7 +75,7 @@ module Ciri
 
           loop do
             # read discovery message
-            packet, address = socket.recvfrom(UDP_MAXLEN)
+            packet, address = socket.recvfrom(Discovery::Message::MAX_LEN)
             handle_request(packet, address)
           end
         end

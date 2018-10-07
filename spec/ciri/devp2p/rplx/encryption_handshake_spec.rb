@@ -29,8 +29,8 @@ RSpec.describe Ciri::DevP2P::RLPX::EncryptionHandshake do
     pk1 = Ciri::Key.random
     pk2 = Ciri::Key.random
 
-    initiator_node_id = Ciri::DevP2P::RLPX::NodeID.new pk1
-    receive_node_id = Ciri::DevP2P::RLPX::NodeID.new pk2
+    initiator_node_id = Ciri::DevP2P::NodeID.new pk1
+    receive_node_id = Ciri::DevP2P::NodeID.new pk2
 
     initiator = Ciri::DevP2P::RLPX::EncryptionHandshake.new(private_key: pk1, remote_id: receive_node_id)
     receiver = Ciri::DevP2P::RLPX::EncryptionHandshake.new(private_key: pk2, remote_id: initiator_node_id)
