@@ -1,14 +1,14 @@
 require 'ciri/utils'
-require 'ciri/db/backend/rocks'
 require 'ciri/key'
+require 'ciri/rlp'
+require 'ciri/eth'
+require 'ciri/evm'
 require 'ciri/devp2p/server'
 require 'ciri/devp2p/rlpx'
 require 'ciri/devp2p/protocol'
-require 'ciri/rlp'
-require 'ciri/eth'
 require 'ciri/pow_chain/chain'
-require 'ciri/evm'
 require 'ciri/forks/frontier'
+require 'ciri/db/backend/rocks'
 require 'logger'
 require 'yaml'
 require 'pp'
@@ -36,8 +36,8 @@ def get_target_node
   end
   id = ARGV[0]
   raw_public_key = "\x04".b + [id].pack('H*')
-  node_id = Ciri::DevP2P::RLPX::NodeID.new Ciri::Key.new(raw_public_key: raw_public_key)
-  Ciri::DevP2P::RLPX::Node.new(node_id: node_id, ip: 'localhost', udp_port: 30303, tcp_port: 30303)
+  node_id = Ciri::DevP2P::NodeID.new Ciri::Key.new(raw_public_key: raw_public_key)
+  Ciri::DevP2P::Node.new(node_id: node_id, ip: 'localhost', udp_port: 30303, tcp_port: 30303)
 end
 
 # init genesis block

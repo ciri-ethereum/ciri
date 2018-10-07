@@ -29,6 +29,7 @@ module Ciri
     class UselessPeerError < Error; end
     class DisconnectError < Error; end
     class UnknownMessageCodeError < Error; end
+    class InvalidMessageError < Error; end
 
   end
 end

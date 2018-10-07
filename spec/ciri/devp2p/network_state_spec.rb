@@ -23,7 +23,7 @@
 
 require 'spec_helper'
 require 'async'
-require 'ciri/devp2p/error'
+require 'ciri/devp2p/errors'
 require 'ciri/devp2p/network_state'
 require 'ciri/devp2p/protocol'
 require 'ciri/devp2p/rlpx/protocol_handshake'

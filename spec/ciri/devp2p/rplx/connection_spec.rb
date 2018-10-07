@@ -22,6 +22,7 @@
 
 
 require 'socket'
+require 'ciri/devp2p/node'
 require 'ciri/devp2p/rlpx/connection'
 require 'ciri/devp2p/rlpx/protocol_handshake'
 
@@ -34,8 +35,8 @@ RSpec.describe Ciri::DevP2P::RLPX::Connection do
 
     s1, s2 = UNIXSocket.pair
 
-    initiator_node_id = Ciri::DevP2P::RLPX::NodeID.new pk1
-    receive_node_id = Ciri::DevP2P::RLPX::NodeID.new pk2
+    initiator_node_id = Ciri::DevP2P::NodeID.new pk1
+    receive_node_id = Ciri::DevP2P::NodeID.new pk2
 
     initiator = Ciri::DevP2P::RLPX::Connection.new(s1)
     receiver = Ciri::DevP2P::RLPX::Connection.new(s2)

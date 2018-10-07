@@ -25,7 +25,7 @@ require 'stringio'
 require 'forwardable'
 require 'ciri/core_ext'
 require 'ciri/rlp/serializable'
-require_relative 'error'
+require_relative 'errors'
 require_relative 'message'
 
 require 'snappy'

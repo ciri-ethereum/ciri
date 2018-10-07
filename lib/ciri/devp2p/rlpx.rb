@@ -21,9 +21,9 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
-require_relative 'rlpx/node'
 require_relative 'rlpx/message'
 require_relative 'rlpx/frame_io'
 require_relative 'rlpx/protocol_messages'
 require_relative 'rlpx/protocol_handshake'
 require_relative 'rlpx/encryption_handshake'
+
