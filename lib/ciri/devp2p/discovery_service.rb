@@ -22,6 +22,11 @@
 # THE SOFTWARE.
 
 
+# TODO Items:
+# [ ] implement peerstore(may use sqlite)
+# [ ] implement a simple scoring system
+# [ ] implement k-buckets algorithm
+# [ ] testing
 require 'async'
 require 'ciri/utils/logger'
 require_relative 'discovery'
@@ -36,20 +41,19 @@ module Ciri
       # use message classes defined in Discovery
       include Discovery
 
-      #TODO implement peer_store
       # we should consider search from peer_store instead connect to bootnodes everytime 
-      def initialize(host:, port:, bootnodes:[], discovery_interval_secs: 15)
+      def initialize(host:, udp_port:, tcp_port:, bootnodes:[], discovery_interval_secs: 15)
         @bootnodes = bootnodes
         @discovery_interval_secs = discovery_interval_secs
         @cache = Set.new
         @host = host
-        @port = port
+        @udp_port = udp_port
+        @tcp_port = tcp_port
         @known_peers = KnownPeers.new
       end
 
       # find outgoing peers, should return in order from higher score to lower
       # TODO consider implement this method in peerstore
-      # TODO implement this
       def find_outgoing_peers(running_count, peers, now)
         node = @bootnodes.sample
         return [] if @cache.include?(node)
@@ -68,7 +72,7 @@ module Ciri
 
       private
       def start_listen(task: Async::Task.current)
-        endpoint = Async::IO::Endpoint.udp(@host, @port)
+        endpoint = Async::IO::Endpoint.udp(@host, @udp_port)
         endpoint.bind do |socket|
           @local_address = socket.local_address
           debug "start discovery server on #{@local_address.getnameinfo.join(":")}"
@@ -98,18 +102,28 @@ module Ciri
                           ping_hash: msg.message_hash, 
                           expiration: Time.now.to_i + MESSAGE_EXPIRATION_IN)
           pong_msg = Message.pack(pong).encode_message
-          socket.send(pong_msg, 0, address[3], address[1])
+          send_msg(pong_msg, address[3], address[1])
         when Pong::CODE
           # check pong
-          unless @known_peers.has_ping?(msg.sender.to_bytes, msg.packet.ping_hash)
+          if @known_peers.has_ping?(msg.sender.to_bytes, msg.packet.ping_hash)
             # update peer last seen
             @kown_peers.update_last_seen(msg.sender.to_bytes)
+          else
+            # TODO blacklist this peer
           end
         when FindNode::CODE
-          #TODO
+          unless @known_peers.has_seen?(msg.sender.to_bytes)
+            send_ping(msg.sender.to_bytes,address[3], address[1])
+            return
+          end
+          # TODO response
           @kown_peers.update_last_seen(msg.sender.to_bytes)
         when Neighbors::CODE
-          #TODO
+          unless @known_peers.has_seen?(msg.sender.to_bytes)
+            send_ping(msg.sender.to_bytes,address[3], address[1])
+            return
+          end
+          #TODO find neighbours and response
           @kown_peers.update_last_seen(msg.sender.to_bytes)
         else
           # TODO add address to denylist
@@ -120,6 +134,25 @@ module Ciri
         error("discovery error: #{e} from address: #{address}")
       end
 
+      # send discover ping to peer
+      def send_ping(target_node_id, host, port)
+        ping = Ping.new(to: To.from_host_port(host, port), 
+                        from: From.new(
+                          sender_ip: IPAddr.new(@host).to_i,
+                          sender_udp_port: @udp_port,
+                          sender_tcp_port: @tcp_port),
+                          expiration: Time.now.to_i + MESSAGE_EXPIRATION_IN)
+        ping_msg = Message.pack(ping).encode_message
+        send_msg(ping_msg, host, port)
+        @known_peers.update_ping(target_node_id, ping_msg.message_hash)
+      end
+
+      def send_msg(msg, host, port)
+        socket = Async::IO::UDPSocket.new
+        socket.send(msg, 0, host, port)
+      end
+
+      # TODO consider use sqlite to implement this
       class KnownPeers
         PEER_LAST_SEEN_VALID = 12 * 3600 # 12 hour
         PING_EXPIRATION_IN = 10 * 60 # allow ping
@@ -128,13 +161,13 @@ module Ciri
           #TODO how to recycle memory?
           @peers = {}
         end
-        
+
         def has_ping?(raw_node_id, ping_hash)
           #TODO
         end
 
         # record ping message
-        def ping_to(raw_node_id, ping_hash, expired_at: Time.now.to_i + PING_EXPIRATION_IN)
+        def update_ping(raw_node_id, ping_hash, expired_at: Time.now.to_i + PING_EXPIRATION_IN)
           #TODO
         end
 
@@ -151,11 +184,12 @@ module Ciri
 
       # find nerly neighbours
       def find_neighbours(raw_node_id)
-        #TODO implement
+        #TODO implement k-buckets
       end
 
       def perform_discovery
         #TODO implement discovery nodes
+        # randomly pick high scoring peers and try discovery through them
       end
     end
 
