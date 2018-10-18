@@ -33,7 +33,7 @@ require 'snappy'
 using Ciri::CoreExt
 
 module Ciri
-  module DevP2P
+  module P2P
     module RLPX
 
       class FrameIO

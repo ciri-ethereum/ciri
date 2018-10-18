@@ -21,24 +21,24 @@
 # THE SOFTWARE.
 
 
-require 'ciri/devp2p/rlpx'
+require 'ciri/p2p/rlpx'
 require 'ciri/key'
 
-RSpec.describe Ciri::DevP2P::RLPX::EncryptionHandshake do
+RSpec.describe Ciri::P2P::RLPX::EncryptionHandshake do
   it 'do handshake' do
     pk1 = Ciri::Key.random
     pk2 = Ciri::Key.random
 
-    initiator_node_id = Ciri::DevP2P::NodeID.new pk1
-    receive_node_id = Ciri::DevP2P::NodeID.new pk2
+    initiator_node_id = Ciri::P2P::NodeID.new pk1
+    receive_node_id = Ciri::P2P::NodeID.new pk2
 
-    initiator = Ciri::DevP2P::RLPX::EncryptionHandshake.new(private_key: pk1, remote_id: receive_node_id)
-    receiver = Ciri::DevP2P::RLPX::EncryptionHandshake.new(private_key: pk2, remote_id: initiator_node_id)
+    initiator = Ciri::P2P::RLPX::EncryptionHandshake.new(private_key: pk1, remote_id: receive_node_id)
+    receiver = Ciri::P2P::RLPX::EncryptionHandshake.new(private_key: pk2, remote_id: initiator_node_id)
 
     # initiator send auth-msg
     initiator_auth_msg = initiator.auth_msg
     auth_packet = initiator_auth_msg.rlp_encode
-    auth_msg = Ciri::DevP2P::RLPX::AuthMsgV4.rlp_decode(auth_packet)
+    auth_msg = Ciri::P2P::RLPX::AuthMsgV4.rlp_decode(auth_packet)
 
     # check serialize/deserialize
     expect(auth_msg).to eq initiator_auth_msg

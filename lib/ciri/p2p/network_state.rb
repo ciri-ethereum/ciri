@@ -28,7 +28,7 @@ require_relative 'peer'
 require_relative 'errors'
 
 module Ciri
-  module DevP2P
+  module P2P
 
     # NetworkState
     # maintaining current connected peers

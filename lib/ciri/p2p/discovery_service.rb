@@ -32,7 +32,7 @@ require 'ciri/utils/logger'
 require_relative 'discovery'
 
 module Ciri
-  module DevP2P
+  module P2P
 
     # implement the DiscV4 protocol
     # https://github.com/ethereum/devp2p/blob/master/discv4.md

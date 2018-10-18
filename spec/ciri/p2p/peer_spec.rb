@@ -23,21 +23,21 @@
 
 require 'spec_helper'
 require 'async'
-require 'ciri/devp2p/peer'
-require 'ciri/devp2p/protocol'
-require 'ciri/devp2p/rlpx/protocol_handshake'
+require 'ciri/p2p/peer'
+require 'ciri/p2p/protocol'
+require 'ciri/p2p/rlpx/protocol_handshake'
 require 'concurrent'
 
-RSpec.describe Ciri::DevP2P::Peer do
-  let(:eth_protocol) {Ciri::DevP2P::Protocol.new(name: 'eth', version: 63, length: 17)}
-  let(:old_eth_protocol) {Ciri::DevP2P::Protocol.new(name: 'eth', version: 62, length: 8)}
-  let(:hello_protocol) {Ciri::DevP2P::Protocol.new(name: 'hello', version: 1, length: 16)}
+RSpec.describe Ciri::P2P::Peer do
+  let(:eth_protocol) {Ciri::P2P::Protocol.new(name: 'eth', version: 63, length: 17)}
+  let(:old_eth_protocol) {Ciri::P2P::Protocol.new(name: 'eth', version: 62, length: 8)}
+  let(:hello_protocol) {Ciri::P2P::Protocol.new(name: 'hello', version: 1, length: 16)}
   let(:caps) {[
-    Ciri::DevP2P::RLPX::Cap.new(name: 'eth', version: 63),
-    Ciri::DevP2P::RLPX::Cap.new(name: 'eth', version: 62),
-    Ciri::DevP2P::RLPX::Cap.new(name: 'hello', version: 1),
+    Ciri::P2P::RLPX::Cap.new(name: 'eth', version: 63),
+    Ciri::P2P::RLPX::Cap.new(name: 'eth', version: 62),
+    Ciri::P2P::RLPX::Cap.new(name: 'hello', version: 1),
   ]}
-  let(:handshake){Ciri::DevP2P::RLPX::ProtocolHandshake.new(version: 4, name: 'test', caps: caps, id: 0)}
+  let(:handshake){Ciri::P2P::RLPX::ProtocolHandshake.new(version: 4, name: 'test', caps: caps, id: 0)}
   let(:protocols){[
     eth_protocol,
     old_eth_protocol,
@@ -46,8 +46,8 @@ RSpec.describe Ciri::DevP2P::Peer do
 
   it 'find_protocol_io_by_msg_code' do
     IO.pipe do |io, io2|
-      peer = Ciri::DevP2P::Peer.new(io, handshake, protocols)
-      base_offset = Ciri::DevP2P::RLPX::BASE_PROTOCOL_LENGTH
+      peer = Ciri::P2P::Peer.new(io, handshake, protocols)
+      base_offset = Ciri::P2P::RLPX::BASE_PROTOCOL_LENGTH
 
       # According to the offset of DEVP2P message code,
       # we should fetch ETH protocl first which offset range is 1...17
@@ -63,7 +63,7 @@ RSpec.describe Ciri::DevP2P::Peer do
 
   it 'disconnect a peer' do
     IO.pipe do |io, io2|
-      peer = Ciri::DevP2P::Peer.new(io, handshake, protocols)
+      peer = Ciri::P2P::Peer.new(io, handshake, protocols)
       expect(peer.disconnected?).to be_falsey
       peer.disconnect
       expect(peer.disconnected?).to be_truthy

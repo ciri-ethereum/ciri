@@ -1,6 +1,5 @@
 # frozen_string_literal: true
 
-
 # Copyright (c) 2018 by Jiang Jinyang <jjyruby@gmail.com>
 # 
 # Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -22,47 +21,14 @@
 # THE SOFTWARE.
 
 
-require 'async'
-require 'ciri/utils/logger'
-
 module Ciri
-  module DevP2P
+  module P2P
+    module RLPX
 
-    # DialScheduler
-    # establish outoging connections
-    class DialScheduler
-      include Utils::Logger
-
-      MAX_ACTIVE_DIAL_TASKS = 16
-
-      def initialize(network_state, dialer, discovery_service)
-        @network_state = network_state
-        @running_dialing = 0
-        @dialer = dialer
-        @discovery_service = discovery_service
+      # RLPX basic error
+      class Error < StandardError
       end
 
-      def run(task: Async::Task.current)
-        schedule_dialing_tasks
-        # search peers every 15 seconds
-        task.reactor.every(15) do
-          schedule_dialing_tasks
-        end
-      end
-
-      private
-
-      def schedule_dialing_tasks
-        return unless @running_dialing < MAX_ACTIVE_DIAL_TASKS
-        @running_dialing += 1
-        @discovery_service.find_outgoing_peers(@running_dialing, @network_state.peers, Time.now).each do |node|
-          conn, handshake = @dialer.dial(node)
-          @network_state.new_peer_connected(conn, handshake)
-        end
-        @running_dialing -= 1
-      end
     end
-
   end
 end
-

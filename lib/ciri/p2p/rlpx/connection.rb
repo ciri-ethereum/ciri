@@ -30,7 +30,7 @@ require_relative 'errors'
 require_relative 'encryption_handshake'
 
 module Ciri
-  module DevP2P
+  module P2P
     module RLPX
 
       # RLPX::Connection implement RLPX protocol operations

@@ -21,59 +21,50 @@
 # THE SOFTWARE.
 
 
-require 'forwardable'
-require 'async/queue'
-require 'async/semaphore'
-require_relative 'rlpx/message'
+require 'ciri/key'
+require 'ciri/rlp/serializable'
 
 module Ciri
-  module DevP2P
-
-    # send/read sub protocol msg
-    class ProtocolIO
-
-      class Error < StandardError
-      end
-      class InvalidMessageCode < Error
-      end
-
-      attr_reader :protocol, :offset
-
-      def initialize(protocol, offset, frame_io)
-        @protocol = protocol
-        @offset = offset
-        @frame_io = frame_io
-        @msg_queue = Async::Queue.new
-        @semaphore = Async::Semaphore.new
+  module P2P
+    module RLPX
+      # RLPX protocol code
+      module Code
+        HANDSHAKE = 0x00
+        DISCONNECT = 0x01
+        PING = 0x02
+        PONG = 0x03
       end
 
-      def send_data(code, data)
-        @semaphore.acquire do
-          msg = RLPX::Message.new(code: code, size: data.size, payload: data)
-          write_msg(msg)
-        end
+      BASE_PROTOCOL_VERSION = 5
+      BASE_PROTOCOL_LENGTH = 16
+      BASE_PROTOCOL_MAX_MSG_SIZE = 2 * 1024
+      SNAPPY_PROTOCOL_VERSION = 5
+
+      ### messages
+
+      class AuthMsgV4
+        include Ciri::RLP::Serializable
+
+        schema(
+            signature: RLP::Bytes,
+            initiator_pubkey: RLP::Bytes,
+            nonce: RLP::Bytes,
+            version: Integer
+        )
+
+        # keep this field let client known how to format(plain or eip8)
+        attr_accessor :got_plain
       end
 
-      def write_msg(msg)
-        raise InvalidMessageCode, "code #{msg.code} must less than length #{protocol.length}" if msg.code > protocol.length
-        msg.code += offset
-        @frame_io.write_msg(msg)
-      end
+      class AuthRespV4
+        include Ciri::RLP::Serializable
 
-      def read_msg
-        msg = @msg_queue.dequeue
-        msg.code -= offset
-        msg
-      end
-
-      def receive_msg(msg)
-        @msg_queue.enqueue msg
-      end
-
-      def empty?
-        @msg_queue.empty?
+        schema(
+            random_pubkey: RLP::Bytes,
+            nonce: RLP::Bytes,
+            version: Integer
+        )
       end
     end
-
   end
 end
