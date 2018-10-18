@@ -1,6 +1,5 @@
 # frozen_string_literal: true
 
-
 # Copyright (c) 2018 by Jiang Jinyang <jjyruby@gmail.com>
 # 
 # Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -22,32 +21,29 @@
 # THE SOFTWARE.
 
 
-require 'async/io'
-require 'async/io/stream'
-require_relative 'rlpx/connection'
-
 module Ciri
-  module DevP2P
-    # Discovery and dial new nodes
-    class Dialer
-      include RLPX
+  module P2P
+    module RLPX
 
-      def initialize(private_key:, handshake:)
-        @private_key = private_key
-        @handshake = handshake
+      # class used to store rplx protocol secrets
+      class Secrets
+        attr_reader :remote_id, :aes, :mac
+        attr_accessor :egress_mac, :ingress_mac
+
+        def initialize(remote_id: nil, aes:, mac:)
+          @remote_id = remote_id
+          @aes = aes
+          @mac = mac
+        end
+
+        def ==(other)
+          self.class == other.class &&
+            remote_id == other.remote &&
+            aes == other.aes &&
+            mac == other.mac
+        end
       end
 
-      # setup a new connection to node
-      def dial(node)
-        # connect tcp socket
-        # Use Stream to buffer IO operation
-        socket = Async::IO::Stream.new(Async::IO::Endpoint.tcp(node.ip, node.tcp_port).connect)
-        c = Connection.new(socket)
-        c.encryption_handshake!(private_key: @private_key, remote_node_id: node.node_id)
-        remote_handshake = c.protocol_handshake!(@handshake)
-        [c, remote_handshake]
-      end
     end
   end
 end
-

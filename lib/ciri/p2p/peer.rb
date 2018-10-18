@@ -28,7 +28,7 @@ require_relative 'rlpx'
 require_relative 'protocol_io'
 
 module Ciri
-  module DevP2P
+  module P2P
 
     # represent a connected remote node
     class Peer

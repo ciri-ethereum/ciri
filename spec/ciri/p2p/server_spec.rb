@@ -24,19 +24,19 @@
 require 'spec_helper'
 require 'async'
 require 'ciri/eth/protocol_manage'
-require 'ciri/devp2p/server'
-require 'ciri/devp2p/protocol'
-require 'ciri/devp2p/node'
-require 'ciri/devp2p/rlpx/protocol_handshake'
+require 'ciri/p2p/server'
+require 'ciri/p2p/protocol'
+require 'ciri/p2p/node'
+require 'ciri/p2p/rlpx/protocol_handshake'
 require 'concurrent'
 
-RSpec.describe Ciri::DevP2P::Server do
+RSpec.describe Ciri::P2P::Server do
   let(:key) do
     Ciri::Key.random
   end
 
   let (:eth_protocol) do
-    Ciri::DevP2P::Protocol.new(name: 'eth', version: 63, length: 17)
+    Ciri::P2P::Protocol.new(name: 'eth', version: 63, length: 17)
   end
 
   let(:protocol_manage) do
@@ -44,13 +44,13 @@ RSpec.describe Ciri::DevP2P::Server do
   end
 
   it 'connecting to bootnodes after started' do
-    bootnode = Ciri::DevP2P::Node.new(
-        node_id: Ciri::DevP2P::NodeID.new(key),
+    bootnode = Ciri::P2P::Node.new(
+        node_id: Ciri::P2P::NodeID.new(key),
         ip: "localhost",
         udp_port: 42,
         tcp_port: 42,
     )
-    server = Ciri::DevP2P::Server.new(private_key: key, protocol_manage: protocol_manage, bootnodes: [bootnode], port: 0)
+    server = Ciri::P2P::Server.new(private_key: key, protocol_manage: protocol_manage, bootnodes: [bootnode], port: 0)
     allow(server.dialer).to receive(:dial) {|node| raise StandardError.new("dial error ip:#{node.ip}, tcp_port:#{node.tcp_port}")}
     expect do
       server.run

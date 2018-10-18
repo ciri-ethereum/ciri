@@ -22,11 +22,11 @@
 
 
 require 'socket'
-require 'ciri/devp2p/node'
-require 'ciri/devp2p/rlpx/connection'
-require 'ciri/devp2p/rlpx/protocol_handshake'
+require 'ciri/p2p/node'
+require 'ciri/p2p/rlpx/connection'
+require 'ciri/p2p/rlpx/protocol_handshake'
 
-RSpec.describe Ciri::DevP2P::RLPX::Connection do
+RSpec.describe Ciri::P2P::RLPX::Connection do
 
   it 'handshake' do
 
@@ -35,22 +35,22 @@ RSpec.describe Ciri::DevP2P::RLPX::Connection do
 
     s1, s2 = UNIXSocket.pair
 
-    initiator_node_id = Ciri::DevP2P::NodeID.new pk1
-    receive_node_id = Ciri::DevP2P::NodeID.new pk2
+    initiator_node_id = Ciri::P2P::NodeID.new pk1
+    receive_node_id = Ciri::P2P::NodeID.new pk2
 
-    initiator = Ciri::DevP2P::RLPX::Connection.new(s1)
-    receiver = Ciri::DevP2P::RLPX::Connection.new(s2)
+    initiator = Ciri::P2P::RLPX::Connection.new(s1)
+    receiver = Ciri::P2P::RLPX::Connection.new(s2)
 
-    initiator_protocol_handshake = Ciri::DevP2P::RLPX::ProtocolHandshake.new(
+    initiator_protocol_handshake = Ciri::P2P::RLPX::ProtocolHandshake.new(
       version: 1,
       name: "initiator",
-      caps: [Ciri::DevP2P::RLPX::Cap.new(name: 'hello', version: 1)],
+      caps: [Ciri::P2P::RLPX::Cap.new(name: 'hello', version: 1)],
       listen_port: 33333,
       id: "ciri-initiator")
-    receiver_protocol_handshake = Ciri::DevP2P::RLPX::ProtocolHandshake.new(
+    receiver_protocol_handshake = Ciri::P2P::RLPX::ProtocolHandshake.new(
       version: 1,
       name: "receiver",
-      caps: [Ciri::DevP2P::RLPX::Cap.new(name: 'nihao', version: 2)],
+      caps: [Ciri::P2P::RLPX::Cap.new(name: 'nihao', version: 2)],
       listen_port: 22222,
       id: "ciri-receiver")
 

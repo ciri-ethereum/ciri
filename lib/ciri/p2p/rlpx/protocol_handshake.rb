@@ -1,6 +1,5 @@
 # frozen_string_literal: true
 
-
 # Copyright (c) 2018 by Jiang Jinyang <jjyruby@gmail.com>
 # 
 # Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -22,21 +21,35 @@
 # THE SOFTWARE.
 
 
+require 'ciri/rlp/serializable'
+
 module Ciri
-  module DevP2P
+  module P2P
+    module RLPX
 
-    # protocol represent DevP2P sub protocols
-    class Protocol
+      class Cap
+        include Ciri::RLP::Serializable
 
-      attr_reader :name, :version, :length
-      attr_accessor :node_info, :peer_info
-
-      def initialize(name:, version:, length:)
-        @name = name
-        @version = version
-        @length = length
+        schema(
+            name: RLP::Bytes,
+            version: Integer
+        )
       end
-    end
 
+      # handle protocol handshake
+      class ProtocolHandshake
+        include Ciri::RLP::Serializable
+
+        schema(
+            version: Integer,
+            name: RLP::Bytes,
+            caps: [Cap],
+            listen_port: Integer,
+            id: RLP::Bytes
+        )
+        default_data(listen_port: 0)
+      end
+
+    end
   end
 end

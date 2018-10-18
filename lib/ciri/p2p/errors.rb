@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+
 # Copyright (c) 2018 by Jiang Jinyang <jjyruby@gmail.com>
 # 
 # Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -21,25 +22,15 @@
 # THE SOFTWARE.
 
 
-require 'ciri/rlp'
-
 module Ciri
-  module DevP2P
-    module RLPX
+  module P2P
 
-      # RLPX message
-      class Message
-        include Ciri::RLP::Serializable
+    class Error < StandardError; end
+    class UselessPeerError < Error; end
+    class DisconnectError < Error; end
+    class UnknownMessageCodeError < Error; end
+    class InvalidMessageError < Error; end
 
-        attr_accessor :received_at
-
-        schema(
-            code: Integer,
-            size: Integer,
-            payload: RLP::Bytes
-        )
-      end
-
-    end
   end
 end
+

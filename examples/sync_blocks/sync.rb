@@ -3,9 +3,9 @@ require 'ciri/key'
 require 'ciri/rlp'
 require 'ciri/eth'
 require 'ciri/evm'
-require 'ciri/devp2p/server'
-require 'ciri/devp2p/rlpx'
-require 'ciri/devp2p/protocol'
+require 'ciri/p2p/server'
+require 'ciri/p2p/rlpx'
+require 'ciri/p2p/protocol'
 require 'ciri/pow_chain/chain'
 require 'ciri/forks/frontier'
 require 'ciri/db/backend/rocks'
@@ -36,8 +36,8 @@ def get_target_node
   end
   id = ARGV[0]
   raw_public_key = "\x04".b + [id].pack('H*')
-  node_id = Ciri::DevP2P::NodeID.new Ciri::Key.new(raw_public_key: raw_public_key)
-  Ciri::DevP2P::Node.new(node_id: node_id, ip: 'localhost', udp_port: 30303, tcp_port: 30303)
+  node_id = Ciri::P2P::NodeID.new Ciri::Key.new(raw_public_key: raw_public_key)
+  Ciri::P2P::Node.new(node_id: node_id, ip: 'localhost', udp_port: 30303, tcp_port: 30303)
 end
 
 # init genesis block
@@ -50,7 +50,7 @@ fork_config = Forks::Config.new([[0, Forks::Frontier], [1150000, Forks::Homestea
 chain = POWChain::Chain.new(db, genesis: genesis, network_id: 1, fork_config: fork_config)
 
 # init eth protocol
-eth_protocol = DevP2P::Protocol.new(name: 'eth', version: 63, length: 17)
+eth_protocol = P2P::Protocol.new(name: 'eth', version: 63, length: 17)
 protocol_manage = Eth::ProtocolManage.new(protocols: [eth_protocol], chain: chain)
 
 # init node
@@ -58,7 +58,7 @@ bootnodes = [get_target_node]
 
 # init server
 private_key = Ciri::Key.random
-server = Ciri::DevP2P::Server.new(private_key: private_key, protocol_manage: protocol_manage, bootnodes: bootnodes)
+server = Ciri::P2P::Server.new(private_key: private_key, protocol_manage: protocol_manage, bootnodes: bootnodes)
 
 puts "start syncing server"
 

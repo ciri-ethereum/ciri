@@ -25,12 +25,12 @@
 require 'ciri/utils/logger'
 require 'ciri/key'
 require 'ciri/rlp'
-require 'ciri/devp2p/node'
-require 'ciri/devp2p/errors'
+require 'ciri/p2p/node'
+require 'ciri/p2p/errors'
 require 'ipaddr'
 
 module Ciri
-  module DevP2P
+  module P2P
 
     # implement the DiscV4 protocol
     # https://github.com/ethereum/devp2p/blob/master/discv4.md

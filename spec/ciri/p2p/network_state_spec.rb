@@ -23,23 +23,23 @@
 
 require 'spec_helper'
 require 'async'
-require 'ciri/devp2p/errors'
-require 'ciri/devp2p/network_state'
-require 'ciri/devp2p/protocol'
-require 'ciri/devp2p/rlpx/protocol_handshake'
+require 'ciri/p2p/errors'
+require 'ciri/p2p/network_state'
+require 'ciri/p2p/protocol'
+require 'ciri/p2p/rlpx/protocol_handshake'
 
-RSpec.describe Ciri::DevP2P::NetworkState do
-  let(:eth_protocol) {Ciri::DevP2P::Protocol.new(name: 'eth', version: 63, length: 17)}
-  let(:old_eth_protocol) {Ciri::DevP2P::Protocol.new(name: 'eth', version: 62, length: 8)}
-  let(:hello_protocol) {Ciri::DevP2P::Protocol.new(name: 'hello', version: 1, length: 16)}
+RSpec.describe Ciri::P2P::NetworkState do
+  let(:eth_protocol) {Ciri::P2P::Protocol.new(name: 'eth', version: 63, length: 17)}
+  let(:old_eth_protocol) {Ciri::P2P::Protocol.new(name: 'eth', version: 62, length: 8)}
+  let(:hello_protocol) {Ciri::P2P::Protocol.new(name: 'hello', version: 1, length: 16)}
   let(:caps) {[
-    Ciri::DevP2P::RLPX::Cap.new(name: 'eth', version: 63),
-    Ciri::DevP2P::RLPX::Cap.new(name: 'eth', version: 62),
-    Ciri::DevP2P::RLPX::Cap.new(name: 'hello', version: 1),
+    Ciri::P2P::RLPX::Cap.new(name: 'eth', version: 63),
+    Ciri::P2P::RLPX::Cap.new(name: 'eth', version: 62),
+    Ciri::P2P::RLPX::Cap.new(name: 'hello', version: 1),
   ]}
-  let(:handshake){Ciri::DevP2P::RLPX::ProtocolHandshake.new(version: 4, name: 'test', caps: caps, id: "\x00".b * 32)}
-  let(:handshake_only_hello){Ciri::DevP2P::RLPX::ProtocolHandshake.new(version: 4, name: 'test', caps: [Ciri::DevP2P::RLPX::Cap.new(name: 'hello', version: 1)], id: "\x01".b * 32)}
-  let(:handshake_only_hi){Ciri::DevP2P::RLPX::ProtocolHandshake.new(version: 4, name: 'test', caps: [Ciri::DevP2P::RLPX::Cap.new(name: 'hi', version: 1)], id: "\x01".b * 32)}
+  let(:handshake){Ciri::P2P::RLPX::ProtocolHandshake.new(version: 4, name: 'test', caps: caps, id: "\x00".b * 32)}
+  let(:handshake_only_hello){Ciri::P2P::RLPX::ProtocolHandshake.new(version: 4, name: 'test', caps: [Ciri::P2P::RLPX::Cap.new(name: 'hello', version: 1)], id: "\x01".b * 32)}
+  let(:handshake_only_hi){Ciri::P2P::RLPX::ProtocolHandshake.new(version: 4, name: 'test', caps: [Ciri::P2P::RLPX::Cap.new(name: 'hi', version: 1)], id: "\x01".b * 32)}
   let(:protocols){[
     eth_protocol,
     old_eth_protocol,
@@ -92,7 +92,7 @@ RSpec.describe Ciri::DevP2P::NetworkState do
 
   it 'handle peers connected and removed' do
     protocol_manage = protocol_manage_class.new(protocols)
-    network_state = Ciri::DevP2P::NetworkState.new(protocol_manage)
+    network_state = Ciri::P2P::NetworkState.new(protocol_manage)
 
     Async::Reactor.run do |task|
       task.reactor.after(5) do
@@ -117,7 +117,7 @@ RSpec.describe Ciri::DevP2P::NetworkState do
 
   it 'refuse peer connection if cannot match any protocols' do
     protocol_manage = protocol_manage_class.new(protocols)
-    network_state = Ciri::DevP2P::NetworkState.new(protocol_manage)
+    network_state = Ciri::P2P::NetworkState.new(protocol_manage)
     Async::Reactor.run do |task|
       task.reactor.after(5) do
         raise StandardError.new("test timeout.. must something be wrong")
@@ -129,7 +129,7 @@ RSpec.describe Ciri::DevP2P::NetworkState do
         end.not_to raise_error
         expect do
           network_state.new_peer_connected(connection, handshake_only_hi)
-        end.to raise_error(Ciri::DevP2P::UselessPeerError)
+        end.to raise_error(Ciri::P2P::UselessPeerError)
         task.reactor.stop
       end
     end

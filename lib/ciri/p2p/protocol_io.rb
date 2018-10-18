@@ -21,35 +21,59 @@
 # THE SOFTWARE.
 
 
-require 'ciri/rlp/serializable'
+require 'forwardable'
+require 'async/queue'
+require 'async/semaphore'
+require_relative 'rlpx/message'
 
 module Ciri
-  module DevP2P
-    module RLPX
+  module P2P
 
-      class Cap
-        include Ciri::RLP::Serializable
+    # send/read sub protocol msg
+    class ProtocolIO
 
-        schema(
-            name: RLP::Bytes,
-            version: Integer
-        )
+      class Error < StandardError
+      end
+      class InvalidMessageCode < Error
       end
 
-      # handle protocol handshake
-      class ProtocolHandshake
-        include Ciri::RLP::Serializable
+      attr_reader :protocol, :offset
 
-        schema(
-            version: Integer,
-            name: RLP::Bytes,
-            caps: [Cap],
-            listen_port: Integer,
-            id: RLP::Bytes
-        )
-        default_data(listen_port: 0)
+      def initialize(protocol, offset, frame_io)
+        @protocol = protocol
+        @offset = offset
+        @frame_io = frame_io
+        @msg_queue = Async::Queue.new
+        @semaphore = Async::Semaphore.new
       end
 
+      def send_data(code, data)
+        @semaphore.acquire do
+          msg = RLPX::Message.new(code: code, size: data.size, payload: data)
+          write_msg(msg)
+        end
+      end
+
+      def write_msg(msg)
+        raise InvalidMessageCode, "code #{msg.code} must less than length #{protocol.length}" if msg.code > protocol.length
+        msg.code += offset
+        @frame_io.write_msg(msg)
+      end
+
+      def read_msg
+        msg = @msg_queue.dequeue
+        msg.code -= offset
+        msg
+      end
+
+      def receive_msg(msg)
+        @msg_queue.enqueue msg
+      end
+
+      def empty?
+        @msg_queue.empty?
+      end
     end
+
   end
 end

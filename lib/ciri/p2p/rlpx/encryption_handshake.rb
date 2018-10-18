@@ -27,7 +27,7 @@ require 'digest/sha3'
 require_relative 'secrets'
 
 module Ciri
-  module DevP2P
+  module P2P
     module RLPX
 
       SHA_LENGTH = 32

@@ -22,10 +22,10 @@
 
 
 require 'socket'
-require 'ciri/devp2p/rlpx'
+require 'ciri/p2p/rlpx'
 require 'ciri/rlp'
 
-RSpec.describe Ciri::DevP2P::RLPX::FrameIO do
+RSpec.describe Ciri::P2P::RLPX::FrameIO do
   it 'write_msg and read_msg' do
     aes_secret = 16.times.map {rand 8}.pack('c*')
     mac_secret = 16.times.map {rand 8}.pack('c*')
@@ -34,17 +34,17 @@ RSpec.describe Ciri::DevP2P::RLPX::FrameIO do
 
     r, w = IO.pipe
 
-    s1 = Ciri::DevP2P::RLPX::Secrets.new(aes: aes_secret, mac: mac_secret)
-    s2 = Ciri::DevP2P::RLPX::Secrets.new(aes: aes_secret, mac: mac_secret)
+    s1 = Ciri::P2P::RLPX::Secrets.new(aes: aes_secret, mac: mac_secret)
+    s2 = Ciri::P2P::RLPX::Secrets.new(aes: aes_secret, mac: mac_secret)
     s1.ingress_mac, s1.egress_mac, s2.ingress_mac, s2.egress_mac = 4.times.map {Digest::SHA3.new(256)}
 
     s1.egress_mac.update(egress_mac_init)
     s1.ingress_mac.update(ingress_mac_init)
-    f_io1 = Ciri::DevP2P::RLPX::FrameIO.new(w, s1)
+    f_io1 = Ciri::P2P::RLPX::FrameIO.new(w, s1)
 
     s2.egress_mac.update(ingress_mac_init)
     s2.ingress_mac.update(egress_mac_init)
-    f_io2 = Ciri::DevP2P::RLPX::FrameIO.new(r, s2)
+    f_io2 = Ciri::P2P::RLPX::FrameIO.new(r, s2)
 
     ['hello world',
      'Ethereum is awesome!',
@@ -66,17 +66,17 @@ RSpec.describe Ciri::DevP2P::RLPX::FrameIO do
 
     r, w = UNIXSocket.pair
 
-    s1 = Ciri::DevP2P::RLPX::Secrets.new(aes: aes_secret, mac: mac_secret)
-    s2 = Ciri::DevP2P::RLPX::Secrets.new(aes: aes_secret, mac: mac_secret)
+    s1 = Ciri::P2P::RLPX::Secrets.new(aes: aes_secret, mac: mac_secret)
+    s2 = Ciri::P2P::RLPX::Secrets.new(aes: aes_secret, mac: mac_secret)
     s1.ingress_mac, s1.egress_mac, s2.ingress_mac, s2.egress_mac = 4.times.map {Digest::SHA3.new(256)}
 
     s1.egress_mac.update(egress_mac_init)
     s1.ingress_mac.update(ingress_mac_init)
-    f_io1 = Ciri::DevP2P::RLPX::FrameIO.new(w, s1)
+    f_io1 = Ciri::P2P::RLPX::FrameIO.new(w, s1)
 
     s2.egress_mac.update(ingress_mac_init)
     s2.ingress_mac.update(egress_mac_init)
-    f_io2 = Ciri::DevP2P::RLPX::FrameIO.new(r, s2)
+    f_io2 = Ciri::P2P::RLPX::FrameIO.new(r, s2)
 
     m1 = Ciri::RLP.encode('hello world')
     m2 = Ciri::RLP.encode('bye world')

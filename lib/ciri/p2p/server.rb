@@ -37,9 +37,9 @@ require_relative 'discovery_service'
 require_relative 'dial_scheduler'
 
 module Ciri
-  module DevP2P
+  module P2P
 
-    # DevP2P Server
+    # P2P Server
     # maintain connection, node discovery, rlpx handshake and protocols
     class Server
       include Utils::Logger

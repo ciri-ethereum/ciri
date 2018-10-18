@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+
 # Copyright (c) 2018 by Jiang Jinyang <jjyruby@gmail.com>
 # 
 # Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -21,50 +22,32 @@
 # THE SOFTWARE.
 
 
-require 'ciri/key'
-require 'ciri/rlp/serializable'
+require 'async/io'
+require 'async/io/stream'
+require_relative 'rlpx/connection'
 
 module Ciri
-  module DevP2P
-    module RLPX
-      # RLPX protocol code
-      module Code
-        HANDSHAKE = 0x00
-        DISCONNECT = 0x01
-        PING = 0x02
-        PONG = 0x03
+  module P2P
+    # Discovery and dial new nodes
+    class Dialer
+      include RLPX
+
+      def initialize(private_key:, handshake:)
+        @private_key = private_key
+        @handshake = handshake
       end
 
-      BASE_PROTOCOL_VERSION = 5
-      BASE_PROTOCOL_LENGTH = 16
-      BASE_PROTOCOL_MAX_MSG_SIZE = 2 * 1024
-      SNAPPY_PROTOCOL_VERSION = 5
-
-      ### messages
-
-      class AuthMsgV4
-        include Ciri::RLP::Serializable
-
-        schema(
-            signature: RLP::Bytes,
-            initiator_pubkey: RLP::Bytes,
-            nonce: RLP::Bytes,
-            version: Integer
-        )
-
-        # keep this field let client known how to format(plain or eip8)
-        attr_accessor :got_plain
-      end
-
-      class AuthRespV4
-        include Ciri::RLP::Serializable
-
-        schema(
-            random_pubkey: RLP::Bytes,
-            nonce: RLP::Bytes,
-            version: Integer
-        )
+      # setup a new connection to node
+      def dial(node)
+        # connect tcp socket
+        # Use Stream to buffer IO operation
+        socket = Async::IO::Stream.new(Async::IO::Endpoint.tcp(node.ip, node.tcp_port).connect)
+        c = Connection.new(socket)
+        c.encryption_handshake!(private_key: @private_key, remote_node_id: node.node_id)
+        remote_handshake = c.protocol_handshake!(@handshake)
+        [c, remote_handshake]
       end
     end
   end
 end
+

@@ -23,11 +23,11 @@
 require 'spec_helper'
 require 'async/queue'
 require 'ciri/eth/protocol_manage'
-require 'ciri/devp2p/rlpx'
-require 'ciri/devp2p/peer'
-require 'ciri/devp2p/protocol'
-require 'ciri/devp2p/protocol_io'
-require 'ciri/devp2p/network_state'
+require 'ciri/p2p/rlpx'
+require 'ciri/p2p/peer'
+require 'ciri/p2p/protocol'
+require 'ciri/p2p/protocol_io'
+require 'ciri/p2p/network_state'
 require 'ciri/pow_chain/chain'
 require 'ciri/db/backend/rocks'
 require 'ciri/key'
@@ -58,7 +58,7 @@ RSpec.describe Ciri::Eth::ProtocolManage do
       end
 
       def send_data(code, data)
-        msg = Ciri::DevP2P::RLPX::Message.new(code: code, size: data.size, payload: data)
+        msg = Ciri::P2P::RLPX::Message.new(code: code, size: data.size, payload: data)
         write_msg(msg)
       end
 
@@ -70,7 +70,7 @@ RSpec.describe Ciri::Eth::ProtocolManage do
       def read_msg
         io = StringIO.new(@read.dequeue)
         len = io.readline(sep = ';').to_i
-        Ciri::DevP2P::RLPX::Message.rlp_decode io.read(len)
+        Ciri::P2P::RLPX::Message.rlp_decode io.read(len)
       end
 
     end
@@ -81,15 +81,15 @@ RSpec.describe Ciri::Eth::ProtocolManage do
     peer_frame_io = mock_frame_io.new(read: queue1, write: queue2, name: 'peer')
     host_frame_io = mock_frame_io.new(read: queue2, write: queue1, name: 'host')
 
-    eth_protocol = Ciri::DevP2P::Protocol.new(name: 'eth', version: 63, length: 17)
+    eth_protocol = Ciri::P2P::Protocol.new(name: 'eth', version: 63, length: 17)
     protocol_manage = Ciri::Eth::ProtocolManage.new(protocols: [eth_protocol], chain: chain)
 
-    caps = [Ciri::DevP2P::RLPX::Cap.new(name: 'eth', version: 63)]
+    caps = [Ciri::P2P::RLPX::Cap.new(name: 'eth', version: 63)]
     peer_id = Ciri::Key.random.raw_public_key[1..-1]
-    hs = Ciri::DevP2P::RLPX::ProtocolHandshake.new(version: 0, name: 'test', caps: caps, listen_port: 30303, id: peer_id)
-    host_protocol_io = Ciri::DevP2P::ProtocolIO.new(eth_protocol, Ciri::DevP2P::RLPX::BASE_PROTOCOL_LENGTH, host_frame_io)
+    hs = Ciri::P2P::RLPX::ProtocolHandshake.new(version: 0, name: 'test', caps: caps, listen_port: 30303, id: peer_id)
+    host_protocol_io = Ciri::P2P::ProtocolIO.new(eth_protocol, Ciri::P2P::RLPX::BASE_PROTOCOL_LENGTH, host_frame_io)
     peer_protocol_io  = nil
-    network_state = Ciri::DevP2P::NetworkState.new(protocol_manage)
+    network_state = Ciri::P2P::NetworkState.new(protocol_manage)
 
     Async::Reactor.run do |task|
       # start eth protocol
@@ -109,7 +109,7 @@ RSpec.describe Ciri::Eth::ProtocolManage do
         read_msg = proc do
           msg = host_frame_io.read_msg
           # minus offset
-          msg.code -= Ciri::DevP2P::RLPX::BASE_PROTOCOL_LENGTH
+          msg.code -= Ciri::P2P::RLPX::BASE_PROTOCOL_LENGTH
           msg
         end
         write_msg = proc do |code, m|

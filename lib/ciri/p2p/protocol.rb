@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+
 # Copyright (c) 2018 by Jiang Jinyang <jjyruby@gmail.com>
 # 
 # Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -22,13 +23,20 @@
 
 
 module Ciri
-  module DevP2P
-    module RLPX
+  module P2P
 
-      # RLPX basic error
-      class Error < StandardError
+    # protocol represent P2P sub protocols
+    class Protocol
+
+      attr_reader :name, :version, :length
+      attr_accessor :node_info, :peer_info
+
+      def initialize(name:, version:, length:)
+        @name = name
+        @version = version
+        @length = length
       end
-
     end
+
   end
 end
