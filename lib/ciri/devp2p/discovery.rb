@@ -148,8 +148,14 @@ module Ciri
         )
         default_data(recipient_tcp_port: 0)
 
-        def self.from_inet_addr(address)
-          new(recipient_ip: IPAddr.new(address[3]).to_i, recipient_udp_port: address[1])
+        class << self
+          def from_inet_addr(address)
+            from_host_port(address[3], address[1])
+          end
+
+          def from_host_port(host, port)
+            new(recipient_ip: IPAddr.new(host).to_i, recipient_udp_port: port)
+          end
         end
       end
 
