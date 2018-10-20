@@ -23,7 +23,7 @@
 
 
 # TODO Items:
-# [ ] implement k-buckets algorithm
+# [x] implement k-buckets algorithm
 # [ ] implement peerstore(may use sqlite)
 # [ ] implement a simple scoring system
 # [ ] testing
