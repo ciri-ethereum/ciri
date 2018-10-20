@@ -22,17 +22,17 @@
 
 
 require 'spec_helper'
-require 'ciri/p2p/discovery'
+require 'ciri/p2p/discovery/protocol'
 require 'ciri/rlp'
 
-RSpec.describe Ciri::P2P::Discovery do
+RSpec.describe Ciri::P2P::Discovery::Protocol do
   context 'dicovery message' do
     let(:key){Ciri::Key.random}
     let(:ping) do
-      Ciri::P2P::Discovery::Ping.new(
+      Ciri::P2P::Discovery::Protocol::Ping.new(
         version: 1,
-        from: Ciri::P2P::Discovery::From.new(sender_ip: IPAddr.new('127.0.0.1').to_i, sender_udp_port: 30303, sender_tcp_port: 30303),
-        to: Ciri::P2P::Discovery::To.new(recipient_ip: IPAddr.new('192.168.1.3').to_i, recipient_udp_port: 30303),
+        from: Ciri::P2P::Discovery::Protocol::From.new(sender_ip: IPAddr.new('127.0.0.1').to_i, sender_udp_port: 30303, sender_tcp_port: 30303),
+        to: Ciri::P2P::Discovery::Protocol::To.new(recipient_ip: IPAddr.new('192.168.1.3').to_i, recipient_udp_port: 30303),
         expiration: Time.now.to_i + 3600
       )
     end
@@ -45,9 +45,9 @@ RSpec.describe Ciri::P2P::Discovery do
     end
 
     it 'decode and encode message' do
-      msg = Ciri::P2P::Discovery::Message.pack(ping, private_key: key)
+      msg = Ciri::P2P::Discovery::Protocol::Message.pack(ping, private_key: key)
       encoded = msg.encode_message
-      msg2 = Ciri::P2P::Discovery::Message.decode_message(encoded)
+      msg2 = Ciri::P2P::Discovery::Protocol::Message.decode_message(encoded)
       expect(msg.message_hash).to eq msg2.message_hash
       expect(msg.sender.to_s).to eq msg2.sender.to_s
       expect(msg.sender.to_bytes).to eq Ciri::P2P::NodeID.new(key).to_bytes
@@ -69,11 +69,11 @@ RSpec.describe Ciri::P2P::Discovery do
 
     it '#pack' do
       expect do
-        Ciri::P2P::Discovery::Message.pack(ping, private_key: key)
+        Ciri::P2P::Discovery::Protocol::Message.pack(ping, private_key: key)
       end.not_to raise_error
 
       expect do
-        Ciri::P2P::Discovery::Message.pack(too_big_msg, private_key: key)
+        Ciri::P2P::Discovery::Protocol::Message.pack(too_big_msg, private_key: key)
       end.to raise_error(Ciri::P2P::InvalidMessageError)
     end
   end
