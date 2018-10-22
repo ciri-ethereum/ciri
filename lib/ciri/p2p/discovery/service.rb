@@ -29,6 +29,7 @@
 # [ ] testing
 require 'async'
 require 'ciri/utils/logger'
+require 'ciri/p2p/peer_store'
 require_relative 'protocol'
 
 module Ciri
@@ -53,7 +54,7 @@ module Ciri
           @host = host
           @udp_port = udp_port
           @tcp_port = tcp_port
-          @known_peers = KnownPeers.new
+          @peer_store = PeerStore.new
         end
 
         # find outgoing peers, should return in order from higher score to lower
@@ -109,21 +110,21 @@ module Ciri
             send_msg(pong_msg, address[3], address[1])
           when Pong::CODE
             # check pong
-            if @known_peers.has_ping?(msg.sender.to_bytes, msg.packet.ping_hash)
+            if @peer_store.has_ping?(msg.sender.to_bytes, msg.packet.ping_hash)
               # update peer last seen
-              @kown_peers.update_last_seen(msg.sender.to_bytes)
+              @peer_store.update_last_seen(msg.sender.to_bytes)
             else
               # TODO blacklist this peer
             end
           when FindNode::CODE
-            unless @known_peers.has_seen?(msg.sender.to_bytes)
+            unless @peer_store.has_seen?(msg.sender.to_bytes)
               send_ping(msg.sender.to_bytes,address[3], address[1])
               return
             end
             # TODO response
             @kown_peers.update_last_seen(msg.sender.to_bytes)
           when Neighbors::CODE
-            unless @known_peers.has_seen?(msg.sender.to_bytes)
+            unless @peer_store.has_seen?(msg.sender.to_bytes)
               send_ping(msg.sender.to_bytes,address[3], address[1])
               return
             end
@@ -148,42 +149,12 @@ module Ciri
                             expiration: Time.now.to_i + MESSAGE_EXPIRATION_IN)
           ping_msg = Message.pack(ping).encode_message
           send_msg(ping_msg, host, port)
-          @known_peers.update_ping(target_node_id, ping_msg.message_hash)
+          @peer_store.update_ping(target_node_id, ping_msg.message_hash)
         end
 
         def send_msg(msg, host, port)
           socket = Async::IO::UDPSocket.new
           socket.send(msg, 0, host, port)
-        end
-
-        # TODO consider use sqlite to implement this
-        class KnownPeers
-          PEER_LAST_SEEN_VALID = 12 * 3600 # 12 hour
-          PING_EXPIRATION_IN = 10 * 60 # allow ping
-
-          def initialize
-            #TODO how to recycle memory?
-            @peers = {}
-          end
-
-          def has_ping?(raw_node_id, ping_hash)
-            #TODO
-          end
-
-          # record ping message
-          def update_ping(raw_node_id, ping_hash, expired_at: Time.now.to_i + PING_EXPIRATION_IN)
-            #TODO
-          end
-
-          def update_last_seen(raw_node_id, at: Time.now.to_i)
-            @peers[raw_node_id] = at
-          end
-
-          def has_seen?(raw_node_id, in: PEER_LAST_SEEN_VALID)
-            seen = (last_seen_at = @peers[raw_node_id]) && (last_seen_at + PEER_LAST_SEEN_VALID > Time.now.to_i)
-            # convert to bool
-            !!seen
-          end
         end
 
         # find nerly neighbours
