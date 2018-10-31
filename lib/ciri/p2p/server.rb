@@ -51,18 +51,19 @@ module Ciri
       attr_reader :handshake, :dial_scheduler, :protocol_manage, :dialer, :local_address
 
       def initialize(private_key:, protocol_manage:, bootnodes: [],
-                     node_name: 'Ciri', host: '127.0.0.1', port: 33033)
+                     node_name: 'Ciri', host: '127.0.0.1', port: 33033, max_outgoing: 10, max_incoming:10)
         @private_key = private_key
         @node_name = node_name
         @protocol_manage = protocol_manage
         # prepare handshake information
-        server_node_id = NodeID.new(@private_key)
+        @local_node_id = NodeID.new(@private_key)
         caps = [Cap.new(name: 'eth', version: 63)]
-        @handshake = ProtocolHandshake.new(version: BASE_PROTOCOL_VERSION, name: @node_name, id: server_node_id.id, caps: caps)
+        @handshake = ProtocolHandshake.new(version: BASE_PROTOCOL_VERSION, name: @node_name, id: @local_node_id.id, caps: caps)
         @host = host
         @port = port
         @dialer = Dialer.new(private_key: private_key, handshake: @handshake)
-        @network_state = NetworkState.new(protocol_manage)
+        @peer_store = nil # TODO
+        @network_state = NetworkState.new(protocol_manage, @peer_store)
         @bootnodes = bootnodes
       end
 
@@ -83,7 +84,7 @@ module Ciri
               task.sleep(0.5) until @local_address
 
               # start discovery service
-              @discovery_service = Discovery::Service.new(bootnodes: @bootnodes, host: @host, udp_port: @local_address.ip_port, tcp_port: @local_address)
+              @discovery_service = Discovery::Service.new(bootnodes: @bootnodes, host: @host, udp_port: @local_address.ip_port, tcp_port: @local_address, local_node_id: @local_node_id)
               task.async { @discovery_service.run }
 
               # start dial outgoing nodes
@@ -106,7 +107,7 @@ module Ciri
             c = Connection.new(client)
             c.encryption_handshake!(private_key: @private_key)
             remote_handshake = c.protocol_handshake!(handshake)
-            @network_state.new_peer_connected(c, remote_handshake)
+            @network_state.new_peer_connected(c, remote_handshake, way_for_connection: Peer::INCOMING)
           end
         end
       end

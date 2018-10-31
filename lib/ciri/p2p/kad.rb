@@ -42,31 +42,12 @@ module Ciri
       K_ID_SIZE = 256
       K_MAX_NODE_ID = 2 ** K_ID_SIZE - 1
 
-      class Address
-        attr_reader :ip, :udp_port, :tcp_port
-
-        def initialize(ip:, udp_port:, tcp_port: udp_port)
-          @ip = IPAddr.new(ip)
-          @udp_port = udp_port
-          @tcp_port = tcp_port
-        end
-
-        def ==(other)
-          self.class == other.class && ip == other.ip && udp_port == other.udp_port
-        end
-
-        def inspect
-          "<Kad::Address #{ip.inspect} udp_port: #{udp_port} tcp_port: #{tcp_port}>"
-        end
-      end
-
       class Node
-        attr_reader :id, :address, :raw_public_key
+        attr_reader :id, :raw_node_id
 
-        def initialize(raw_public_key, address)
-          @raw_public_key = raw_public_key
-          @address = address
-          @id = Utils.big_endian_decode(Utils.keccak(raw_public_key))
+        def initialize(raw_node_id)
+          @raw_node_id = raw_node_id
+          @id = Utils.big_endian_decode(Utils.keccak(raw_node_id))
         end
 
         def distance_to(id)
@@ -213,6 +194,10 @@ module Ciri
 
         def delete_node(node)
           find_bucket_for_node(node).delete(node)
+        end
+
+        def update(raw_node_id)
+          add_node(Node.new(raw_node_id))
         end
 
         def add_node(node)

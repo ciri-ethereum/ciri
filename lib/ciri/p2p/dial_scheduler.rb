@@ -55,9 +55,9 @@ module Ciri
       def schedule_dialing_tasks
         return unless @running_dialing < MAX_ACTIVE_DIAL_TASKS
         @running_dialing += 1
-        @discovery_service.find_outgoing_peers(@running_dialing, @network_state.peers, Time.now).each do |node|
+        @network_state.peer_store.find_attempt_peers(@network_state.number_of_attemp_outgoing).each do |node|
           conn, handshake = @dialer.dial(node)
-          @network_state.new_peer_connected(conn, handshake)
+          @network_state.new_peer_connected(conn, handshake, Peer::OUTGOING)
         end
         @running_dialing -= 1
       end

@@ -24,7 +24,7 @@
 
 # TODO Items:
 # [x] implement k-buckets algorithm
-# [ ] implement peerstore(may use sqlite)
+# [x] implement peerstore(may use sqlite)
 # [ ] implement a simple scoring system
 # [ ] testing
 require 'async'
@@ -47,7 +47,7 @@ module Ciri
         include Protocol
 
         # we should consider search from peer_store instead connect to bootnodes everytime 
-        def initialize(host:, udp_port:, tcp_port:, bootnodes:[], discovery_interval_secs: 15)
+        def initialize(host:, udp_port:, tcp_port:, local_node_id:, bootnodes:[], discovery_interval_secs: 15)
           @bootnodes = bootnodes
           @discovery_interval_secs = discovery_interval_secs
           @cache = Set.new
@@ -55,15 +55,7 @@ module Ciri
           @udp_port = udp_port
           @tcp_port = tcp_port
           @peer_store = PeerStore.new
-        end
-
-        # find outgoing peers, should return in order from higher score to lower
-        # TODO consider implement this method in peerstore
-        def find_outgoing_peers(running_count, peers, now)
-          node = @bootnodes.sample
-          return [] if @cache.include?(node)
-          @cache << node
-          [node]
+          @kad_table = Kad::RoutingTable.new(local_node: Kad::Node.new(local_node_id.to_bytes))
         end
 
         def run(task: Async::Task.current)
@@ -92,7 +84,6 @@ module Ciri
 
         MESSAGE_EXPIRATION_IN = 10 * 60 # set 10 minutes later to expiration message
 
-        # TODO consider implement a denylist to record bad nodes address
         def handle_request(raw_packet, address)
           msg = Message.decode_message(raw_packet)
           msg.validate
@@ -102,41 +93,57 @@ module Ciri
           end
           case msg.packet_type
           when Ping::CODE
+            @kad_table.update(msg.sender.to_bytes)
             # respond pong
             pong = Pong.new(to: To.from_inet_addr(address), 
                             ping_hash: msg.message_hash, 
                             expiration: Time.now.to_i + MESSAGE_EXPIRATION_IN)
             pong_msg = Message.pack(pong).encode_message
-            send_msg(pong_msg, address[3], address[1])
+            send_msg_to_address(pong_msg, address)
           when Pong::CODE
             # check pong
             if @peer_store.has_ping?(msg.sender.to_bytes, msg.packet.ping_hash)
               # update peer last seen
               @peer_store.update_last_seen(msg.sender.to_bytes)
             else
-              # TODO blacklist this peer
+              @peer_store.ban_peer(msg.sender.to_bytes)
             end
           when FindNode::CODE
             unless @peer_store.has_seen?(msg.sender.to_bytes)
-              send_ping(msg.sender.to_bytes,address[3], address[1])
+              send_ping_to_address(msg.sender.to_bytes, address)
               return
             end
-            # TODO response
+            nodes = find_neighbours(msg.packet.target).map do |raw_node_id, addr|
+              Neighbors::Node.new(ip: addr.ip, udp_port: addr.udp_port, tcp_port: addr.tcp_port, node_id: raw_node_id)
+            end
+            neighbors = Neighbors.new(nodes: nodes, expiration: Time.now.to_i + MESSAGE_EXPIRATION_IN)
+            send_msg_to_address(Message.pack(neighbors).encode_message, address)
             @kown_peers.update_last_seen(msg.sender.to_bytes)
           when Neighbors::CODE
+            @kad_table.update(msg.sender.to_bytes)
             unless @peer_store.has_seen?(msg.sender.to_bytes)
-              send_ping(msg.sender.to_bytes,address[3], address[1])
+              send_msg_to_address(msg.sender.to_bytes, address)
               return
             end
-            #TODO find neighbours and response
+            msg.packet.nodes.each do |node|
+              raw_node_id = node.node_id
+              address = PeerStore::Address.new(ip: node.ip, udp_port: node.udp_port, tcp_port: node.tcp_port)
+              @peer_store.add_node_addresses(raw_node_id, [addresses])
+              # add new discovered node_id
+              @kad_table.update(raw_node_id)
+            end
             @kown_peers.update_last_seen(msg.sender.to_bytes)
           else
-            # TODO add address to denylist
+            @peer_store.ban_peer(msg.sender.to_bytes)
             raise UnknownMessageCodeError.new("can't handle unknown code in discovery protocol, code: #{msg.packet_type}")
           end
         rescue StandardError => e
-          #TODO add address to denylist
+          @peer_store.ban_peer(msg.sender.to_bytes)
           error("discovery error: #{e} from address: #{address}")
+        end
+
+        def send_ping_to_address(target_node_id, address)
+          send_ping(target_node_id, address[3], address[1])
         end
 
         # send discover ping to peer
@@ -152,19 +159,36 @@ module Ciri
           @peer_store.update_ping(target_node_id, ping_msg.message_hash)
         end
 
+        def send_msg_to_address(msg, address)
+          send_msg(address[3], address[1])
+        end
+
         def send_msg(msg, host, port)
           socket = Async::IO::UDPSocket.new
           socket.send(msg, 0, host, port)
         end
 
         # find nerly neighbours
-        def find_neighbours(raw_node_id)
-          #TODO implement k-buckets
+        def find_neighbours(raw_node_id, count)
+          @kad_table.find_neighbours(raw_node_id, k: count).map do |node|
+            [raw_node_id, @peer_store.get_node_addresses(raw_node_id)&.first]
+          end.delete_if(&:nil?)
         end
 
-        def perform_discovery
-          #TODO implement discovery nodes
-          # randomly pick high scoring peers and try discovery through them
+        def perform_discovery(count_of_query_nodes=15, task: Async::Task.current)
+          query_target = NodeId.new(Key.random).id
+          # randomly search
+          @kad_table.get_random_nodes(15).each do |node|
+            address = @peer_store.get_node_addresses(node.raw_node_id)&.first
+            next unless address
+            # start query node in async task
+            task.async do
+              send_ping(node.raw_node_id, address.ip, address.udp_port)
+              query = FindNode.new(target: query_target, expiration: Time.now.to_i + MESSAGE_EXPIRATION_IN)
+              query_msg = Message.pack(query).encode_message
+              send_msg(query_msg, address.ip, address.udp_port)
+            end
+          end
         end
       end
 

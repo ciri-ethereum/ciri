@@ -32,14 +32,25 @@ module Ciri
 
     # represent a connected remote node
     class Peer
+      OUTGOING = :outgoing
+      INCOMING = :incoming
 
       attr_reader :connection
 
-      def initialize(connection, handshake, protocols)
+      def initialize(connection, handshake, protocols, way_for_connection:)
         @connection = connection
         @handshake = handshake
         @protocols = protocols
         @protocol_io_hash = make_protocol_io_hash(protocols, handshake.caps, connection)
+        @way_for_connection = way_for_connection
+      end
+
+      def outgoing?
+        @way_for_connection == OUTGOING
+      end
+
+      def incoming?
+        @way_for_connection == INCOMING
       end
 
       def to_s
