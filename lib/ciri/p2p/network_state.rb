@@ -35,17 +35,24 @@ module Ciri
     class NetworkState
       include Utils::Logger
 
-      attr_reader :peers, :caps
+      attr_reader :peers, :caps, :peer_store
 
-      def initialize(protocol_manage, ping_interval_secs: 15)
+      def initialize(protocol_manage, peer_store, max_outgoing:, max_incoming:, ping_interval_secs: 15)
         @peers = {}
+        @peer_store = peer_store
         @protocol_manage = protocol_manage
+        @max_outgoing = max_outgoing
+        @max_incoming = max_incoming
         @ping_interval_secs = ping_interval_secs
       end
 
-      def new_peer_connected(connection, handshake, task: Async::Task.current)
+      def number_of_attemp_outgoing
+        @max_outgoing - @peers.values.select(&:outgoing?).count
+      end
+
+      def new_peer_connected(connection, handshake, way_for_connection:, task: Async::Task.current)
         protocol_handshake_checks(handshake)
-        peer = Peer.new(connection, handshake, @protocol_manage.protocols)
+        peer = Peer.new(connection, handshake, @protocol_manage.protocols, way_for_connection: way_for_connection)
         @peers[peer.id] = peer
         debug "connect to new peer #{peer}"
         # run peer logic
