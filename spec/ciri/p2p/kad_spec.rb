@@ -28,45 +28,31 @@ require 'ciri/core_ext'
 using Ciri::CoreExt
 
 RSpec.describe Ciri::P2P::Kad do
-  describe Ciri::P2P::Kad::Address  do
-    it '#==' do
-      addr1 = described_class.new(ip: '127.0.0.1', udp_port:3000, tcp_port: 3001)
-      addr2 = described_class.new(ip: '127.0.0.1', udp_port:3000, tcp_port: 3001)
-      expect(addr1).to eq addr2
-    end
-
-    it '#ip' do
-      addr = described_class.new(ip: '127.0.0.1', udp_port:3000, tcp_port: 3001)
-      expect(addr.ip.loopback?).to be true
-    end
-  end
-
   describe Ciri::P2P::Kad::Node do
     let(:pubkey1) {10.encode_big_endian.pad_zero(65)}
     let(:pubkey2) {11.encode_big_endian.pad_zero(65)}
     let(:pubkey3) {12.encode_big_endian.pad_zero(65)}
-    let(:addr) {Ciri::P2P::Kad::Address.new(ip: '127.0.0.1', udp_port: 3000, tcp_port: 3001)}
 
     it '#distance_to' do
-      node1 = described_class.new(pubkey1, addr)
-      node2 = described_class.new(pubkey2, addr)
+      node1 = described_class.new(pubkey1)
+      node2 = described_class.new(pubkey2)
       distance = node1.distance_to(node2.id)
       expect(distance).to be > 0
       expect(node1.id ^ node2.id).to eq distance
     end
 
     it '#==' do
-      node1 = described_class.new(pubkey1, addr)
-      node2 = described_class.new(pubkey2, addr)
-      node3 = described_class.new(pubkey1, addr)
+      node1 = described_class.new(pubkey1)
+      node2 = described_class.new(pubkey2)
+      node3 = described_class.new(pubkey1)
       expect(node1).to eq node3
       expect(node1).not_to eq node2
     end
 
     it '#<=>' do
-      node1 = described_class.new(pubkey1, addr)
-      node2 = described_class.new(pubkey2, addr)
-      node3 = described_class.new(pubkey3, addr)
+      node1 = described_class.new(pubkey1)
+      node2 = described_class.new(pubkey2)
+      node3 = described_class.new(pubkey3)
       expect([node1, node2, node3].sort).to eq [node1, node2, node3].sort_by{|node| node.id}
     end
   end
@@ -76,11 +62,10 @@ RSpec.describe Ciri::P2P::Kad do
     let(:pubkey2) {11.encode_big_endian.pad_zero(65)}
     let(:pubkey3) {12.encode_big_endian.pad_zero(65)}
     let(:pubkey4) {13.encode_big_endian.pad_zero(65)}
-    let(:addr) {Ciri::P2P::Kad::Address.new(ip: '127.0.0.1', udp_port: 3000, tcp_port: 3001)}
-    let(:node1) {Ciri::P2P::Kad::Node.new(pubkey1, addr)}
-    let(:node2) {Ciri::P2P::Kad::Node.new(pubkey2, addr)}
-    let(:node3) {Ciri::P2P::Kad::Node.new(pubkey3, addr)}
-    let(:node4) {Ciri::P2P::Kad::Node.new(pubkey4, addr)}
+    let(:node1) {Ciri::P2P::Kad::Node.new(pubkey1)}
+    let(:node2) {Ciri::P2P::Kad::Node.new(pubkey2)}
+    let(:node3) {Ciri::P2P::Kad::Node.new(pubkey3)}
+    let(:node4) {Ciri::P2P::Kad::Node.new(pubkey4)}
     let(:bucket) {described_class.new(start_id: 0, end_id: Ciri::P2P::Kad::K_MAX_NODE_ID)}
     let(:fake_node_class) do
       Class.new(Ciri::P2P::Kad::Node) do
@@ -156,10 +141,9 @@ RSpec.describe Ciri::P2P::Kad do
   end
 
   describe Ciri::P2P::Kad::RoutingTable do
-    let(:addr) {Ciri::P2P::Kad::Address.new(ip: '127.0.0.1', udp_port: 3000, tcp_port: 3001)}
-    let(:local_node) { Ciri::P2P::Kad::Node.new(1024.encode_big_endian.pad_zero(65), addr) }
+    let(:local_node) { Ciri::P2P::Kad::Node.new(1024.encode_big_endian.pad_zero(65)) }
     let(:nodes) do 
-      1000.times.map{|i| Ciri::P2P::Kad::Node.new(i.encode_big_endian.pad_zero(65), addr) } 
+      1000.times.map{|i| Ciri::P2P::Kad::Node.new(i.encode_big_endian.pad_zero(65)) } 
     end
     let(:table) do 
       table = described_class.new(local_node: local_node)

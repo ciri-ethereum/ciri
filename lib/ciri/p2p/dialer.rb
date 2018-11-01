@@ -41,7 +41,9 @@ module Ciri
       def dial(node)
         # connect tcp socket
         # Use Stream to buffer IO operation
-        socket = Async::IO::Stream.new(Async::IO::Endpoint.tcp(node.ip, node.tcp_port).connect)
+        address = node.addresses&.first
+        return unless address
+        socket = Async::IO::Stream.new(Async::IO::Endpoint.tcp(address.ip, address.tcp_port).connect)
         c = Connection.new(socket)
         c.encryption_handshake!(private_key: @private_key, remote_node_id: node.node_id)
         remote_handshake = c.protocol_handshake!(@handshake)

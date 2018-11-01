@@ -37,7 +37,7 @@ module Ciri
 
       attr_reader :peers, :caps, :peer_store
 
-      def initialize(protocol_manage, peer_store, max_outgoing:, max_incoming:, ping_interval_secs: 15)
+      def initialize(protocol_manage, peer_store, max_outgoing: 10, max_incoming: 10, ping_interval_secs: 15)
         @peers = {}
         @peer_store = peer_store
         @protocol_manage = protocol_manage

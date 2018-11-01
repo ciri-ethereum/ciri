@@ -1,6 +1,5 @@
 # frozen_string_literal: true
 
-
 # Copyright (c) 2018 by Jiang Jinyang <jjyruby@gmail.com>
 # 
 # Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -22,47 +21,25 @@
 # THE SOFTWARE.
 
 
-require 'async'
-require 'ciri/utils/logger'
+require 'spec_helper'
+require 'ciri/p2p/address'
+require 'ciri/core_ext'
 
-module Ciri
-  module P2P
+using Ciri::CoreExt
 
-    # DialScheduler
-    # establish outoging connections
-    class DialScheduler
-      include Utils::Logger
-
-      def initialize(network_state, dialer)
-        @network_state = network_state
-        @dialer = dialer
-      end
-
-      def run(task: Async::Task.current)
-        dial_bootnodes
-        # dial outgoing peers every 15 seconds
-        task.reactor.every(15) do
-          schedule_dialing_tasks
-        end
-      end
-
-      private
-
-      def dial_bootnodes
-        @network_state.peer_store.find_bootnodes(@network_state.number_of_attemp_outgoing).each do |node|
-          conn, handshake = @dialer.dial(node)
-          @network_state.new_peer_connected(conn, handshake, Peer::OUTGOING)
-        end
-      end
-
-      def schedule_dialing_tasks
-        @network_state.peer_store.find_attempt_peers(@network_state.number_of_attemp_outgoing).each do |node|
-          conn, handshake = @dialer.dial(node)
-          @network_state.new_peer_connected(conn, handshake, Peer::OUTGOING)
-        end
-      end
+RSpec.describe Ciri::P2P::Address do
+  describe Ciri::P2P::Address do
+    it '#==' do
+      addr1 = described_class.new(ip: '127.0.0.1', udp_port:3000, tcp_port: 3001)
+      addr2 = described_class.new(ip: '127.0.0.1', udp_port:3000, tcp_port: 3001)
+      expect(addr1).to eq addr2
     end
 
+    it '#ip' do
+      addr = described_class.new(ip: '127.0.0.1', udp_port:3000, tcp_port: 3001)
+      expect(addr.ip.loopback?).to be true
+    end
   end
+
 end
 

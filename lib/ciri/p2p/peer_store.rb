@@ -34,32 +34,33 @@ module Ciri
       PEER_LAST_SEEN_VALID = 12 * 3600 # consider peer is valid if we seen it within 12 hours
       PING_EXPIRATION_IN = 10 * 60 # allow ping within 10 minutes
 
-      class Address
-        attr_reader :ip, :udp_port, :tcp_port
-
-        def initialize(ip:, udp_port:, tcp_port: udp_port)
-          @ip = IPAddr.new(ip)
-          @udp_port = udp_port
-          @tcp_port = tcp_port
-        end
-
-        def ==(other)
-          self.class == other.class && ip == other.ip && udp_port == other.udp_port
-        end
-
-        def inspect
-          "<PeerStore::Address #{ip.inspect} udp_port: #{udp_port} tcp_port: #{tcp_port}>"
-        end
-      end
-
       module Behaviours
+        INVALID_DATA = :invalid_data
+        CONNECT = :connect
+        PING = :ping
+        FAILED_TO_CONNECT = :failed_to_connect
+        FAILED_TO_PING = :failed_to_ping
+        UNEXPECT_DISCONNECT = :unexpect_disconnect
       end
 
-      def initialize
+      include Behaviours
+
+      PEER_INITIAL_SCORE = 100
+      DEFAULT_SCORE_SCHEMA = {
+        INVALID_DATA => -50,
+        CONNECT => 10,
+        PING => 5,
+        FAILED_TO_PING => -10,
+        FAILED_TO_CONNECT => -10,
+        UNEXPECT_DISCONNECT => -20,
+      }
+
+      def initialize(score_schema:{})
         @peers_ping_records = {}
         @peers_seen_records = {}
         @peers = {}
         @bootnodes = []
+        @score_schema = DEFAULT_SCORE_SCHEMA.merge(score_schema)
       end
 
       def has_ping?(raw_node_id, ping_hash, expires_in: PING_EXPIRATION_IN)
@@ -89,7 +90,7 @@ module Ciri
         !!seen
       end
 
-      def add_bootnodes(node)
+      def add_bootnode(node)
         @bootnodes << node
       end
 
@@ -107,23 +108,34 @@ module Ciri
         @ban_peers[raw_node_id] = {ban_at: now, timeout_secs: timeout_secs}
       end
 
+      def report_peer(raw_node_id, behaviour)
+        #TODO implement scoring
+      end
+
       # TODO find high scoring peers, use bootnodes as fallback
       def find_bootnodes(count)
-        @bootnodes.sample(count)
+        nodes = @bootnodes.sample(count)
+        nodes + @peers.values.sample(count - nodes.size)
       end
 
       # TODO find high scoring peers
       def find_attempt_peers(count)
-        @bootnodes.sample(count)
-      end
-
-      def get_node_addresses(raw_node_id)
-        @peers[raw_node_id]
+        @peers.values.sample(count)
       end
 
       def add_node_addresses(raw_node_id, addresses)
-        exists_addresses = @peers[raw_node_id] ||= []
-        @peers[raw_node_id] = (exists_addresses + addresses).uniq
+        node = @peers[raw_node_id]
+        if node
+          node.addresses = (node.addresses + addresses.uniq)
+        end
+      end
+
+      def get_node_addresses(raw_node_id)
+        @peers[raw_node_id]&.addresses
+      end
+
+      def add_node(node)
+        @peers[node.raw_node_id] = node
       end
     end
 

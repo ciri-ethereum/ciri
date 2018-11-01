@@ -46,7 +46,7 @@ RSpec.describe Ciri::P2P::Peer do
 
   it 'find_protocol_io_by_msg_code' do
     IO.pipe do |io, io2|
-      peer = Ciri::P2P::Peer.new(io, handshake, protocols)
+      peer = Ciri::P2P::Peer.new(io, handshake, protocols, way_for_connection: Ciri::P2P::Peer::OUTGOING)
       base_offset = Ciri::P2P::RLPX::BASE_PROTOCOL_LENGTH
 
       # According to the offset of DEVP2P message code,
@@ -63,7 +63,7 @@ RSpec.describe Ciri::P2P::Peer do
 
   it 'disconnect a peer' do
     IO.pipe do |io, io2|
-      peer = Ciri::P2P::Peer.new(io, handshake, protocols)
+      peer = Ciri::P2P::Peer.new(io, handshake, protocols, way_for_connection: Ciri::P2P::Peer::OUTGOING)
       expect(peer.disconnected?).to be_falsey
       peer.disconnect
       expect(peer.disconnected?).to be_truthy

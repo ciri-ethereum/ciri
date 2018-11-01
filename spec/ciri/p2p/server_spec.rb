@@ -46,15 +46,19 @@ RSpec.describe Ciri::P2P::Server do
   it 'connecting to bootnodes after started' do
     bootnode = Ciri::P2P::Node.new(
         node_id: Ciri::P2P::NodeID.new(key),
-        ip: "localhost",
-        udp_port: 42,
-        tcp_port: 42,
+        addresses: [
+          Ciri::P2P::Address.new(
+            ip: "127.0.0.1",
+            udp_port: 42,
+            tcp_port: 42,
+          )
+        ]
     )
     server = Ciri::P2P::Server.new(private_key: key, protocol_manage: protocol_manage, bootnodes: [bootnode], port: 0)
-    allow(server.dialer).to receive(:dial) {|node| raise StandardError.new("dial error ip:#{node.ip}, tcp_port:#{node.tcp_port}")}
+    allow(server.dialer).to receive(:dial) {|node| raise StandardError.new("dial error ip:#{node.addresses[0].ip}, tcp_port:#{node.addresses[0].tcp_port}")}
     expect do
       server.run
-    end.to raise_error(StandardError, "dial error ip:#{bootnode.ip}, tcp_port:#{bootnode.tcp_port}")
+    end.to raise_error(StandardError, "dial error ip:#{bootnode.addresses[0].ip}, tcp_port:#{bootnode.addresses[0].tcp_port}")
   end
 end
 

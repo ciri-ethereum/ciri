@@ -29,6 +29,7 @@
 # [ ] testing
 require 'async'
 require 'ciri/utils/logger'
+require 'ciri/p2p/node'
 require 'ciri/p2p/peer_store'
 require_relative 'protocol'
 
@@ -63,7 +64,9 @@ module Ciri
           task.async {start_listen}
           # search peers every x seconds
           task.reactor.every(@discovery_interval_secs) do
-            perform_discovery
+            task.async do
+              perform_discovery
+            end
           end
         end
 
@@ -127,8 +130,8 @@ module Ciri
             end
             msg.packet.nodes.each do |node|
               raw_node_id = node.node_id
-              address = PeerStore::Address.new(ip: node.ip, udp_port: node.udp_port, tcp_port: node.tcp_port)
-              @peer_store.add_node_addresses(raw_node_id, [addresses])
+              address = Address.new(ip: node.ip, udp_port: node.udp_port, tcp_port: node.tcp_port)
+              @peer_store.add_node(Node.new(raw_node_id: raw_node_id, addresses: [address]))
               # add new discovered node_id
               @kad_table.update(raw_node_id)
             end
@@ -176,7 +179,7 @@ module Ciri
         end
 
         def perform_discovery(count_of_query_nodes=15, task: Async::Task.current)
-          query_target = NodeId.new(Key.random).id
+          query_target = NodeID.new(Key.random).id
           # randomly search
           @kad_table.get_random_nodes(15).each do |node|
             address = @peer_store.get_node_addresses(node.raw_node_id)&.first
