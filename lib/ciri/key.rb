@@ -23,8 +23,11 @@
 
 require 'openssl'
 require 'ciri/utils'
+require 'ciri/core_ext'
 require 'ciri/crypto'
 require 'ciri/types/address'
+
+using Ciri::CoreExt
 
 module Ciri
 

@@ -25,6 +25,7 @@ require 'spec_helper'
 require 'async'
 require 'ciri/p2p/errors'
 require 'ciri/p2p/network_state'
+require 'ciri/p2p/peer_store'
 require 'ciri/p2p/protocol'
 require 'ciri/p2p/rlpx/protocol_handshake'
 
@@ -45,6 +46,9 @@ RSpec.describe Ciri::P2P::NetworkState do
     old_eth_protocol,
     hello_protocol
   ]}
+  let(:peer_store) {
+    Ciri::P2P::PeerStore.new
+  }
 
   # mock connection
   let(:connection) do
@@ -92,7 +96,7 @@ RSpec.describe Ciri::P2P::NetworkState do
 
   it 'handle peers connected and removed' do
     protocol_manage = protocol_manage_class.new(protocols)
-    network_state = Ciri::P2P::NetworkState.new(protocol_manage)
+    network_state = Ciri::P2P::NetworkState.new(protocol_manage, peer_store)
 
     Async::Reactor.run do |task|
       task.reactor.after(5) do
@@ -100,8 +104,8 @@ RSpec.describe Ciri::P2P::NetworkState do
       end
 
       task.async do
-        network_state.new_peer_connected(connection, handshake)
-        network_state.new_peer_connected(connection, handshake_only_hello)
+        network_state.new_peer_connected(connection, handshake, way_for_connection: :incoming)
+        network_state.new_peer_connected(connection, handshake_only_hello, way_for_connection: :incoming)
         task.reactor.stop
       end
     end
@@ -117,7 +121,7 @@ RSpec.describe Ciri::P2P::NetworkState do
 
   it 'refuse peer connection if cannot match any protocols' do
     protocol_manage = protocol_manage_class.new(protocols)
-    network_state = Ciri::P2P::NetworkState.new(protocol_manage)
+    network_state = Ciri::P2P::NetworkState.new(protocol_manage, peer_store)
     Async::Reactor.run do |task|
       task.reactor.after(5) do
         raise StandardError.new("test timeout.. must something be wrong")
@@ -125,10 +129,10 @@ RSpec.describe Ciri::P2P::NetworkState do
 
       task.async do
         expect do
-          network_state.new_peer_connected(connection, handshake_only_hello)
+          network_state.new_peer_connected(connection, handshake_only_hello, way_for_connection: :incoming)
         end.not_to raise_error
         expect do
-          network_state.new_peer_connected(connection, handshake_only_hi)
+          network_state.new_peer_connected(connection, handshake_only_hi, way_for_connection: :incoming)
         end.to raise_error(Ciri::P2P::UselessPeerError)
         task.reactor.stop
       end

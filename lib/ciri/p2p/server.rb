@@ -62,15 +62,17 @@ module Ciri
         @host = host
         @port = port
         @dialer = Dialer.new(private_key: private_key, handshake: @handshake)
-        @peer_store = nil # TODO
-        @network_state = NetworkState.new(protocol_manage, @peer_store)
+        @peer_store = PeerStore.new
+        @network_state = NetworkState.new(protocol_manage, @peer_store, max_incoming: max_incoming, max_outgoing: max_outgoing)
         @bootnodes = bootnodes
       end
 
       # return reactor to wait
       def run
-        #TODO start discovery
-        #TODO listen udp, for discovery protocol
+        # setup bootnodes
+        @bootnodes.each do |node|
+          @peer_store.add_bootnode(node)
+        end
 
         # start server and services
         Async::Reactor.run do |task|
@@ -88,7 +90,7 @@ module Ciri
               task.async { @discovery_service.run }
 
               # start dial outgoing nodes
-              @dial_scheduler = DialScheduler.new(@network_state, @dialer, @discovery_service)
+              @dial_scheduler = DialScheduler.new(@network_state, @dialer)
               task.async {@dial_scheduler.run}
             end
             task.async {start_listen}

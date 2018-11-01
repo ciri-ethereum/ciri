@@ -1,6 +1,5 @@
 # frozen_string_literal: true
 
-
 # Copyright (c) 2018 by Jiang Jinyang <jjyruby@gmail.com>
 # 
 # Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -22,44 +21,24 @@
 # THE SOFTWARE.
 
 
-require 'async'
-require 'ciri/utils/logger'
-
 module Ciri
   module P2P
 
-    # DialScheduler
-    # establish outoging connections
-    class DialScheduler
-      include Utils::Logger
+    class Address
+      attr_reader :ip, :udp_port, :tcp_port
 
-      def initialize(network_state, dialer)
-        @network_state = network_state
-        @dialer = dialer
+      def initialize(ip:, udp_port:, tcp_port: udp_port)
+        @ip = IPAddr.new(ip)
+        @udp_port = udp_port
+        @tcp_port = tcp_port
       end
 
-      def run(task: Async::Task.current)
-        dial_bootnodes
-        # dial outgoing peers every 15 seconds
-        task.reactor.every(15) do
-          schedule_dialing_tasks
-        end
+      def ==(other)
+        self.class == other.class && ip == other.ip && udp_port == other.udp_port
       end
 
-      private
-
-      def dial_bootnodes
-        @network_state.peer_store.find_bootnodes(@network_state.number_of_attemp_outgoing).each do |node|
-          conn, handshake = @dialer.dial(node)
-          @network_state.new_peer_connected(conn, handshake, Peer::OUTGOING)
-        end
-      end
-
-      def schedule_dialing_tasks
-        @network_state.peer_store.find_attempt_peers(@network_state.number_of_attemp_outgoing).each do |node|
-          conn, handshake = @dialer.dial(node)
-          @network_state.new_peer_connected(conn, handshake, Peer::OUTGOING)
-        end
+      def inspect
+        "<PeerStore::Address #{ip.inspect} udp_port: #{udp_port} tcp_port: #{tcp_port}>"
       end
     end
 

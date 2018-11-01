@@ -66,18 +66,23 @@ module Ciri
     end
 
     class Node
-      attr_reader :node_id, :ip, :udp_port, :tcp_port, :added_at
+      attr_reader :node_id, :addresses, :added_at
 
-      def initialize(node_id:, ip:, udp_port:, tcp_port:, added_at: nil)
+      def initialize(raw_node_id: nil,
+                     node_id: raw_node_id && NodeID.from_raw_id(raw_node_id),
+                     addresses:,
+                     added_at: nil)
         @node_id = node_id
-        @ip = ip
-        @udp_port = udp_port
-        @tcp_port = tcp_port
+        @addresses = addresses
         @added_at = added_at
       end
 
       def == (other)
         self.class == other.class && node_id == other.node_id
+      end
+
+      def raw_node_id
+        node_id.to_bytes
       end
     end
 
