@@ -23,7 +23,6 @@
 
 
 require 'ciri/key'
-require 'digest/sha3'
 require_relative 'secrets'
 
 module Ciri
