@@ -24,7 +24,9 @@ require 'spec_helper'
 require 'async/queue'
 require 'ciri/eth/protocol_manage'
 require 'ciri/p2p/rlpx'
+require 'ciri/p2p/node'
 require 'ciri/p2p/peer'
+require 'ciri/p2p/peer_store'
 require 'ciri/p2p/protocol'
 require 'ciri/p2p/protocol_io'
 require 'ciri/p2p/network_state'
@@ -41,6 +43,7 @@ RSpec.describe Ciri::Eth::ProtocolManage do
   let(:store) {Ciri::DB::Backend::Rocks.new tmp_dir}
   let(:fork_config) {Ciri::Forks::Config.new([[0, Ciri::Forks::Frontier::Schema.new]])}
   let(:chain) {Ciri::POWChain::Chain.new(store, genesis: blocks[0], network_id: 0, fork_config: fork_config)}
+  let(:peer_store) { Ciri::P2P::PeerStore.new }
 
   after do
     # clear db
@@ -89,7 +92,7 @@ RSpec.describe Ciri::Eth::ProtocolManage do
     hs = Ciri::P2P::RLPX::ProtocolHandshake.new(version: 0, name: 'test', caps: caps, listen_port: 30303, id: peer_id)
     host_protocol_io = Ciri::P2P::ProtocolIO.new(eth_protocol, Ciri::P2P::RLPX::BASE_PROTOCOL_LENGTH, host_frame_io)
     peer_protocol_io  = nil
-    network_state = Ciri::P2P::NetworkState.new(protocol_manage)
+    network_state = Ciri::P2P::NetworkState.new(protocol_manage, peer_store)
 
     Async::Reactor.run do |task|
       # start eth protocol
@@ -99,7 +102,7 @@ RSpec.describe Ciri::Eth::ProtocolManage do
 
       # setup peer
       task.async do
-        network_state.new_peer_connected(peer_frame_io, hs)
+        network_state.new_peer_connected(peer_frame_io, hs, way_for_connection: :incoming)
       end.wait
 
       peer_protocol_io = network_state.peers[peer_id].instance_variable_get(:@protocol_io_hash).values.first
