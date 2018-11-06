@@ -37,6 +37,10 @@ module Ciri
         self.class == other.class && ip == other.ip && udp_port == other.udp_port
       end
 
+      def <=>(other)
+        ip <=> other.ip
+      end
+
       def inspect
         "<PeerStore::Address #{ip.inspect} udp_port: #{udp_port} tcp_port: #{tcp_port}>"
       end

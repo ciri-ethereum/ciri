@@ -60,13 +60,14 @@ module Ciri
         @peers_seen_records = {}
         @peers = {}
         @bootnodes = []
+        @ban_peers = {}
         @score_schema = DEFAULT_SCORE_SCHEMA.merge(score_schema)
       end
 
       def has_ping?(raw_node_id, ping_hash, expires_in: PING_EXPIRATION_IN)
         return false if has_ban?(raw_node_id)
         record = @peers_ping_records[raw_node_id]
-        if record && record[:ping_hash] == ping_hash && (record[:ping_at] + expired_in) > Time.now.to_i
+        if record && record[:ping_hash] == ping_hash && (record[:ping_at] + expires_in) > Time.now.to_i
           return true
         elsif record
           @peers_ping_records.delete(raw_node_id)
@@ -109,33 +110,43 @@ module Ciri
       end
 
       def report_peer(raw_node_id, behaviour)
-        #TODO implement scoring
+        score = @score_schema[behaviour]
+        raise ValueError.new("unsupport report behaviour: #{behaviour}") if score.nil?
+        if (node_info = @peers[raw_node_id])
+          node_info[:score] += score
+        end
       end
 
       # TODO find high scoring peers, use bootnodes as fallback
       def find_bootnodes(count)
         nodes = @bootnodes.sample(count)
-        nodes + @peers.values.sample(count - nodes.size)
+        nodes + find_attempt_peers(count - nodes.size)
       end
 
       # TODO find high scoring peers
       def find_attempt_peers(count)
-        @peers.values.sample(count)
+        @peers.values.sort_by do |peer_info|
+          -peer_info[:score]
+        end.map do |peer_info|
+          peer_info[:node]
+        end.take(count)
       end
 
       def add_node_addresses(raw_node_id, addresses)
-        node = @peers[raw_node_id]
+        node_info = @peers[raw_node_id]
+        node = node_info && node_info[:node]
         if node
-          node.addresses = (node.addresses + addresses.uniq)
+          node.addresses = (node.addresses + addresses).uniq
         end
       end
 
       def get_node_addresses(raw_node_id)
-        @peers[raw_node_id]&.addresses
+        peer_info = @peers[raw_node_id]
+        peer_info && peer_info[:node].addresses
       end
 
       def add_node(node)
-        @peers[node.raw_node_id] = node
+        @peers[node.raw_node_id] = {node: node, score: PEER_INITIAL_SCORE}
       end
     end
 
