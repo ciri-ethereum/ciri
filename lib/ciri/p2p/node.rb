@@ -66,7 +66,8 @@ module Ciri
     end
 
     class Node
-      attr_reader :node_id, :addresses, :added_at
+      attr_reader :node_id, :added_at
+      attr_accessor :addresses
 
       def initialize(raw_node_id: nil,
                      node_id: raw_node_id && NodeID.from_raw_id(raw_node_id),
