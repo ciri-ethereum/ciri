@@ -3,6 +3,7 @@ require 'ciri/key'
 require 'ciri/rlp'
 require 'ciri/eth'
 require 'ciri/evm'
+require 'ciri/p2p/address'
 require 'ciri/p2p/server'
 require 'ciri/p2p/rlpx'
 require 'ciri/p2p/protocol'
@@ -37,7 +38,8 @@ def get_target_node
   id = ARGV[0]
   raw_public_key = "\x04".b + [id].pack('H*')
   node_id = Ciri::P2P::NodeID.new Ciri::Key.new(raw_public_key: raw_public_key)
-  Ciri::P2P::Node.new(node_id: node_id, ip: 'localhost', udp_port: 30303, tcp_port: 30303)
+  address = Ciri::P2P::Address.new(ip: '127.0.0.1', udp_port: 30303, tcp_port: 30303)
+  Ciri::P2P::Node.new(node_id: node_id, addresses: [address])
 end
 
 # init genesis block
