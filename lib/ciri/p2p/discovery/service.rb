@@ -31,6 +31,7 @@ require 'async'
 require 'ciri/utils/logger'
 require 'ciri/p2p/node'
 require 'ciri/p2p/peer_store'
+require 'ciri/p2p/kad'
 require_relative 'protocol'
 
 module Ciri

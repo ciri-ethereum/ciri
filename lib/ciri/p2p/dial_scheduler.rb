@@ -51,14 +51,14 @@ module Ciri
       def dial_bootnodes
         @network_state.peer_store.find_bootnodes(@network_state.number_of_attemp_outgoing).each do |node|
           conn, handshake = @dialer.dial(node)
-          @network_state.new_peer_connected(conn, handshake, Peer::OUTGOING)
+          @network_state.new_peer_connected(conn, handshake, way_for_connection: Peer::OUTGOING)
         end
       end
 
       def schedule_dialing_tasks
         @network_state.peer_store.find_attempt_peers(@network_state.number_of_attemp_outgoing).each do |node|
           conn, handshake = @dialer.dial(node)
-          @network_state.new_peer_connected(conn, handshake, Peer::OUTGOING)
+          @network_state.new_peer_connected(conn, handshake, way_for_connection: Peer::OUTGOING)
         end
       end
     end
