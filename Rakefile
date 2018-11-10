@@ -4,27 +4,24 @@ rescue LoadError
   puts "bundler not installed, use 'gem install bundler' to install"
 end
 
-begin
-  require "rspec/core/rake_task"
-  RSpec::Core::RakeTask.new(:spec)
-  task :default => :spec
-rescue LoadError
-  nil
-end
-
 require 'fileutils'
 require 'tmpdir'
 
-desc 'run quick spec'
-task :quick do
-  exit(1) unless check_env
-  run("rspec -t ~slow_tests")
-end
+task :default => :spec
 
-desc 'run all specs, include extreme slow tests'
-task :"spec:all" do
+desc 'run spec, use argument to specific a component, default will skip slow tests'
+task :spec, [:component, :skip_slow] do |task, args|
   exit(1) unless check_env
-  run("rspec")
+  cli = "rspec"
+  if args.fetch(:skip_slow, true)
+    cli += " -t ~slow_tests"
+  end
+  if (component = args[:component])
+    cli += " spec/ciri/#{component}"
+  else
+    warn("Run all test cases... maybe slow")
+  end
+  run(cli)
 end
 
 namespace :install do
@@ -77,14 +74,14 @@ namespace :docker do
     end
   end
 
-  desc 'run quick specs in docker'
-  task :quick do
-    run("docker run -v `pwd`:/app --rm #{base_image}:latest rake quick")
-  end
-
-  desc 'run all specs(include slow tests) in docker'
-  task :"spec:all" do
-    run("docker run -v `pwd`:/app --rm #{base_image}:latest rake spec:all")
+  desc 'run spec in docker'
+  task :spec, [:component, :skip_slow] do |task, args|
+    cli_args = ""
+    args_hash = args.to_h
+    unless args_hash.empty?
+      cli_args = "[#{args_hash.values.join(", ")}]"
+    end
+    run("docker run -v `pwd`:/app --rm #{base_image}:latest rake 'spec#{cli_args}'")
   end
 
   private
@@ -96,7 +93,7 @@ namespace :docker do
   def check_env
     pass = false
     if ENV['RUBY_THREAD_VM_STACK_SIZE'].to_i < default_stack_size
-      warn "Ruby stack size is not enough: set env 'RUBY_THREAD_VM_STACK_SIZE' to #{default_stack_size} and try again"
+      warn "Ruby stack size is not enough: set env 'RUBY_THREAD_VM_STACK_SIZE' to #{default_stack_size} and try again, otherwise you may failed to pass EVM related tests"
       warn "export RUBY_THREAD_VM_STACK_SIZE=#{default_stack_size}"
     else
       pass = true
