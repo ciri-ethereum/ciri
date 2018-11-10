@@ -88,7 +88,10 @@ rake docker:build
 #### Run tests in docker
 ``` bash
 # run tests
-rake docker:quick
+rake docker:spec
+
+# run specific component related tests
+rake docker:spec[p2p]
 ```
 
 #### Other usages
@@ -131,7 +134,11 @@ bundle install
 
 run tests:
 ``` bash
-RUBY_THREAD_VM_STACK_SIZE=52428800 bundle exec rake quick
+# run all tests
+RUBY_THREAD_VM_STACK_SIZE=52428800 bundle exec rake spec
+
+# run specific component related tests (for example: p2p network component)
+bundle exec rake spec[p2p]
 ```
 
 Why Ruby?
