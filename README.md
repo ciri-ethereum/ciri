@@ -78,19 +78,12 @@ gem install rake
 rake docker:pull
 ```
 
-#### Build docker image
-(it will take a few minutes)
-``` bash
-# build Ciri docker image
-rake docker:build
-```
-
 #### Run tests in docker
 ``` bash
 # run tests
 rake docker:spec
 
-# run specific component related tests
+# run specific component related tests (for example: p2p network component)
 rake docker:spec[p2p]
 ```
 
@@ -98,6 +91,9 @@ rake docker:spec[p2p]
 ``` bash
 # open a shell for developing
 rake docker:shell
+
+# build Ciri docker image from current source (it will take a few minutes)
+rake docker:build
 
 # type 'rake -T' see other supported tasks 
 rake -T
