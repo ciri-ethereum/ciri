@@ -123,9 +123,9 @@ RSpec.describe Ciri::P2P::PeerStore do
     let(:nodes) { node_ids.map {|node_id| Ciri::P2P::Node.new(node_id: node_id, addresses: []) } }
     let(:addresses) do
       [
-        Ciri::P2P::Address.new(ip: '127.0.0.1', udp_port: 3000, udp_port: 3000),
-        Ciri::P2P::Address.new(ip: '127.0.0.2', udp_port: 3000, udp_port: 3000),
-        Ciri::P2P::Address.new(ip: '127.0.0.3', udp_port: 3000, udp_port: 3000),
+        Ciri::P2P::Address.new(ip: '127.0.0.1', tcp_port: 3000, udp_port: 3000),
+        Ciri::P2P::Address.new(ip: '127.0.0.2', tcp_port: 3000, udp_port: 3000),
+        Ciri::P2P::Address.new(ip: '127.0.0.3', tcp_port: 3000, udp_port: 3000),
       ]
     end
 
