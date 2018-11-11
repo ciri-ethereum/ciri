@@ -86,7 +86,7 @@ module Ciri
               task.sleep(0.5) until @local_address
 
               # start discovery service
-              @discovery_service = Discovery::Service.new(bootnodes: @bootnodes, host: @host, udp_port: @local_address.ip_port, tcp_port: @local_address, local_node_id: @local_node_id)
+              @discovery_service = Discovery::Service.new(peer_store: @peer_store, private_key: @private_key, host: @host, udp_port: @local_address.ip_port, tcp_port: @local_address)
               task.async { @discovery_service.run }
 
               # start dial outgoing nodes

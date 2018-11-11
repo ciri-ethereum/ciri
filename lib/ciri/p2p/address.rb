@@ -28,7 +28,7 @@ module Ciri
       attr_reader :ip, :udp_port, :tcp_port
 
       def initialize(ip:, udp_port:, tcp_port: udp_port)
-        @ip = IPAddr.new(ip)
+        @ip = ip.is_a?(IPAddr) ? ip : IPAddr.new(ip)
         @udp_port = udp_port
         @tcp_port = tcp_port
       end
