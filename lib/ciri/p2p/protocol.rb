@@ -40,7 +40,7 @@ module Ciri
         @length = length
       end
 
-      def initialized
+      def initialized(context)
         debug("not implemented Protocol#initialized callback")
       end
 

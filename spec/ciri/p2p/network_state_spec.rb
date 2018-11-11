@@ -49,6 +49,10 @@ RSpec.describe Ciri::P2P::NetworkState do
   let(:peer_store) {
     Ciri::P2P::PeerStore.new
   }
+  let(:local_node_id) {
+    key = Ciri::Key.random
+    Ciri::P2P::NodeID.new(key)
+  }
 
   # mock connection
   let(:connection) do
@@ -78,7 +82,7 @@ RSpec.describe Ciri::P2P::NetworkState do
 
       attr_reader :protocol_initialized, :connected_peers, :disconnected_peers
 
-      def initialized
+      def initialized(context)
         @protocol_initialized = true
         @connected_peers = []
         @disconnected_peers = []
@@ -95,7 +99,10 @@ RSpec.describe Ciri::P2P::NetworkState do
   end
 
   it 'handle peers connected and removed' do
-    network_state = Ciri::P2P::NetworkState.new(protocols: protocols, peer_store: peer_store)
+    network_state = Ciri::P2P::NetworkState.new(
+      protocols: protocols,
+      peer_store: peer_store,
+      local_node_id: local_node_id)
 
     Async::Reactor.run do |task|
       task.reactor.after(5) do
@@ -124,7 +131,10 @@ RSpec.describe Ciri::P2P::NetworkState do
   end
 
   it 'refuse peer connection if cannot match any protocols' do
-    network_state = Ciri::P2P::NetworkState.new(protocols: protocols, peer_store: peer_store)
+    network_state = Ciri::P2P::NetworkState.new(
+      protocols: protocols,
+      peer_store: peer_store,
+      local_node_id: local_node_id)
     Async::Reactor.run do |task|
       task.reactor.after(5) do
         raise StandardError.new("test timeout.. must something be wrong")
