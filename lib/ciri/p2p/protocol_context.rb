@@ -35,11 +35,17 @@ module Ciri
       attr_reader :peer, :protocol, :protocol_io
 
       def_delegators :protocol_io, :send_data
+      def_delegators :@network_state, :local_node_id
 
-      def initialize(peer:, protocol:, protocol_io:)
+      def initialize(network_state, peer: nil, protocol: nil, protocol_io: nil)
+        @network_state
         @peer = peer
         @protocol = protocol
         @protocol_io = protocol_io
+      end
+
+      def raw_local_node_id
+        @raw_local_node_id ||= local_node_id.to_bytes
       end
     end
 

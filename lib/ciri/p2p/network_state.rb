@@ -38,10 +38,11 @@ module Ciri
 
       attr_reader :peers, :caps, :peer_store
 
-      def initialize(protocols:, peer_store:, max_outgoing: 10, max_incoming: 10, ping_interval_secs: 15)
+      def initialize(protocols:, peer_store:, local_node_id:, max_outgoing: 10, max_incoming: 10, ping_interval_secs: 15)
         @peers = {}
         @peer_store = peer_store
         @protocols = protocols
+        @local_node_id = local_node_id
         @max_outgoing = max_outgoing
         @max_incoming = max_incoming
         @ping_interval_secs = ping_interval_secs
@@ -50,7 +51,8 @@ module Ciri
       def initialize_protocols(task: Async::Task.current)
         # initialize protocols
         @protocols.each do |protocol|
-          task.async {protocol.initialized}
+          context = ProtocolContext.new(self)
+          task.async {protocol.initialized(context)}
         end
       end
 
@@ -81,7 +83,7 @@ module Ciri
         peer.protocol_ios.each do |protocol_io|
           task.async do
             # Protocol#connected
-            context = ProtocolContext.new(peer: peer, protocol: protocol_io.protocol, protocol_io: protocol_io)
+            context = ProtocolContext.new(self, peer: peer, protocol: protocol_io.protocol, protocol_io: protocol_io)
             context.protocol.connected(context)
           end
         end
@@ -91,7 +93,7 @@ module Ciri
         peer.protocol_ios.each do |protocol_io|
           task.async do
             # Protocol#connected
-            context = ProtocolContext.new(peer: peer, protocol: protocol_io.protocol, protocol_io: protocol_io)
+            context = ProtocolContext.new(self, peer: peer, protocol: protocol_io.protocol, protocol_io: protocol_io)
             context.protocol.disconnected(context)
           end
         end
@@ -159,7 +161,7 @@ module Ciri
           end
           task.async do
             # Protocol#received
-            context = ProtocolContext.new(peer: peer, protocol: protocol_io.protocol, protocol_io: protocol_io)
+            context = ProtocolContext.new(self, peer: peer, protocol: protocol_io.protocol, protocol_io: protocol_io)
             context.protocol.received(context, msg)
           end
         end

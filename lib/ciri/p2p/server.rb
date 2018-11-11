@@ -62,7 +62,12 @@ module Ciri
         @port = port
         @dialer = Dialer.new(private_key: private_key, handshake: @handshake)
         @peer_store = PeerStore.new
-        @network_state = NetworkState.new(protocols: protocols, peer_store: @peer_store, max_incoming: max_incoming, max_outgoing: max_outgoing)
+        @network_state = NetworkState.new(
+          protocols: protocols,
+          peer_store: @peer_store,
+          local_node_id: @local_node_id,
+          max_incoming: max_incoming,
+          max_outgoing: max_outgoing)
         @bootnodes = bootnodes
       end
 
