@@ -11,4 +11,5 @@ before_install:
   - docker pull ciriethereum/ciri:latest
 
 script:
-  - rake docker:quick
+  - rake docker:spec
+
