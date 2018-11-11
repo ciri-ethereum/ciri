@@ -30,9 +30,9 @@ require 'ciri/p2p/protocol'
 require 'ciri/p2p/rlpx/protocol_handshake'
 
 RSpec.describe Ciri::P2P::NetworkState do
-  let(:eth_protocol) {Ciri::P2P::Protocol.new(name: 'eth', version: 63, length: 17)}
-  let(:old_eth_protocol) {Ciri::P2P::Protocol.new(name: 'eth', version: 62, length: 8)}
-  let(:hello_protocol) {Ciri::P2P::Protocol.new(name: 'hello', version: 1, length: 16)}
+  let(:eth_protocol) {mock_protocol_class.new(name: 'eth', version: 63, length: 17)}
+  let(:old_eth_protocol) {mock_protocol_class.new(name: 'eth', version: 62, length: 8)}
+  let(:hello_protocol) {mock_protocol_class.new(name: 'hello', version: 1, length: 16)}
   let(:caps) {[
     Ciri::P2P::RLPX::Cap.new(name: 'eth', version: 63),
     Ciri::P2P::RLPX::Cap.new(name: 'eth', version: 62),
@@ -73,30 +73,29 @@ RSpec.describe Ciri::P2P::NetworkState do
     end.new
   end
 
-  # mock ProtocolManage
-  let(:protocol_manage_class) do
-    Class.new do
-      attr_reader :protocol_io_by_peer_ids, :removed_peers, :protocols
+  let(:mock_protocol_class) do
+    Class.new(Ciri::P2P::Protocol) do
 
-      def initialize(protocols)
-        @protocol_io_by_peer_ids = Hash.new
-        @removed_peers = []
-        @protocols = protocols
+      attr_reader :protocol_initialized, :connected_peers, :disconnected_peers
+
+      def initialized
+        @protocol_initialized = true
+        @connected_peers = []
+        @disconnected_peers = []
       end
 
-      def new_peer(peer, protocol_io)
-        (@protocol_io_by_peer_ids[peer.node_id.to_s] ||= []) << protocol_io
+      def connected(context)
+        @connected_peers << context.peer
       end
 
-      def remove_peer(peer)
-        @removed_peers << peer
+      def disconnected(context)
+        @disconnected_peers << context.peer
       end
     end
   end
 
   it 'handle peers connected and removed' do
-    protocol_manage = protocol_manage_class.new(protocols)
-    network_state = Ciri::P2P::NetworkState.new(protocol_manage, peer_store)
+    network_state = Ciri::P2P::NetworkState.new(protocols: protocols, peer_store: peer_store)
 
     Async::Reactor.run do |task|
       task.reactor.after(5) do
@@ -104,30 +103,35 @@ RSpec.describe Ciri::P2P::NetworkState do
       end
 
       task.async do
+        network_state.initialize_protocols
         network_state.new_peer_connected(connection, handshake, way_for_connection: :incoming)
         network_state.new_peer_connected(connection, handshake_only_hello, way_for_connection: :incoming)
         task.reactor.stop
       end
     end
 
-    expect(protocol_manage.removed_peers.size).to eq 2
-    expect(protocol_manage.protocol_io_by_peer_ids.size).to eq 2
-    # first node has ETH and hello protocols
-    expect(protocol_manage.protocol_io_by_peer_ids.values[0].size).to eq 2
-    # second node only has hello protocol
-    expect(protocol_manage.protocol_io_by_peer_ids.values[1].size).to eq 1
-
+    # check eth_protocol
+    expect(eth_protocol.protocol_initialized).to be_truthy
+    expect(eth_protocol.connected_peers.size).to eq 1
+    expect(eth_protocol.disconnected_peers.size).to eq 1
+    # check old_eth_protocol
+    expect(old_eth_protocol.protocol_initialized).to be_truthy
+    expect(old_eth_protocol.connected_peers.size).to eq 0
+    # check hello_protocol
+    expect(hello_protocol.protocol_initialized).to be_truthy
+    expect(hello_protocol.connected_peers.size).to eq 2
+    expect(hello_protocol.disconnected_peers.size).to eq 2
   end
 
   it 'refuse peer connection if cannot match any protocols' do
-    protocol_manage = protocol_manage_class.new(protocols)
-    network_state = Ciri::P2P::NetworkState.new(protocol_manage, peer_store)
+    network_state = Ciri::P2P::NetworkState.new(protocols: protocols, peer_store: peer_store)
     Async::Reactor.run do |task|
       task.reactor.after(5) do
         raise StandardError.new("test timeout.. must something be wrong")
       end
 
       task.async do
+        network_state.initialize_protocols
         expect do
           network_state.new_peer_connected(connection, handshake_only_hello, way_for_connection: :incoming)
         end.not_to raise_error

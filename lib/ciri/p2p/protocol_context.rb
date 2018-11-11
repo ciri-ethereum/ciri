@@ -22,38 +22,24 @@
 # THE SOFTWARE.
 
 
-require 'ciri/utils/logger'
+require 'forwardable'
 
 module Ciri
   module P2P
 
-    # protocol represent P2P sub protocols
-    class Protocol
+    # ProtocolContext is used to manuaplate
+    class ProtocolContext
 
-      include Utils::Logger
+      extend Forwardable
 
-      attr_reader :name, :version, :length
+      attr_reader :peer, :protocol, :protocol_io
 
-      def initialize(name:, version:, length:)
-        @name = name
-        @version = version
-        @length = length
-      end
+      def_delegators :protocol_io, :send_data
 
-      def initialized
-        debug("not implemented Protocol#initialized callback")
-      end
-
-      def received(context, data)
-        debug("not implemented Protocol#received callback")
-      end
-
-      def connected(context)
-        debug("not implemented Protocol#connected callback")
-      end
-
-      def disconnected(context)
-        debug("not implemented Protocol#disconnected callback")
+      def initialize(peer:, protocol:, protocol_io:)
+        @peer = peer
+        @protocol = protocol
+        @protocol_io = protocol_io
       end
     end
 

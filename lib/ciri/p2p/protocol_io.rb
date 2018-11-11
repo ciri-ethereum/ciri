@@ -22,7 +22,6 @@
 
 
 require 'forwardable'
-require 'async/queue'
 require 'async/semaphore'
 require_relative 'rlpx/message'
 
@@ -43,7 +42,6 @@ module Ciri
         @protocol = protocol
         @offset = offset
         @frame_io = frame_io
-        @msg_queue = Async::Queue.new
         @semaphore = Async::Semaphore.new
       end
 
@@ -60,20 +58,8 @@ module Ciri
         @frame_io.write_msg(msg)
       end
 
-      def read_msg
-        msg = @msg_queue.dequeue
-        msg.code -= offset
-        msg
-      end
-
-      def receive_msg(msg)
-        @msg_queue.enqueue msg
-      end
-
-      def empty?
-        @msg_queue.empty?
-      end
     end
 
   end
 end
+
