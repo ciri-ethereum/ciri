@@ -78,7 +78,8 @@ module Ciri
 
           # validate message hash and signature
           def validate
-            raise InvalidMessageError.new("mismatch hash") if message_hash != Utils.keccak(signature + packet_type + packet_data)
+            encoded_packet_type = Utils.big_endian_encode(packet_type)
+            raise InvalidMessageError.new("mismatch hash") if message_hash != Utils.keccak(@signature + encoded_packet_type + packet_data)
             begin
               sender
             rescue StandardError => e
@@ -151,11 +152,11 @@ module Ciri
 
           class << self
             def from_inet_addr(address)
-              from_host_port(address[3], address[1])
+              from_host_port(address.ip_address, address.ip_port)
             end
 
             def from_host_port(host, port)
-              new(recipient_ip: IPAddr.new(host).to_i, recipient_udp_port: port)
+              new(recipient_ip: host.is_a?(IPAddr) ? host.to_i : IPAddr.new(host).to_i, recipient_udp_port: port)
             end
           end
         end
