@@ -82,6 +82,18 @@ module Ciri
         @protocol_io_hash.values
       end
 
+      def find_protocol(name)
+        @protocol.find do |protocol|
+          protocol.name == name
+        end
+      end
+
+      def find_protocol_io(name)
+        protocol_ios.find do |protocol_io|
+          protocol_io.protocol.name == name
+        end
+      end
+
       # find ProtocolIO by raw message code
       # used by DEVP2P to find stream of sub-protocol
       def find_protocol_io_by_msg_code(raw_code)

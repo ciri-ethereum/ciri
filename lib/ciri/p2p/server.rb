@@ -40,7 +40,7 @@ module Ciri
   module P2P
 
     # P2P Server
-    # maintain connection, node discovery, rlpx handshake and protocols
+    # maintain connection, node discovery, rlpx handshake
     class Server
       include Utils::Logger
       include RLPX
@@ -48,13 +48,12 @@ module Ciri
       DEFAULT_MAX_PENDING_PEERS = 50
       DEFAULT_DIAL_RATIO = 3
 
-      attr_reader :handshake, :dial_scheduler, :protocol_manage, :dialer, :local_address
+      attr_reader :handshake, :dial_scheduler, :dialer, :local_address
 
-      def initialize(private_key:, protocol_manage:, bootnodes: [],
+      def initialize(private_key:, protocols:, bootnodes: [],
                      node_name: 'Ciri', host: '127.0.0.1', port: 33033, max_outgoing: 10, max_incoming:10)
         @private_key = private_key
         @node_name = node_name
-        @protocol_manage = protocol_manage
         # prepare handshake information
         @local_node_id = NodeID.new(@private_key)
         caps = [Cap.new(name: 'eth', version: 63)]
@@ -63,7 +62,7 @@ module Ciri
         @port = port
         @dialer = Dialer.new(private_key: private_key, handshake: @handshake)
         @peer_store = PeerStore.new
-        @network_state = NetworkState.new(protocol_manage, @peer_store, max_incoming: max_incoming, max_outgoing: max_outgoing)
+        @network_state = NetworkState.new(protocols: protocols, peer_store: @peer_store, max_incoming: max_incoming, max_outgoing: max_outgoing)
         @bootnodes = bootnodes
       end
 
@@ -76,10 +75,10 @@ module Ciri
 
         # start server and services
         Async::Reactor.run do |task|
+          # initialize protocols
+          @network_state.initialize_protocols
           # wait sub tasks
           task.async do
-            # start ETH protocol, @protocol_manage is basicly ETH protocol now
-            task.async {@protocol_manage.run}
             task.async do
               # Wait for server started listen
               # we use listened port to start DiscoveryService to allow 0 port

@@ -26,6 +26,7 @@ require 'async'
 require 'ciri/utils/logger'
 require_relative 'peer'
 require_relative 'errors'
+require_relative 'protocol_context'
 
 module Ciri
   module P2P
@@ -37,13 +38,20 @@ module Ciri
 
       attr_reader :peers, :caps, :peer_store
 
-      def initialize(protocol_manage, peer_store, max_outgoing: 10, max_incoming: 10, ping_interval_secs: 15)
+      def initialize(protocols:, peer_store:, max_outgoing: 10, max_incoming: 10, ping_interval_secs: 15)
         @peers = {}
         @peer_store = peer_store
-        @protocol_manage = protocol_manage
+        @protocols = protocols
         @max_outgoing = max_outgoing
         @max_incoming = max_incoming
         @ping_interval_secs = ping_interval_secs
+      end
+
+      def initialize_protocols(task: Async::Task.current)
+        # initialize protocols
+        @protocols.each do |protocol|
+          task.async {protocol.initialized}
+        end
       end
 
       def number_of_attemp_outgoing
@@ -52,7 +60,7 @@ module Ciri
 
       def new_peer_connected(connection, handshake, way_for_connection:, task: Async::Task.current)
         protocol_handshake_checks(handshake)
-        peer = Peer.new(connection, handshake, @protocol_manage.protocols, way_for_connection: way_for_connection)
+        peer = Peer.new(connection, handshake, @protocols, way_for_connection: way_for_connection)
         @peers[peer.id] = peer
         debug "connect to new peer #{peer}"
         # run peer logic
@@ -69,14 +77,24 @@ module Ciri
 
       private
 
-      def register_peer_protocols(peer)
+      def register_peer_protocols(peer, task: Async::Task.current)
         peer.protocol_ios.each do |protocol_io|
-          @protocol_manage.new_peer(peer, protocol_io)
+          task.async do
+            # Protocol#connected
+            context = ProtocolContext.new(peer: peer, protocol: protocol_io.protocol, protocol_io: protocol_io)
+            context.protocol.connected(context)
+          end
         end
       end
 
-      def deregister_peer_protocols(peer)
-        @protocol_manage.remove_peer(peer)
+      def deregister_peer_protocols(peer, task: Async::Task.current)
+        peer.protocol_ios.each do |protocol_io|
+          task.async do
+            # Protocol#connected
+            context = ProtocolContext.new(peer: peer, protocol: protocol_io.protocol, protocol_io: protocol_io)
+            context.protocol.disconnected(context)
+          end
+        end
       end
 
       # handling peer IO
@@ -126,7 +144,7 @@ module Ciri
       end
 
       # handle peer message
-      def handle_message(peer, msg)
+      def handle_message(peer, msg, task: Async::Task.current)
         if msg.code == RLPX::Code::PING
           pong
         elsif msg.code == RLPX::Code::DISCONNECT
@@ -139,19 +157,23 @@ module Ciri
           if (protocol_io = peer.find_protocol_io_by_msg_code(msg.code)).nil?
             raise UnknownMessageCodeError.new("can't find protocol with msg code #{msg.code}")
           end
-          protocol_io.receive_msg msg
+          task.async do
+            # Protocol#received
+            context = ProtocolContext.new(peer: peer, protocol: protocol_io.protocol, protocol_io: protocol_io)
+            context.protocol.received(context, msg)
+          end
         end
       end
 
       def protocol_handshake_checks(handshake)
-        if @protocol_manage.protocols && count_matching_protocols(handshake.caps) == 0
+        if @protocols && count_matching_protocols(handshake.caps) == 0
           raise UselessPeerError.new('discovery useless peer')
         end
       end
 
       # {cap_name => cap_version}
       def caps_hash
-        @caps_hash ||= @protocol_manage.protocols.sort_by do |cap|
+        @caps_hash ||= @protocols.sort_by do |cap|
           cap.version
         end.reduce({}) do |caps_hash, cap|
           caps_hash[cap.name] = cap.version
