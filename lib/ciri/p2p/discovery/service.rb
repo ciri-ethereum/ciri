@@ -54,7 +54,7 @@ module Ciri
         # use message classes defined in Discovery
         include Protocol
 
-        attr_reader :peer_store, :local_node_id, :host, :udp_port
+        attr_reader :peer_store, :local_node_id, :host, :udp_port, :tcp_port
 
         # we should consider search from peer_store instead connect to bootnodes everytime 
         def initialize(peer_store:, host:, udp_port:, tcp_port:, private_key:, discovery_interval_secs: 15)
@@ -67,11 +67,14 @@ module Ciri
           @private_key = private_key
           @local_node_id = NodeID.new(private_key)
           @kad_table = Kad::RoutingTable.new(local_node: Kad::Node.new(@local_node_id.to_bytes))
+          setup_kad_table
         end
 
         def run(task: Async::Task.current)
           # start listening
-          task.async {start_listen}
+          task.async do
+            start_listen
+          end
           # search peers every x seconds
           task.reactor.every(@discovery_interval_secs) do
             task.async do
@@ -85,7 +88,7 @@ module Ciri
           endpoint = Async::IO::Endpoint.udp(@host, @udp_port)
           endpoint.bind do |socket|
             @local_address = socket.local_address
-            debug "start discovery server on #{@local_address.getnameinfo.join(":")}"
+            debug "start discovery server on #{@local_address.getnameinfo.join(":")}\nlocal_node_id: #{@local_node_id}"
 
             # update port if port is zero
             if @udp_port.zero?
@@ -119,7 +122,7 @@ module Ciri
             from_address = Address.new(
               ip: from_ip,
               udp_port: from_udp_port, 
-              tcp_port: nil)
+              tcp_port: 0)
             debug("receive ping msg from #{from_address.inspect}")
             # respond pong
             pong = Pong.new(to: To.from_host_port(from_ip, from_udp_port), 
@@ -141,26 +144,30 @@ module Ciri
               # consider add to denylist
               return
             end
-            nodes = find_neighbours(msg.packet.target).map do |raw_node_id, addr|
-              Neighbors::Node.new(ip: addr.ip, udp_port: addr.udp_port, tcp_port: addr.tcp_port, node_id: raw_node_id)
+            nodes = find_neighbours(msg.packet.target, 20).map do |raw_node_id, addr|
+              Neighbors::Node.new(ip: addr.ip.to_i, udp_port: addr.udp_port, tcp_port: addr.tcp_port, node_id: raw_node_id)
             end
             neighbors = Neighbors.new(nodes: nodes, expiration: Time.now.to_i + MESSAGE_EXPIRATION_IN)
-            send_msg_to_node(Message.pack(neighbors).encode_message, raw_node_id)
-            @kown_peers.update_last_seen(raw_node_id)
+            send_msg_to_node(Message.pack(neighbors, private_key: @private_key).encode_message, raw_node_id)
+            @peer_store.update_last_seen(raw_node_id)
           when Neighbors::CODE
             unless @peer_store.has_seen?(raw_node_id)
               # consider add to denylist
               return
             end
+            debug("receive neighours #{msg.packet.nodes.size} from #{raw_node_id.to_hex}")
             msg.packet.nodes.each do |node|
-              raw_node_id = node.node_id
-              address = Address.new(ip: node.ip, udp_port: node.udp_port, tcp_port: node.tcp_port)
-              @peer_store.add_node(Node.new(raw_node_id: raw_node_id, addresses: [address]))
+              raw_id = node.node_id
+              next if raw_id == raw_local_node_id
+              debug("receive neighour #{node} from #{raw_node_id.to_hex}")
+              ip = IPAddr.new(node.ip, Socket::AF_INET)
+              address = Address.new(ip: ip, udp_port: node.udp_port, tcp_port: node.tcp_port)
+              @peer_store.add_node(Node.new(raw_node_id: raw_id, addresses: [address]))
               # add new discovered node_id
-              @kad_table.update(raw_node_id)
+              @kad_table.update(raw_id)
             end
             @kad_table.update(raw_node_id)
-            @kown_peers.update_last_seen(raw_node_id)
+            @peer_store.update_last_seen(raw_node_id)
           else
             @peer_store.ban_peer(msg.sender.to_bytes)
             raise UnknownMessageCodeError.new("can't handle unknown code in discovery protocol, code: #{msg.packet_type}")
@@ -190,7 +197,7 @@ module Ciri
         def send_msg_to_node(msg, raw_node_id)
           address = @peer_store.get_node_addresses(raw_node_id)&.first
           raise ArgumentsError.new("can't found peer address of #{raw_node_id.to_hex} from peer_store") unless address
-          send_msg(msg, address.ip_address, address.ip_port)
+          send_msg(msg, address.ip.to_s, address.udp_port)
         end
 
         def send_msg(msg, host, port)
@@ -198,15 +205,32 @@ module Ciri
           socket.send(msg, 0, host, port)
         end
 
+        def raw_local_node_id
+            @raw_local_node_id ||= @local_node_id.to_bytes
+        end
+
         # find nerly neighbours
         def find_neighbours(raw_node_id, count)
           @kad_table.find_neighbours(raw_node_id, k: count).map do |node|
-            [raw_node_id, @peer_store.get_node_addresses(raw_node_id)&.first]
-          end.delete_if(&:nil?)
+            [node.raw_node_id, @peer_store.get_node_addresses(node.raw_node_id)&.first]
+          end.delete_if do |_, addr|
+            addr.nil?
+          end
+        end
+
+        def setup_kad_table
+          if @kad_table.size.zero?
+            @peer_store.find_bootnodes(20).each do |node|
+              next if raw_local_node_id == node.raw_node_id
+              debug("setup kad_table with #{node}")
+              @kad_table.update(node.raw_node_id)
+            end
+          end
         end
 
         def perform_discovery(count_of_query_nodes=15, task: Async::Task.current)
-          query_target = NodeID.new(Key.random).id
+          query_node = NodeID.new(Key.random)
+          query_target = query_node.to_bytes
           # randomly search
           @kad_table.get_random_nodes(15).each do |node|
             address = @peer_store.get_node_addresses(node.raw_node_id)&.first

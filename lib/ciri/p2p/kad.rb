@@ -133,7 +133,7 @@ module Ciri
         def add(node)
           @last_updated = Time.now.to_i
           if @nodes.include?(node)
-            @nodes.remove(node)
+            @nodes.delete(node)
             @nodes << node
           elsif @nodes.size < k_size
             @nodes << node
@@ -239,6 +239,10 @@ module Ciri
         end
 
         def find_neighbours(id, k: K_BUCKET_SIZE)
+          # convert id to integer
+          unless id.is_a?(Integer)
+            id = Node.new(id).id
+          end
           nodes = []
           buckets_by_distance_to(id).each do |bucket|
             bucket.nodes_by_distance_to(id).each do |node|
