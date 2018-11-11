@@ -38,6 +38,7 @@ RSpec.describe Ciri::P2P::Discovery::Service do
   end
 
   context 'ping' do
+
     it 'perform ping/pong' do
       Async::Reactor.run do |task|
         # set a large interval to disable performing discovery
@@ -61,11 +62,76 @@ RSpec.describe Ciri::P2P::Discovery::Service do
       end
     end
 
-    it 'auto perform ping/pong if not seen peer'
   end
 
   context 'discovery' do
-    it 'discovery 3rd peer'
+
+    it 'discovery peers' do
+      Async::Reactor.run do |task|
+        interval = 0.1
+        s1 = new_service(discovery_interval_secs: interval)
+        s2 = new_service(discovery_interval_secs: interval)
+
+        task.async { s1.run }
+        task.async { s2.run }
+
+        # sleep 0.1 seconds to wait s2 listen
+        task.reactor.after(0.1) do
+          s1.peer_store.add_node(Ciri::P2P::Node.new(
+            node_id: s2.local_node_id,
+            addresses: [Ciri::P2P::Address.new(ip: s2.host, udp_port: s2.udp_port, tcp_port: s2.tcp_port)]))
+          # fill initial peers into kad_table
+          s1.send(:setup_kad_table)
+        end
+
+        # check discovery status after 0.2 seconds
+        task.reactor.after(0.5) do
+          # s2 should discovery s1 addresses
+          s2_discover_addresses = s2.peer_store.get_node_addresses(s1.local_node_id.to_bytes)
+          expect(s2_discover_addresses).to eq [Ciri::P2P::Address.new(ip: s1.host, udp_port: s1.udp_port, tcp_port: s1.tcp_port)]
+          task.reactor.stop
+        end
+
+      end
+    end
+
+    it 'discovery 3rd peer' do
+      Async::Reactor.run do |task|
+        interval = 0.1
+        s1 = new_service(discovery_interval_secs: interval)
+        s2 = new_service(discovery_interval_secs: interval)
+        s3 = new_service(discovery_interval_secs: interval)
+
+        task.async { s1.run }
+        task.async { s2.run }
+        task.async { s3.run }
+
+        # sleep 0.1 seconds to wait s2 listen
+        task.reactor.after(0.1) do
+          # s1 know s2
+          s1.peer_store.add_node(Ciri::P2P::Node.new(
+            node_id: s2.local_node_id,
+            addresses: [Ciri::P2P::Address.new(ip: s2.host, udp_port: s2.udp_port, tcp_port: s2.tcp_port)]))
+          # fill initial peers into kad_table
+          s1.send(:setup_kad_table)
+          # s2 know s3
+          s2.peer_store.add_node(Ciri::P2P::Node.new(
+            node_id: s3.local_node_id,
+            addresses: [Ciri::P2P::Address.new(ip: s3.host, udp_port: s3.udp_port, tcp_port: s3.tcp_port)]))
+          s2.send(:setup_kad_table)
+        end
+
+        # check discovery status
+        task.reactor.after(1) do
+          # check s3 address from s1 peer_store
+          s3_addresses = s1.peer_store.get_node_addresses(s3.local_node_id.to_bytes)
+          expect(s3_addresses).to eq [Ciri::P2P::Address.new(ip: s3.host, udp_port: s3.udp_port, tcp_port: s3.tcp_port)]
+          task.reactor.stop
+        end
+
+      end
+    end
+
   end
 end
 
