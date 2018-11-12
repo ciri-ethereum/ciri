@@ -36,7 +36,7 @@ module Ciri
     class NetworkState
       include Utils::Logger
 
-      attr_reader :peers, :caps, :peer_store
+      attr_reader :peers, :caps, :peer_store, :local_node_id
 
       def initialize(protocols:, peer_store:, local_node_id:, max_outgoing: 10, max_incoming: 10, ping_interval_secs: 15)
         @peers = {}
@@ -63,8 +63,14 @@ module Ciri
       def new_peer_connected(connection, handshake, way_for_connection:, task: Async::Task.current)
         protocol_handshake_checks(handshake)
         peer = Peer.new(connection, handshake, @protocols, way_for_connection: way_for_connection)
-        @peers[peer.id] = peer
-        debug "connect to new peer #{peer}"
+        # disconnect already connected peers
+        if @peers.include?(peer.raw_node_id)
+          debug("[#{local_node_id.short_hex}] peer #{peer} is already connected")
+          return
+        end
+        @peers[peer.raw_node_id] = peer
+        debug "[#{local_node_id.short_hex}] connect to new peer #{peer}"
+        @peer_store.update_peer_status(peer.raw_node_id, PeerStore::Status::CONNECTED)
         # run peer logic
         task.async do
           register_peer_protocols(peer)
@@ -73,28 +79,49 @@ module Ciri
       end
 
       def remove_peer(peer)
-        @peers.delete(peer.id)
+        @peers.delete(peer.raw_node_id)
         deregister_peer_protocols(peer)
+      end
+
+      def disconnect_peer(peer, reason: nil)
+        return unless @peers.include?(peer.raw_node_id)
+        debug("[#{local_node_id.short_hex}] disconnect peer: #{peer}, reason: #{reason}")
+        remove_peer(peer)
+        peer.disconnect
+        @peer_store.update_peer_status(peer.raw_node_id, PeerStore::Status::DISCONNECTED)
+      end
+
+      def disconnect_all
+        debug("[#{local_node_id.short_hex}] disconnect all")
+        peers.each_value do |peer|
+          disconnect_peer(peer, reason: "disconnect all...")
+        end
       end
 
       private
 
       def register_peer_protocols(peer, task: Async::Task.current)
-        peer.protocol_ios.each do |protocol_io|
+        peer.protocol_ios.dup.each do |protocol_io|
           task.async do
             # Protocol#connected
             context = ProtocolContext.new(self, peer: peer, protocol: protocol_io.protocol, protocol_io: protocol_io)
             context.protocol.connected(context)
+          rescue StandardError => e
+            error("Protocol#connected error: {e}\nbacktrace: #{e.backtrace.join "\n"}")
+            disconnect_peer(peer, reason: "Protocol#connected callback error: #{e}")
           end
         end
       end
 
       def deregister_peer_protocols(peer, task: Async::Task.current)
-        peer.protocol_ios.each do |protocol_io|
+        peer.protocol_ios.dup.each do |protocol_io|
           task.async do
             # Protocol#connected
             context = ProtocolContext.new(self, peer: peer, protocol: protocol_io.protocol, protocol_io: protocol_io)
             context.protocol.disconnected(context)
+          rescue StandardError => e
+            error("Protocol#disconnected error: {e}\nbacktrace: #{e.backtrace.join "\n"}")
+            disconnect_peer(peer, reason: "Protocol#disconnected callback error: #{e}")
           end
         end
       end
@@ -110,7 +137,11 @@ module Ciri
       # starting peer IO loop
       def start_peer_io(peer, task: Async::Task.current)
         ping_timer = task.reactor.every(@ping_interval_secs) do
-          ping(peer)
+          task.async do
+            ping(peer)
+          rescue StandardError => e
+            disconnect_peer(peer, reason: "ping error: #{e}")
+          end
         end
 
         message_service = task.async do
@@ -120,18 +151,12 @@ module Ciri
             msg.received_at = Time.now
             handle_message(peer, msg)
           end
+        rescue StandardError => e
+          disconnect_peer(peer, reason: "io error: #{e}\n#{e.backtrace.join "\n"}")
         end
 
         message_service.wait
-      rescue StandardError => e
-        # clear up
-        ping_timer.cancel
-        message_service.stop if message_service&.running?
-        peer.disconnect unless peer.disconnected?
-        # raise error
-        raise
       end
-
 
       BLANK_PAYLOAD = RLP.encode([]).freeze
 
@@ -148,7 +173,7 @@ module Ciri
       # handle peer message
       def handle_message(peer, msg, task: Async::Task.current)
         if msg.code == RLPX::Code::PING
-          pong
+          pong(peer)
         elsif msg.code == RLPX::Code::DISCONNECT
           reason = RLP.decode_with_type(msg.payload, Integer)
           raise DisconnectError.new("receive disconnect message, reason: #{reason}")

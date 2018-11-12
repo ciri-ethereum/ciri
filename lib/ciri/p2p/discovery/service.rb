@@ -88,12 +88,13 @@ module Ciri
           endpoint = Async::IO::Endpoint.udp(@host, @udp_port)
           endpoint.bind do |socket|
             @local_address = socket.local_address
-            debug "start discovery server on #{@local_address.getnameinfo.join(":")}\nlocal_node_id: #{@local_node_id}"
 
             # update port if port is zero
             if @udp_port.zero?
               @udp_port = @local_address.ip_port
             end
+
+            debug "start discovery server on udp_port: #{@udp_port} tcp_port: #{@tcp_port}\nlocal_node_id: #{@local_node_id}"
 
             loop do
               # read discovery message
@@ -119,10 +120,11 @@ module Ciri
             from = msg.packet.from
             from_ip = IPAddr.new(from.sender_ip, Socket::AF_INET)
             from_udp_port = from.sender_udp_port
+            from_tcp_port = from.sender_tcp_port
             from_address = Address.new(
               ip: from_ip,
               udp_port: from_udp_port, 
-              tcp_port: 0)
+              tcp_port: from_tcp_port)
             debug("receive ping msg from #{from_address.inspect}")
             # respond pong
             pong = Pong.new(to: To.from_host_port(from_ip, from_udp_port), 
@@ -237,6 +239,7 @@ module Ciri
             next unless address
             # start query node in async task
             task.async do
+              debug("perform discovery #{address}")
               send_ping(node.raw_node_id, address.ip.to_s, address.udp_port)
               query = FindNode.new(target: query_target, expiration: Time.now.to_i + MESSAGE_EXPIRATION_IN)
               query_msg = Message.pack(query, private_key: @private_key).encode_message

@@ -59,9 +59,13 @@ module Ciri
         end
       end
 
+      def inspect
+        "<Peer:#{to_s}>"
+      end
+
       # get id of node in bytes form
-      def id
-        node_id.id
+      def raw_node_id
+        node_id.to_bytes
       end
 
       # get NodeID object

@@ -34,6 +34,7 @@ module Ciri
       PEER_LAST_SEEN_VALID = 12 * 3600 # consider peer is valid if we seen it within 12 hours
       PING_EXPIRATION_IN = 10 * 60 # allow ping within 10 minutes
 
+      # report peer behaviours
       module Behaviours
         INVALID_DATA = :invalid_data
         CONNECT = :connect
@@ -44,6 +45,15 @@ module Ciri
       end
 
       include Behaviours
+
+      # peer status
+      module Status
+        CONNECTED = :connected
+        DISCONNECTED = :disconnected
+        UNKNOWN = :unknown
+      end
+
+      include Status
 
       PEER_INITIAL_SCORE = 100
       DEFAULT_SCORE_SCHEMA = {
@@ -93,6 +103,7 @@ module Ciri
 
       def add_bootnode(node)
         @bootnodes << node
+        add_node(node)
       end
 
       def has_ban?(raw_node_id, now: Time.now)
@@ -125,7 +136,10 @@ module Ciri
 
       # TODO find high scoring peers
       def find_attempt_peers(count)
-        @peers.values.sort_by do |peer_info|
+        @peers.values.reject do |peer_info|
+          # reject already connected peers and bootnodes
+          @bootnodes.include?(peer_info[:node]) || peer_status(peer_info[:node].raw_node_id) == Status::CONNECTED
+        end.sort_by do |peer_info|
           -peer_info[:score]
         end.map do |peer_info|
           peer_info[:node]
@@ -146,7 +160,21 @@ module Ciri
       end
 
       def add_node(node)
-        @peers[node.raw_node_id] = {node: node, score: PEER_INITIAL_SCORE}
+        @peers[node.raw_node_id] = {node: node, score: PEER_INITIAL_SCORE, status: Status::UNKNOWN}
+      end
+
+      def peer_status(raw_node_id)
+        if (peer_info = @peers[raw_node_id])
+          peer_info[:status]
+        else
+          Status::UNKNOWN
+        end
+      end
+
+      def update_peer_status(raw_node_id, status)
+        if (peer_info = @peers[raw_node_id])
+          peer_info[:status] = status
+        end
       end
     end
 

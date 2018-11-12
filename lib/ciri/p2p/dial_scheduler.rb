@@ -33,16 +33,19 @@ module Ciri
     class DialScheduler
       include Utils::Logger
 
-      def initialize(network_state, dialer)
+      def initialize(network_state, dialer, dial_outgoing_interval_secs: 15)
         @network_state = network_state
         @dialer = dialer
+        @dial_outgoing_interval_secs = dial_outgoing_interval_secs
       end
 
       def run(task: Async::Task.current)
         dial_bootnodes
         # dial outgoing peers every 15 seconds
-        task.reactor.every(15) do
-          schedule_dialing_tasks
+        task.reactor.every(@dial_outgoing_interval_secs) do
+          task.async do
+            schedule_dialing_tasks
+          end
         end
       end
 
@@ -57,6 +60,8 @@ module Ciri
 
       def schedule_dialing_tasks
         @network_state.peer_store.find_attempt_peers(@network_state.number_of_attemp_outgoing).each do |node|
+          # avoid dial self or connected peers
+          next if @network_state.peers.include?(node.raw_node_id) || node.raw_node_id == @network_state.local_node_id
           conn, handshake = @dialer.dial(node)
           @network_state.new_peer_connected(conn, handshake, way_for_connection: Peer::OUTGOING)
         end
