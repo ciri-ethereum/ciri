@@ -63,6 +63,10 @@ module Ciri
 
       alias to_s to_hex
 
+      def short_hex
+        @short_hex ||= to_hex[0..8]
+      end
+
     end
 
     class Node

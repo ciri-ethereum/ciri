@@ -38,7 +38,7 @@ module Ciri
       def_delegators :@network_state, :local_node_id
 
       def initialize(network_state, peer: nil, protocol: nil, protocol_io: nil)
-        @network_state
+        @network_state = network_state
         @peer = peer
         @protocol = protocol
         @protocol_io = protocol_io

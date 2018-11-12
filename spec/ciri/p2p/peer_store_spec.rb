@@ -24,6 +24,7 @@
 require 'spec_helper'
 require 'ciri/p2p/peer_store'
 require 'ciri/p2p/node'
+require 'ciri/p2p/address'
 require 'ciri/core_ext'
 
 using Ciri::CoreExt
@@ -99,6 +100,18 @@ RSpec.describe Ciri::P2P::PeerStore do
       expect(peer_store.find_attempt_peers(1)).to eq [node]
       expect(peer_store.find_attempt_peers(2)).to eq [node]
     end
+
+    it 'should not return already connected peers' do
+      nodes = node_ids.take(3).map do |node_id|
+        Ciri::P2P::Node.new(node_id: node_id, addresses: [])
+      end
+      nodes.each {|node| peer_store.add_node(node) }
+      peer_store.update_peer_status(nodes[0].raw_node_id, Ciri::P2P::PeerStore::Status::CONNECTED)
+      peer_store.update_peer_status(nodes[1].raw_node_id, Ciri::P2P::PeerStore::Status::DISCONNECTED)
+      peer_store.update_peer_status(nodes[2].raw_node_id, Ciri::P2P::PeerStore::Status::UNKNOWN)
+      expect(peer_store.find_attempt_peers(2)).to eq nodes[1..2]
+      expect(peer_store.find_attempt_peers(3)).to eq nodes[1..2]
+    end
   end
 
   context 'report_peer' do
@@ -156,7 +169,10 @@ RSpec.describe Ciri::P2P::PeerStore do
     end
 
     it '#get_node_addresses' do
-      expect(peer_store.get_node_addresses(node_ids[0])).to be_nil
+      # get bootnode addresses
+      expect(peer_store.get_node_addresses(nodes[0].raw_node_id)).to be_nil
+      peer_store.add_bootnode(nodes[0])
+      expect(peer_store.get_node_addresses(nodes[0].raw_node_id)).not_to be_nil
     end
   end
 

@@ -23,7 +23,6 @@
 
 require 'spec_helper'
 require 'async'
-require 'ciri/eth/protocol_manage'
 require 'ciri/p2p/server'
 require 'ciri/p2p/protocol'
 require 'ciri/p2p/node'
@@ -31,20 +30,13 @@ require 'ciri/p2p/rlpx/protocol_handshake'
 require 'concurrent'
 
 RSpec.describe Ciri::P2P::Server do
-  let(:key) do
-    Ciri::Key.random
-  end
+  context 'dial node' do
+    let(:key) do
+      Ciri::Key.random
+    end
 
-  let (:eth_protocol) do
-    Ciri::P2P::Protocol.new(name: 'eth', version: 63, length: 17)
-  end
-
-  let(:protocol_manage) do
-    Ciri::Eth::ProtocolManage.new(protocols: [eth_protocol], chain: nil)
-  end
-
-  it 'connecting to bootnodes after started' do
-    bootnode = Ciri::P2P::Node.new(
+    it 'connecting to bootnodes after started' do
+      bootnode = Ciri::P2P::Node.new(
         node_id: Ciri::P2P::NodeID.new(key),
         addresses: [
           Ciri::P2P::Address.new(
@@ -53,12 +45,128 @@ RSpec.describe Ciri::P2P::Server do
             tcp_port: 42,
           )
         ]
-    )
-    server = Ciri::P2P::Server.new(private_key: key, protocols: [], bootnodes: [bootnode], port: 0)
-    allow(server.dialer).to receive(:dial) {|node| raise StandardError.new("dial error ip:#{node.addresses[0].ip}, tcp_port:#{node.addresses[0].tcp_port}")}
-    expect do
-      server.run
-    end.to raise_error(StandardError, "dial error ip:#{bootnode.addresses[0].ip}, tcp_port:#{bootnode.addresses[0].tcp_port}")
+      )
+      server = Ciri::P2P::Server.new(private_key: key, protocols: [], bootnodes: [bootnode], tcp_port: 0)
+      allow(server.dialer).to receive(:dial) {|node| raise StandardError.new("dial error ip:#{node.addresses[0].ip}, tcp_port:#{node.addresses[0].tcp_port}")}
+      expect do
+        server.run
+      end.to raise_error(StandardError, "dial error ip:#{bootnode.addresses[0].ip}, tcp_port:#{bootnode.addresses[0].tcp_port}")
+    end
   end
+
+  context('connect peers') do
+    let(:mock_protocol_class) do
+      Class.new(Ciri::P2P::Protocol) do
+
+        attr_reader :raw_local_node_id, :received_messages, :connected_peers, :disconnected_peers
+        attr_accessor :stop
+
+        def initialized(context)
+          @raw_local_node_id = context.raw_local_node_id
+          @connected_peers = []
+          @received_messages = []
+          @disconnected_peers = []
+          @stop = false
+        end
+
+        def received(context, msg)
+          return if @stop
+          @received_messages << msg
+        end
+
+        def connected(context)
+          return if @stop
+          @connected_peers << context.peer
+          context.send_data(1, "hello from #{Ciri::Utils.to_hex @raw_local_node_id}")
+        end
+
+        def disconnected(context)
+          return if @stop
+          @disconnected_peers << context.peer
+        end
+      end
+    end
+
+    def mock_protocol
+      mock_protocol_class.new(name: 'moc', version: 63, length: 17)
+    end
+
+    def new_node(protocols:, bootnodes: [])
+      private_key = Ciri::Key.random
+      Ciri::P2P::Server.new(
+        private_key: private_key,
+        protocols: protocols,
+        bootnodes: bootnodes,
+        tcp_port: 0,
+        udp_port: 0,
+        ping_interval_secs: 0.3,
+        discovery_interval_secs: 0.3,
+        dial_outgoing_interval_secs: 1)
+    end
+
+    it "3 nodes connect each other" do
+      protocols = 3.times.map{ mock_protocol }
+      # setup 3 nodes
+      bootnode = new_node(protocols: [protocols[0]])
+      node1 = nil
+      node2 = nil
+
+      bootnode_task = nil
+      node1_task = nil
+      node2_task = nil
+
+      Async::Reactor.run do |task|
+        bootnode_task = task.async do
+          bootnode.run
+        end
+
+        task.reactor.after(0.1) do
+          node1_task = task.async do
+            task.sleep(0.1) while bootnode.udp_port.zero? || bootnode.tcp_port.zero?
+            node1 = new_node(protocols: [protocols[1]], bootnodes: [bootnode.to_node])
+            node1.run
+          end
+          node2_task = task.async do
+            task.sleep(0.1) while bootnode.udp_port.zero? || bootnode.tcp_port.zero?
+            node2 = new_node(protocols: [protocols[2]], bootnodes: [bootnode.to_node])
+            node2.run
+          end
+        end
+
+        # wait.. and check each node result
+        task.reactor.after(3) do
+          task.async do
+            # check peers attributes
+            protocols.each do |proto|
+              expect(proto.raw_local_node_id).not_to be_nil
+              expect(proto.connected_peers.count).to eq 2
+              expect(proto.disconnected_peers.count).to eq 0
+            end
+            # bootnode received 2 messages, other node received 1 message.
+            expect(protocols[0].received_messages.count).to eq 2
+            expect(protocols[1].received_messages.count).to eq 1
+            expect(protocols[2].received_messages.count).to eq 1
+            # test disconnected_peers
+            bootnode.disconnect_all
+            node1.disconnect_all
+            node2.disconnect_all
+            protocols.each {|protocol| protocol.stop = true }
+            task.sleep(0.5)
+            # stop all async task
+            bootnode_task.stop
+            node1_task.stop
+            node2_task.stop
+            expect(protocols[0].disconnected_peers.count).to eq 2
+            expect(protocols[1].disconnected_peers.count).to eq 2
+            expect(protocols[2].disconnected_peers.count).to eq 2
+            task.reactor.stop
+          end
+        end
+
+      end
+    end
+
+  end
+
 end
 

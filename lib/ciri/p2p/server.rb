@@ -44,22 +44,33 @@ module Ciri
     class Server
       include Utils::Logger
       include RLPX
+      extend Forwardable
 
       DEFAULT_MAX_PENDING_PEERS = 50
       DEFAULT_DIAL_RATIO = 3
 
-      attr_reader :handshake, :dial_scheduler, :dialer, :local_address
+      attr_reader :handshake, :dial_scheduler, :dialer, :local_address, :tcp_port
+      
+      def_delegators :@network_state, :disconnect_all
 
       def initialize(private_key:, protocols:, bootnodes: [],
-                     node_name: 'Ciri', host: '127.0.0.1', port: 33033, max_outgoing: 10, max_incoming:10)
+                     node_name: 'Ciri', host: '127.0.0.1',
+                     tcp_port: 33033, udp_port: 33033,
+                     max_outgoing: 10, max_incoming:10,
+                     ping_interval_secs: 15,
+                     discovery_interval_secs: 15,
+                     dial_outgoing_interval_secs: 25)
         @private_key = private_key
         @node_name = node_name
         # prepare handshake information
         @local_node_id = NodeID.new(@private_key)
-        caps = [Cap.new(name: 'eth', version: 63)]
+        caps = protocols.map do |protocol|
+          Cap.new(name: protocol.name, version: protocol.version)
+        end
         @handshake = ProtocolHandshake.new(version: BASE_PROTOCOL_VERSION, name: @node_name, id: @local_node_id.id, caps: caps)
         @host = host
-        @port = port
+        @tcp_port = tcp_port
+        @udp_port = udp_port
         @dialer = Dialer.new(private_key: private_key, handshake: @handshake)
         @peer_store = PeerStore.new
         @network_state = NetworkState.new(
@@ -67,8 +78,20 @@ module Ciri
           peer_store: @peer_store,
           local_node_id: @local_node_id,
           max_incoming: max_incoming,
-          max_outgoing: max_outgoing)
+          max_outgoing: max_outgoing,
+          ping_interval_secs: ping_interval_secs)
         @bootnodes = bootnodes
+        @discovery_interval_secs = discovery_interval_secs
+        @dial_outgoing_interval_secs = dial_outgoing_interval_secs
+      end
+
+      def udp_port
+        @discovery_service&.udp_port || @udp_port
+      end
+
+      def to_node
+        address = Address.new(ip: @host, tcp_port: tcp_port, udp_port: udp_port)
+        Node.new(node_id: @local_node_id, addresses: [address])
       end
 
       # return reactor to wait
@@ -90,11 +113,18 @@ module Ciri
               task.sleep(0.5) until @local_address
 
               # start discovery service
-              @discovery_service = Discovery::Service.new(peer_store: @peer_store, private_key: @private_key, host: @host, udp_port: @local_address.ip_port, tcp_port: @local_address)
+              @discovery_service = Discovery::Service.new(
+                peer_store: @peer_store,
+                private_key: @private_key,
+                host: @host, udp_port: @udp_port, tcp_port: @tcp_port,
+                discovery_interval_secs: @discovery_interval_secs)
               task.async { @discovery_service.run }
 
               # start dial outgoing nodes
-              @dial_scheduler = DialScheduler.new(@network_state, @dialer)
+              @dial_scheduler = DialScheduler.new(
+                @network_state,
+                @dialer,
+                dial_outgoing_interval_secs: @dial_outgoing_interval_secs)
               task.async {@dial_scheduler.run}
             end
             task.async {start_listen}
@@ -104,12 +134,17 @@ module Ciri
 
       # start listen and accept clients
       def start_listen(task: Async::Task.current)
-        endpoint = Async::IO::Endpoint.tcp(@host, @port)
+        endpoint = Async::IO::Endpoint.tcp(@host, @tcp_port)
         endpoint.bind do |socket|
           @local_address = socket.local_address
           info("start accept connections -- listen on #{@local_address.getnameinfo.join(":")}")
+          # update tcp_port if it is 0
+          if @tcp_port.zero?
+            @tcp_port = @local_address.ip_port
+          end
           socket.listen(Socket::SOMAXCONN)
-          socket.accept_each do |client|
+          loop do
+            client, addrinfo = socket.accept
             c = Connection.new(client)
             c.encryption_handshake!(private_key: @private_key)
             remote_handshake = c.protocol_handshake!(handshake)
