@@ -25,12 +25,12 @@ require 'forwardable'
 require 'ciri/forks'
 require 'ciri/core_ext'
 require 'ciri/utils'
+require 'ciri/types/account'
+require 'ciri/types/receipt'
 require_relative 'evm/op'
 require_relative 'evm/vm'
 require_relative 'evm/errors'
 require_relative 'evm/execution_context'
-require_relative 'types/account'
-require_relative 'types/receipt'
 
 using Ciri::CoreExt
 
