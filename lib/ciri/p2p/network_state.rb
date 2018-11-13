@@ -184,6 +184,8 @@ module Ciri
           if (protocol_io = peer.find_protocol_io_by_msg_code(msg.code)).nil?
             raise UnknownMessageCodeError.new("can't find protocol with msg code #{msg.code}")
           end
+          # fix msg code
+          msg.code -= protocol_io.offset
           task.async do
             # Protocol#received
             context = ProtocolContext.new(self, peer: peer, protocol: protocol_io.protocol, protocol_io: protocol_io)

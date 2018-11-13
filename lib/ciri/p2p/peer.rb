@@ -63,6 +63,16 @@ module Ciri
         "<Peer:#{to_s}>"
       end
 
+      def hash
+        raw_node_id.hash
+      end
+
+      def ==(peer)
+        self.class == peer.class && raw_node_id == peer.raw_node_id
+      end
+
+      alias eql? ==
+
       # get id of node in bytes form
       def raw_node_id
         node_id.to_bytes

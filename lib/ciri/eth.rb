@@ -22,7 +22,7 @@
 
 
 require_relative 'eth/protocol_messages'
-require_relative 'eth/protocol_manage'
+require_relative 'eth/eth_protocol'
 
 module Ciri
   # implement Ethereum Wire Protocol

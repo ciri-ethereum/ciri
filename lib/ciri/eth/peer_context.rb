@@ -29,35 +29,41 @@ module Ciri
   module Eth
 
     # eth protocol peer
-    class ProtocolContext
-      attr_reader :io, :total_difficulty, :status
+    class PeerContext
+      attr_reader :total_difficulty, :status, :peer
 
       extend Forwardable
 
-      def_delegators :@peer, :to_s
+      def_delegators :@peer, :to_s, :hash
 
-      def initialize(protocol_manage:, peer:, io:)
-        @protocol_manage = protocol_manage
-        @io = io
+      def initialize(peer:, context:)
         @total_difficulty = nil
         @peer = peer
+        @context = context
       end
 
       # do eth protocol handshake and return status
-      def handshake(network_id, total_difficulty, head_hash, genesis_hash)
+      def send_handshake(network_id, total_difficulty, head_hash, genesis_hash)
         status = Status.new(protocol_version: 63, network_id: network_id,
                             total_difficulty: total_difficulty, current_block: head_hash, genesis_block: genesis_hash)
-        io.send_data(Status::CODE, status.rlp_encode)
-        msg = io.read_msg
-        @status = Status.rlp_decode(msg.payload)
+        @context.send_data(Status::CODE, status.rlp_encode)
+      end
+
+      def set_status(status)
+        @status ||= status
         @total_difficulty = @status.total_difficulty
-        @status
       end
 
       def send_msg(msg_class, **data)
         msg = msg_class.new(data)
-        io.send_data(msg_class::CODE, msg.rlp_encode)
+        @context.send_data(msg_class::CODE, msg.rlp_encode)
       end
+
+      def ==(peer_context)
+        self.class == peer_context.class && peer == peer_context.peer
+      end
+
+      alias eql? ==
     end
 
   end

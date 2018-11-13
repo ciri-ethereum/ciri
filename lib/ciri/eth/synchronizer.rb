@@ -36,14 +36,22 @@ module Ciri
       HEADER_FETCH_COUNT = 10
 
       class PeerEntry
-        attr_reader :header_queue, :body_queue, :peer
-        attr_accessor :syncing
+        attr_reader :header_queue, :body_queue, :peer_context
+        attr_accessor :syncing, :stopping
 
-        def initialize(peer)
-          @peer = peer
+        def initialize(peer_context)
+          @peer_context = peer_context
           @header_queue = Async::Queue.new
           @body_queue = Async::Queue.new
           @lru_cache = LruRedux::Cache.new(HEADER_FETCH_COUNT * 2)
+        end
+
+        def hash
+          @peer_context.hash
+        end
+
+        def ==(peer_entry)
+          self.class == peer_entry.class && @peer_context == peer_entry.peer_context
         end
 
         def receive_header
@@ -72,7 +80,7 @@ module Ciri
             @lru_cache[header.get_hash] = header
             return header if header.number == hash_or_number || header.get_hash == hash_or_number
           end
-          peer.send_msg(GetBlockHeaders, hash_or_number: HashOrNumber.new(hash_or_number), amount: HEADER_FETCH_COUNT,
+          peer_context.send_msg(GetBlockHeaders, hash_or_number: HashOrNumber.new(hash_or_number), amount: HEADER_FETCH_COUNT,
                         skip: 0, reverse: false)
           while (header = receive_header_in(10))
             @lru_cache[header.number] = header
@@ -86,7 +94,7 @@ module Ciri
           # TODO make sure we received correct message
           # current implementation assume next received body msg is we request, but we can't make sure
           # at least make sure the message we received is from same peer we request
-          peer.send_msg(GetBlockBodies, hashes: hashes)
+          peer_context.send_msg(GetBlockBodies, hashes: hashes)
           receive_body_in(10)
         end
       end
@@ -103,19 +111,27 @@ module Ciri
         headers.each {|header| @peers[peer].header_queue.enqueue header}
       end
 
-      def receive_bodies(peer, bodies)
-        @peers[peer].body_queue.enqueue bodies
+      def receive_bodies(peer_context, bodies)
+        @peers[peer_context].body_queue.enqueue bodies
       end
 
-      def register_peer(peer, task: Async::Task.current)
-        @peers[peer] = PeerEntry.new(peer)
+      def register_peer(peer_context, task: Async::Task.current)
+        # prevent already exists
+        return if @peers.include?(peer_context)
+        @peers[peer_context] = PeerEntry.new(peer_context)
 
         # request block headers if chain td less than peer
-        return unless peer.total_difficulty > chain.total_difficulty
-        peer.send_msg(GetBlockHeaders, hash_or_number: HashOrNumber.new(peer.status.current_block),
+        return unless peer_context.total_difficulty > chain.total_difficulty
+        peer_context.send_msg(GetBlockHeaders, hash_or_number: HashOrNumber.new(peer_context.status.current_block),
                       amount: 1, skip: 0, reverse: true)
 
         start_syncing best_peer
+      end
+
+      def deregister_peer(peer, task: Async::Task.current)
+        peer_entry = @peers.delete(peer)
+        return if peer_entry.nil? || peer_entry.stopping
+        peer_entry.stopping = true
       end
 
       MAX_BLOCKS_SYNCING = 50
@@ -132,13 +148,16 @@ module Ciri
           start_height = [peer_header.number, local_header.number].min
 
           # find common height
-          while local_header.get_hash != peer_header.get_hash
+          while local_header.get_hash != peer_header.get_hash && !peer_entry.stopping
             local_header = chain.get_block_by_number start_height
             peer_header = peer_entry.fetch_peer_header start_height
             start_height -= 1
           end
 
           loop do
+
+            # exit if peer is stopping
+            break if peer_entry.stopping
 
             # start from common + 1 block
             start_height = local_header.number + 1
@@ -163,7 +182,9 @@ module Ciri
 
             break if end_height >= peer_max_header.number
           end
-
+        rescue StandardError => e
+          error("exception occur when syncing with #{peer}, error: #{e}")
+          deregister_peer(peer_entry)
         end
       end
 
