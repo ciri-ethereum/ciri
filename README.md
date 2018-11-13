@@ -83,8 +83,8 @@ rake docker:pull
 # run tests
 rake docker:spec
 
-# run specific component related tests (for example: p2p network component)
-rake docker:spec[p2p]
+# run specific component related tests
+rake docker:spec[component_name]
 ```
 
 #### Other usages
@@ -133,8 +133,8 @@ run tests:
 # run all tests
 RUBY_THREAD_VM_STACK_SIZE=52428800 bundle exec rake spec
 
-# run specific component related tests (for example: p2p network component)
-bundle exec rake spec[p2p]
+# run specific component related tests
+bundle exec rake spec[component_name]
 ```
 
 Why Ruby?

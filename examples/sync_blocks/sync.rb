@@ -52,15 +52,14 @@ fork_config = Forks::Config.new([[0, Forks::Frontier], [1150000, Forks::Homestea
 chain = POWChain::Chain.new(db, genesis: genesis, network_id: 1, fork_config: fork_config)
 
 # init eth protocol
-eth_protocol = P2P::Protocol.new(name: 'eth', version: 63, length: 17)
-protocol_manage = Eth::ProtocolManage.new(protocols: [eth_protocol], chain: chain)
+eth_protocol = Eth::EthProtocol.new(name: 'eth', version: 63, length: 17, chain: chain)
 
 # init node
 bootnodes = [get_target_node]
 
 # init server
 private_key = Ciri::Key.random
-server = Ciri::P2P::Server.new(private_key: private_key, protocol_manage: protocol_manage, bootnodes: bootnodes)
+server = Ciri::P2P::Server.new(private_key: private_key, protocols: [eth_protocol], bootnodes: bootnodes, tcp_port: 0, udp_port: 0)
 
 puts "start syncing server"
 
