@@ -99,8 +99,8 @@ RSpec.describe Ciri::P2P::Server do
         bootnodes: bootnodes,
         tcp_port: 0,
         udp_port: 0,
-        ping_interval_secs: 0.3,
-        discovery_interval_secs: 0.3,
+        ping_interval_secs: 1,
+        discovery_interval_secs: 0.5,
         dial_outgoing_interval_secs: 1)
     end
 
@@ -136,16 +136,24 @@ RSpec.describe Ciri::P2P::Server do
         # wait.. and check each node result
         task.reactor.after(3) do
           task.async do
+            # wait few seconds...
+            wait_seconds = 0
+            sleep_interval = 1
+            while wait_seconds < 10 && protocols.any?{|proto| proto.received_messages.count < 2}
+              task.sleep(sleep_interval)
+              wait_seconds += sleep_interval
+            end
+
             # check peers attributes
             protocols.each do |proto|
               expect(proto.raw_local_node_id).not_to be_nil
               expect(proto.connected_peers.count).to eq 2
               expect(proto.disconnected_peers.count).to eq 0
             end
-            # bootnode received 2 messages, other node received 1 message.
+            # node received 2 messages
             expect(protocols[0].received_messages.count).to eq 2
-            expect(protocols[1].received_messages.count).to eq 1
-            expect(protocols[2].received_messages.count).to eq 1
+            expect(protocols[1].received_messages.count).to eq 2
+            expect(protocols[2].received_messages.count).to eq 2
             # test disconnected_peers
             bootnode.disconnect_all
             node1.disconnect_all

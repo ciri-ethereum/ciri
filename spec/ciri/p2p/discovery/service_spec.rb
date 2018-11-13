@@ -123,8 +123,15 @@ RSpec.describe Ciri::P2P::Discovery::Service do
 
         # check discovery status
         task.reactor.after(1) do
+          # wait few seconds...
+          wait_seconds = 0
+          sleep_interval = 0.5
+          while wait_seconds < 10 && 
+              (s3_addresses = s1.peer_store.get_node_addresses(s3.local_node_id.to_bytes)).empty?
+            task.sleep(sleep_interval)
+            wait_seconds += sleep_interval
+          end
           # check s3 address from s1 peer_store
-          s3_addresses = s1.peer_store.get_node_addresses(s3.local_node_id.to_bytes)
           expect(s3_addresses).to eq [Ciri::P2P::Address.new(ip: s3.host, udp_port: s3.udp_port, tcp_port: s3.tcp_port)]
           task.reactor.stop
         end
