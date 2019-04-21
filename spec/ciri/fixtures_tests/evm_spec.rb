@@ -36,25 +36,16 @@ RSpec.describe Ciri::EVM do
     prepare_ethereum_fixtures
   end
 
-  parse_account = proc do |address, v|
-    balance = Ciri::Utils.big_endian_decode Ciri::Utils.to_bytes(v["balance"])
-    nonce = Ciri::Utils.big_endian_decode Ciri::Utils.to_bytes(v["nonce"])
-    storage = v["storage"].map do |k, v|
-      [Ciri::Utils.hex_to_number(k), Ciri::Utils.hex_to_number(v)]
-    end.to_h
-    [Ciri::Types::Account.new(balance: balance, nonce: nonce), storage]
-  end
-
-  run_test_case = proc do |test_case, prefix: nil, tags: {}|
+  run_test_case = proc do |test_case, prefix: nil|
     test_case.each do |name, t|
 
-      it "#{prefix} #{name}", **tags do
+      it "#{prefix} #{name}" do
         db = Ciri::DB::Backend::Memory.new
         state = Ciri::State.new(db)
         # pre
         t['pre'].each do |address, v|
           address = Ciri::Utils.to_bytes(address)
-          account, storage = parse_account[address, v]
+          account, storage = parse_account(address, v)
           state.set_balance(address, account.balance)
           state.set_nonce(address, account.nonce)
           storage.each do |key, value|
@@ -108,7 +99,7 @@ RSpec.describe Ciri::EVM do
         state = vm.state
         t['post'].each do |address, v|
           address = Ciri::Utils.to_bytes(address)
-          account, storage = parse_account[address, v]
+          account, storage = parse_account(address, v)
           vm_account = state.find_account(address)
 
           storage.each do |k, v|
