@@ -125,18 +125,9 @@ RSpec.describe Ciri::EVM do
     end
   end
 
-  slow_tests = %w{fixtures/VMTests/vmPerformance}.map {|f| [f, true]}.to_h
-
   Dir.glob("fixtures/VMTests/*").each do |topic|
-    tags = {}
-
-    # add slow_tests tag
-    if slow_tests.include? topic
-      tags = {slow_tests: true}
-    end
-
     Dir.glob("#{topic}/*.json").each do |t|
-      run_test_case[JSON.load(open t), prefix: topic, tags: tags]
+      run_test_case[JSON.load(open t), prefix: topic]
     end
   end
 

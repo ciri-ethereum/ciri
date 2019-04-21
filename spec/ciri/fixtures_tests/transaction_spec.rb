@@ -91,18 +91,11 @@ RSpec.describe Ciri::POWChain::Transaction do
     end
   end
 
-  skip_topics = %w{}.map {|f| [f, true]}.to_h
-
   Dir.glob("fixtures/TransactionTests/*").each do |topic|
-    # skip topics
-    if skip_topics.include? topic
-      skip topic
-      next
-    end
-
     Dir.glob("#{topic}/*.json").each do |t|
       run_test_case[JSON.load(open t), prefix: topic]
     end
   end
 
 end
+

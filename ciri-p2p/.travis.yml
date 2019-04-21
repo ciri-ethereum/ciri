@@ -1,0 +1,15 @@
+sudo: required
+language: ruby
+
+services:
+  - docker
+
+install:
+  - echo "install nothing"
+
+before_install:
+  - docker pull ciriethereum/ciri-p2p-test:latest
+
+script:
+  - docker run -v `pwd`:/app --rm ciriethereum/ciri-p2p-test:latest bash -c 'bundle install && bundle exec rake'
+

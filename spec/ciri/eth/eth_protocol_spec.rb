@@ -102,7 +102,7 @@ RSpec.describe Ciri::Eth::EthProtocol do
       caps = [Ciri::P2P::RLPX::Cap.new(name: 'eth', version: 63)]
       peer_id = Ciri::Key.random.raw_public_key[1..-1]
       hs = Ciri::P2P::RLPX::ProtocolHandshake.new(version: 0, name: 'test', caps: caps, listen_port: 30303, id: peer_id)
-      peer = Ciri::P2P::Peer.new(nil, hs, [], way_for_connection: :incoming)
+      peer = Ciri::P2P::Peer.new(nil, hs, [], direction: :inbound)
 
       Async::Reactor.run do |task|
         # start eth protocol

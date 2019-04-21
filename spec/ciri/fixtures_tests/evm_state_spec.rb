@@ -144,36 +144,9 @@ RSpec.describe Ciri::EVM do
     end
   end
 
-  slow_cases = %w{
-    stDelegatecallTestHomestead/Call1024BalanceTooLow.json
-    stDelegatecallTestHomestead/Delegatecall1024.json
-    stDelegatecallTestHomestead/CallLoseGasOOG.json
-    stReturnDataTest/returndatasize_after_oog_after_deeper.json
-  }.map {|f| ["fixtures/GeneralStateTests/#{f}", true]}.to_h
-
-  slow_topics = %w{
-    stRevertTest
-    stCallCreateCallCodeTest
-    stChangedEIP150
-    stAttackTest
-    stQuadraticComplexityTest
-  }.map {|f| ["fixtures/GeneralStateTests/#{f}", true]}.to_h
-
   Dir.glob("fixtures/GeneralStateTests/*").each do |topic|
-    tags = {}
-    # tag slow test topics
-    if slow_topics.include?(topic)
-      tags[:slow_tests] = true
-    end
-
     Dir.glob("#{topic}/*.json").each do |t|
-      tags = tags.dup
-      # tag slow test cases
-      if slow_cases.include?(t)
-        tags[:slow_tests] = true
-      end
-
-      run_test_case(JSON.load(open t), prefix: topic, tags: tags)
+      run_test_case(JSON.load(open t), prefix: topic)
     end
   end
 

@@ -59,17 +59,8 @@ RSpec.describe Ciri::Trie do
     end
   end
 
-  slow_tests = %w{}.map {|f| [f, true]}.to_h
-
   Dir.glob("fixtures/TrieTests/trietest.json").each do |topic|
-    tags = {}
-
-    # add slow_tests tag
-    if slow_tests.include? topic
-      tags = {slow_tests: true}
-    end
-
-    run_test_case[JSON.load(open topic), prefix: 'fixtures/TrieTests', tags: tags]
+    run_test_case[JSON.load(open topic), prefix: 'fixtures/TrieTests']
   end
 
 end

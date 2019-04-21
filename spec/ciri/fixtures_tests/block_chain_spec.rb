@@ -197,36 +197,10 @@ RSpec.describe Ciri::POWChain::Chain do
     end
   end
 
-  slow_cases = %w{
-    bcExploitTest/SuicideIssue
-    bcExploitTest/ShanghaiLove
-  }.map {|f| ["fixtures/BlockchainTests/#{f}.json", true]}.to_h
-
-  slow_topics = %w{
-  }.map {|f| ["fixtures/BlockchainTests/#{f}", true]}.to_h
-
   Dir.glob("fixtures/BlockchainTests/**").each do |topic|
-
-    tags = {}
-    # tag slow test topics
-    if slow_topics.include?(topic)
-      tags[:slow_tests] = true
-    end
-
     Dir.glob("#{topic}/*.json").each do |t|
-      tags = tags.dup
-      # tag slow test cases
-      if slow_cases.include?(t)
-        tags[:slow_tests] = true
-      end
-
-      run_test_case(JSON.load(open t), prefix: topic, tags: tags)
+      run_test_case(JSON.load(open t), prefix: topic)
     end
   end
-
-  # Dir.glob("fixtures/BlockchainTests/GeneralStateTests/**/*.json").each do |topic|
-  #   topic ||= nil
-  #   run_test_case(JSON.load(open topic || 'fixtures/BlockchainTests/bcValidBlockTest/callRevert.json'), prefix: topic, tags: {})
-  # end
-
 end
+
