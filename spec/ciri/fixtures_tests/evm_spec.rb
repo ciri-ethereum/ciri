@@ -43,9 +43,9 @@ RSpec.describe Ciri::EVM do
         db = Ciri::DB::Backend::Memory.new
         state = Ciri::State.new(db)
         # pre
-        t['pre'].each do |address, v|
+        t['pre'].each do |address, account_hash|
           address = Ciri::Utils.to_bytes(address)
-          account, storage = parse_account(address, v)
+          account, _code, storage = parse_account(account_hash)
           state.set_balance(address, account.balance)
           state.set_nonce(address, account.nonce)
           storage.each do |key, value|
@@ -97,9 +97,9 @@ RSpec.describe Ciri::EVM do
         expect(context.remain_gas).to eq remain_gas if remain_gas
 
         state = vm.state
-        t['post'].each do |address, v|
+        t['post'].each do |address, account_hash|
           address = Ciri::Utils.to_bytes(address)
-          account, storage = parse_account(address, v)
+          account, code, storage = parse_account(account_hash)
           vm_account = state.find_account(address)
 
           storage.each do |k, v|
