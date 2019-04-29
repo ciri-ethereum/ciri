@@ -39,6 +39,11 @@ KNOWN_FAILED_CASE = [
   "DelegateCallSpam_Homestead"
 ]
 
+SLOW_TOPIC = [
+  "fixtures/BlockchainTests/bcExploitTest",
+  "fixtures/BlockchainTests/bcWalletTest"
+]
+
 RSpec.describe Ciri::POWChain::Chain do
 
   include Ciri::Utils::Logger
@@ -47,7 +52,7 @@ RSpec.describe Ciri::POWChain::Chain do
     prepare_ethereum_fixtures
   end
 
-  def self.run_test_case(test_case, prefix: nil)
+  def self.run_test_case(test_case, prefix: nil, tags: )
     test_case.each do |name, t|
 
       # TODO support all forks
@@ -59,7 +64,7 @@ RSpec.describe Ciri::POWChain::Chain do
       end
 
       # register rspec test case
-      it "#{prefix} #{name}" do
+      it "#{prefix} #{name}", **tags do
         db = Ciri::DB::Backend::Memory.new
         state = Ciri::State.new(db)
         # pre
@@ -103,8 +108,9 @@ RSpec.describe Ciri::POWChain::Chain do
   end
 
   Dir.glob("fixtures/BlockchainTests/**").each do |topic|
+    tags = SLOW_TOPIC.include?(topic) ? {slow: true} : {}
     Dir.glob("#{topic}/*.json").each do |t|
-      run_test_case(JSON.load(open t), prefix: topic)
+      run_test_case(JSON.load(open t), prefix: topic, tags: tags)
     end
   end
 end

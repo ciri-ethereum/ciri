@@ -12,13 +12,14 @@ task :default => :spec
 desc 'Run specs, default will skip Ethereum fixtures tests, use "rake spec[full]" to run full tests'
 task :spec, [:full] do |task, args|
   exit(1) unless check_env
-  cli = "rspec --fail-fast"
+  cli = "parallel_rspec -- --fail-fast --profile"
   if args.fetch(:full, false)
     puts "Run full tests.. it will take a long time"
   else
     puts "Run fast tests.."
-    cli += ' --exclude-pattern "spec/ciri/fixtures_tests/*"'
+    cli += ' --tag ~slow'
   end
+  cli += ' -- spec'
   run(cli)
 end
 

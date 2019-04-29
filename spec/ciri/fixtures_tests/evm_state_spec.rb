@@ -31,6 +31,11 @@ require 'ciri/db/backend/memory'
 require 'ciri/pow_chain/transaction'
 require 'ciri/key'
 
+SLOW_TOPIC = [
+  "fixtures/GeneralStateTests/stQuadraticComplexityTest",
+  "fixtures/GeneralStateTests/stAttackTest",
+]
+
 RSpec.describe Ciri::EVM do
 
   before(:all) do
@@ -106,14 +111,15 @@ RSpec.describe Ciri::EVM do
     end
   end
 
-  def self.run_test_case(test_case, prefix: nil, tags: {})
+  def self.run_test_case(test_case, prefix: nil, tags: )
+
     test_case.each do |name, t|
       context "#{prefix} #{name}", **tags do
 
         block_info = block_info_from_env(t['env'])
 
         t['post'].each do |fork_name, configs|
-          it fork_name do
+          it fork_name, **tags do
             fork_schema = choose_fork_schema(fork_name)
             configs.each do |config|
               db = Ciri::DB::Backend::Memory.new
@@ -145,8 +151,9 @@ RSpec.describe Ciri::EVM do
   end
 
   Dir.glob("fixtures/GeneralStateTests/*").each do |topic|
+    tags = SLOW_TOPIC.include?(topic) ? {slow: true} : {}
     Dir.glob("#{topic}/*.json").each do |t|
-      run_test_case(JSON.load(open t), prefix: topic)
+      run_test_case(JSON.load(open t), prefix: topic, tags: tags)
     end
   end
 

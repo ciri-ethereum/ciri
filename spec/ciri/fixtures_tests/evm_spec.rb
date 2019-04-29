@@ -30,16 +30,18 @@ require 'ciri/forks/frontier'
 require 'ciri/utils'
 require 'ciri/db/backend/memory'
 
+SLOW_TOPIC = ["fixtures/VMTests/vmPerformance"]
+
 RSpec.describe Ciri::EVM do
 
   before(:all) do
     prepare_ethereum_fixtures
   end
 
-  run_test_case = proc do |test_case, prefix: nil|
+  run_test_case = proc do |test_case, prefix: nil, tags:|
     test_case.each do |name, t|
 
-      it "#{prefix} #{name}" do
+      it "#{prefix} #{name}", **tags do
         db = Ciri::DB::Backend::Memory.new
         state = Ciri::State.new(db)
         # pre
@@ -117,8 +119,9 @@ RSpec.describe Ciri::EVM do
   end
 
   Dir.glob("fixtures/VMTests/*").each do |topic|
+    tags = SLOW_TOPIC.include?(topic) ? {slow: true} : {}
     Dir.glob("#{topic}/*.json").each do |t|
-      run_test_case[JSON.load(open t), prefix: topic]
+      run_test_case[JSON.load(open t), prefix: topic, tags: tags]
     end
   end
 

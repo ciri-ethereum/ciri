@@ -52,6 +52,9 @@ GEM
     ffi (1.9.25)
     lru_redux (1.1.0)
     nio4r (2.3.1)
+    parallel (1.17.0)
+    parallel_tests (2.28.0)
+      parallel
     rake (12.3.1)
     rspec (3.8.0)
       rspec-core (~> 3.8.0)
@@ -75,6 +78,7 @@ PLATFORMS
 DEPENDENCIES
   bundler (~> 1.16)
   ciri!
+  parallel_tests (~> 2.28)
   rake (~> 12.0)
   rspec (~> 3.8)
 
