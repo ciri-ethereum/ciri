@@ -1,4 +1,4 @@
-FROM ruby:2.6.0-preview2 AS build
+FROM ruby:2.6.2 AS build
 
 LABEL maintainer="Jiang Jinyang <jjyruby@gmail.com>"
 
@@ -15,7 +15,7 @@ WORKDIR /app
 RUN rake install:secp256k1
 
 # Runtime image
-FROM ruby:2.6.0-preview2
+FROM ruby:2.6.2
 ENV RUBY_THREAD_VM_STACK_SIZE=52428800
 
 # install runtime dependencies libraries

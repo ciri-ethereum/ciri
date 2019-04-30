@@ -30,31 +30,24 @@ require 'ciri/forks/frontier'
 require 'ciri/utils'
 require 'ciri/db/backend/memory'
 
+SLOW_TOPIC = ["fixtures/VMTests/vmPerformance"]
+
 RSpec.describe Ciri::EVM do
 
   before(:all) do
     prepare_ethereum_fixtures
   end
 
-  parse_account = proc do |address, v|
-    balance = Ciri::Utils.big_endian_decode Ciri::Utils.to_bytes(v["balance"])
-    nonce = Ciri::Utils.big_endian_decode Ciri::Utils.to_bytes(v["nonce"])
-    storage = v["storage"].map do |k, v|
-      [Ciri::Utils.hex_to_number(k), Ciri::Utils.hex_to_number(v)]
-    end.to_h
-    [Ciri::Types::Account.new(balance: balance, nonce: nonce), storage]
-  end
-
-  run_test_case = proc do |test_case, prefix: nil, tags: {}|
+  run_test_case = proc do |test_case, prefix: nil, tags:|
     test_case.each do |name, t|
 
       it "#{prefix} #{name}", **tags do
         db = Ciri::DB::Backend::Memory.new
         state = Ciri::State.new(db)
         # pre
-        t['pre'].each do |address, v|
+        t['pre'].each do |address, account_hash|
           address = Ciri::Utils.to_bytes(address)
-          account, storage = parse_account[address, v]
+          account, _code, storage = parse_account(account_hash)
           state.set_balance(address, account.balance)
           state.set_nonce(address, account.nonce)
           storage.each do |key, value|
@@ -106,9 +99,9 @@ RSpec.describe Ciri::EVM do
         expect(context.remain_gas).to eq remain_gas if remain_gas
 
         state = vm.state
-        t['post'].each do |address, v|
+        t['post'].each do |address, account_hash|
           address = Ciri::Utils.to_bytes(address)
-          account, storage = parse_account[address, v]
+          account, code, storage = parse_account(account_hash)
           vm_account = state.find_account(address)
 
           storage.each do |k, v|
@@ -125,16 +118,8 @@ RSpec.describe Ciri::EVM do
     end
   end
 
-  slow_tests = %w{fixtures/VMTests/vmPerformance}.map {|f| [f, true]}.to_h
-
   Dir.glob("fixtures/VMTests/*").each do |topic|
-    tags = {}
-
-    # add slow_tests tag
-    if slow_tests.include? topic
-      tags = {slow_tests: true}
-    end
-
+    tags = SLOW_TOPIC.include?(topic) ? {slow: true} : {}
     Dir.glob("#{topic}/*.json").each do |t|
       run_test_case[JSON.load(open t), prefix: topic, tags: tags]
     end

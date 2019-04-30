@@ -9,18 +9,17 @@ require 'tmpdir'
 
 task :default => :spec
 
-desc 'run spec, use argument to specific a component, default will skip slow tests'
-task :spec, [:component, :skip_slow] do |task, args|
+desc 'Run specs, default will skip Ethereum fixtures tests, use "rake spec[full]" to run full tests'
+task :spec, [:full] do |task, args|
   exit(1) unless check_env
-  cli = "rspec"
-  if args.fetch(:skip_slow, true)
-    cli += " -t ~slow_tests"
-  end
-  if (component = args[:component])
-    cli += " spec/ciri/#{component}"
+  cli = "parallel_rspec -- --fail-fast --profile"
+  if args.fetch(:full, false)
+    puts "Run full tests.. it will take a long time"
   else
-    warn("Run all test cases... maybe slow")
+    puts "Run fast tests.."
+    cli += ' --tag ~slow'
   end
+  cli += ' -- spec'
   run(cli)
 end
 
@@ -75,7 +74,7 @@ namespace :docker do
   end
 
   desc 'run spec in docker'
-  task :spec, [:component, :skip_slow] do |task, args|
+  task :spec, [:full] do |task, args|
     cli_args = ""
     args_hash = args.to_h
     unless args_hash.empty?

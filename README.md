@@ -45,60 +45,6 @@ Development
 
 Ciri depends on [rocksdb](https://github.com/facebook/rocksdb), [secp256k1](https://github.com/bitcoin-core/secp256k1) and [snappy](https://github.com/google/snappy).
 
-It's a recommendation to [setup with docker](#setup-with-docker) because it will help to save lots of time.
-
-### Setup with docker
-
-Use docker command to pull image:
-
-``` bash
-docker pull ciriethereum/ciri
-```
-
-Or you can use our prepared rake tasks if you're not familiar with docker:
-
-clone repo and submodules
-
-``` bash
-git clone --recursive https://github.com/ciri-ethereum/ciri.git
-cd ciri
-```
-
-make sure we have installed docker, ruby and rake
-``` bash
-# make sure we have installed docker, ruby and rake
-docker -v
-gem install rake
-```
-
-#### Pull docker image
-
-``` bash
-# pull Ciri docker image
-rake docker:pull
-```
-
-#### Run tests in docker
-``` bash
-# run tests
-rake docker:spec
-
-# run specific component related tests
-rake docker:spec[component_name]
-```
-
-#### Other usages
-``` bash
-# open a shell for developing
-rake docker:shell
-
-# build Ciri docker image from current source (it will take a few minutes)
-rake docker:build
-
-# type 'rake -T' see other supported tasks 
-rake -T
-``` 
-
 ### Manually Setup
 
 clone repo and submodules
@@ -121,7 +67,7 @@ Build and install `secp256k1`
 cd ciri && rake install:secp256k1
 ```
 
-For linux users, remember to check [Dockerfile](/docker) instructions for hint.
+For linux and windows users, remember to check [Dockerfile](/docker) instructions for hint.
 
 then run: 
 ``` bash
@@ -131,10 +77,7 @@ bundle install
 run tests:
 ``` bash
 # run all tests
-RUBY_THREAD_VM_STACK_SIZE=52428800 bundle exec rake spec
-
-# run specific component related tests
-bundle exec rake spec[component_name]
+RUBY_THREAD_VM_STACK_SIZE=52428800 bundle exec rake spec[full]
 ```
 
 Why Ruby?
