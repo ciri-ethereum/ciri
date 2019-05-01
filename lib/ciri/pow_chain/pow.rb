@@ -71,7 +71,7 @@ module Ciri
         output = Ethash.hashimoto_light(block_number, cache, mining_hash, Utils.big_endian_decode(nonce_bytes))
 
         if output[:mixhash] != mix_hash
-          raise InvalidError.new("mix hash mismatch; #{Utils.to_hex(output[:mixhash])} != #{Utils.to_hex(mix_hash)}")
+          raise InvalidError.new("mix hash mismatch; #{Utils.hex(output[:mixhash])} != #{Utils.hex(mix_hash)}")
         end
 
         result = Utils.big_endian_decode(output[:result])

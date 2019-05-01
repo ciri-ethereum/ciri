@@ -63,7 +63,7 @@ RSpec.describe Ciri::POWChain::Transaction do
           fork_schema = choose_fork_schema[fork_name]
 
           transaction = begin
-            rlp = Ciri::Utils.to_bytes(t['rlp'])
+            rlp = Ciri::Utils.dehex(t['rlp'])
             transaction = fork_schema.transaction_class.rlp_decode rlp
 
             # encoded again and check rlp encoding
@@ -73,7 +73,7 @@ RSpec.describe Ciri::POWChain::Transaction do
             nil
           end
 
-          error_or_nil = begin
+          begin
             raise Ciri::POWChain::Transaction::InvalidError if transaction.nil?
             transaction.validate!
           rescue Ciri::POWChain::Transaction::InvalidError => e
@@ -81,8 +81,8 @@ RSpec.describe Ciri::POWChain::Transaction do
           end
 
           unless expect_result.empty?
-            expect(Ciri::Utils.to_hex transaction.get_hash).to eq "0x#{expect_result['hash']}"
-            expect(Ciri::Utils.to_hex transaction.sender).to eq "0x#{expect_result['sender']}"
+            expect(Ciri::Utils.hex transaction.get_hash).to eq "0x#{expect_result['hash']}"
+            expect(Ciri::Utils.hex transaction.sender).to eq "0x#{expect_result['sender']}"
           end
 
         end

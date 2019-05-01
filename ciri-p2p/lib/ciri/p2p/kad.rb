@@ -43,11 +43,11 @@ module Ciri
       K_MAX_NODE_ID = 2 ** K_ID_SIZE - 1
 
       class Node
-        attr_reader :id, :raw_node_id
+        attr_reader :id, :node_id
 
-        def initialize(raw_node_id)
-          @raw_node_id = raw_node_id
-          @id = Utils.big_endian_decode(Utils.keccak(raw_node_id))
+        def initialize(node_id)
+          @node_id = node_id
+          @id = Utils.big_endian_decode(Utils.keccak(node_id.to_bytes))
         end
 
         def distance_to(id)
@@ -196,8 +196,8 @@ module Ciri
           find_bucket_for_node(node).delete(node)
         end
 
-        def update(raw_node_id)
-          add_node(Node.new(raw_node_id))
+        def update(node_id)
+          add_node(Node.new(node_id))
         end
 
         def add_node(node)

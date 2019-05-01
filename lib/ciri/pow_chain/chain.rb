@@ -100,7 +100,7 @@ module Ciri
 
         # verify state root
         if evm.state_root != block.header.state_root
-          error("incorrect state_root, evm: #{Utils.to_hex evm.state_root}, header: #{Utils.to_hex block.header.state_root} height: #{block.header.number}")
+          error("incorrect state_root, evm: #{Utils.hex evm.state_root}, header: #{Utils.hex block.header.state_root} height: #{block.header.number}")
           raise InvalidBlockError.new("incorrect state_root")
         end
 

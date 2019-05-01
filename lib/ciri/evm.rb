@@ -157,7 +157,7 @@ module Ciri
         actually_gas_used = t.gas_limit - remain_gas
         actually_refund_gas = [refund_gas, actually_gas_used / 2].min
         refund_gas_amount = (actually_refund_gas + remain_gas) * t.gas_price
-        debug("Transaction refund #{refund_gas_amount} to #{t.sender.to_s.to_hex}")
+        debug("Transaction refund #{refund_gas_amount} to #{t.sender.to_s.hex}")
         state.add_balance(t.sender, refund_gas_amount)
 
         # gas_used after refund gas

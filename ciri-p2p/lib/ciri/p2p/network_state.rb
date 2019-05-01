@@ -66,7 +66,7 @@ module Ciri
         @peers_lock.acquire do
           peer = Peer.new(connection, handshake, @protocols, direction: direction)
           # disconnect already connected peers
-          if @peers.include?(peer.raw_node_id)
+          if @peers.include?(peer.node_id)
             debug("[#{local_node_id.short_hex}] peer #{peer.inspect} is already connected")
             # disconnect duplicate connection
             peer.disconnect
@@ -74,9 +74,9 @@ module Ciri
           end
           # check peers
           protocol_handshake_checks(handshake)
-          @peers[peer.raw_node_id] = peer
+          @peers[peer.node_id] = peer
           info "[#{local_node_id.short_hex}] connect to new peer #{peer.inspect}"
-          @peer_store.update_peer_status(peer.raw_node_id, PeerStore::Status::CONNECTED)
+          @peer_store.update_peer_status(peer.node_id, PeerStore::Status::CONNECTED)
           # run peer logic
           task.async do
             register_peer_protocols(peer)
@@ -88,11 +88,11 @@ module Ciri
       def disconnect_peer(peer, reason: nil)
         @peers_lock.acquire do
           # only disconnect from peers if direction correct to avoiding delete peer by mistake
-          if (exist_peer = @peers[peer.raw_node_id]) && exist_peer.direction == peer.direction
+          if (exist_peer = @peers[peer.node_id]) && exist_peer.direction == peer.direction
             info("[#{local_node_id.short_hex}] disconnect peer: #{peer.inspect}, reason: #{reason}")
             remove_peer(peer)
             peer.disconnect
-            @peer_store.update_peer_status(peer.raw_node_id, PeerStore::Status::DISCONNECTED)
+            @peer_store.update_peer_status(peer.node_id, PeerStore::Status::DISCONNECTED)
           else
             debug("[#{local_node_id.short_hex}] Ignoring: disconnect peer: #{peer.inspect}, reason: #{reason}")
           end
@@ -109,7 +109,7 @@ module Ciri
       private
 
       def remove_peer(peer)
-        @peers.delete(peer.raw_node_id)
+        @peers.delete(peer.node_id)
         deregister_peer_protocols(peer)
       end
 
@@ -150,7 +150,7 @@ module Ciri
 
       # starting peer IO loop
       def start_peer_io(peer, task: Async::Task.current)
-        ping_timer = task.reactor.every(@ping_interval_secs) do
+        _ping_timer = task.reactor.every(@ping_interval_secs) do
           task.async do
             ping(peer)
           rescue StandardError => e

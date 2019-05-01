@@ -62,7 +62,7 @@ module Ciri
                           else
                             [flag, 0] + raw_nibbles
                           end
-        nibbles_to_bytes(flagged_nibbles)
+        nibbles_dehex(flagged_nibbles)
       end
 
       def remove_nibbles_terminator(nibbles)
@@ -71,13 +71,13 @@ module Ciri
       end
 
       def bytes_to_nibbles(value)
-        hex_s = Utils.to_hex(value)
+        hex_s = Utils.hex(value)
         hex_s = hex_s[2..-1] if hex_s.start_with?('0x')
         hex_s.each_char.map {|c| c.to_i(16)}
       end
 
-      def nibbles_to_bytes(nibbles)
-        Utils.to_bytes(nibbles.map {|n| n.to_s(16)}.join)
+      def nibbles_dehex(nibbles)
+        Utils.dehex(nibbles.map {|n| n.to_s(16)}.join)
       end
 
       def is_nibbles_terminated?(nibbles)

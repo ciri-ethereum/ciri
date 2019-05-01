@@ -74,29 +74,29 @@ module Ciri
         @score_schema = DEFAULT_SCORE_SCHEMA.merge(score_schema)
       end
 
-      def has_ping?(raw_node_id, ping_hash, expires_in: PING_EXPIRATION_IN)
-        return false if has_ban?(raw_node_id)
-        record = @peers_ping_records[raw_node_id]
+      def has_ping?(node_id, ping_hash, expires_in: PING_EXPIRATION_IN)
+        return false if has_ban?(node_id)
+        record = @peers_ping_records[node_id]
         if record && record[:ping_hash] == ping_hash && (record[:ping_at] + expires_in) > Time.now.to_i
           return true
         elsif record
-          @peers_ping_records.delete(raw_node_id)
+          @peers_ping_records.delete(node_id)
         end
         false
       end
 
       # record ping message
-      def update_ping(raw_node_id, ping_hash, ping_at: Time.now.to_i)
-        @peers_ping_records[raw_node_id] = {ping_hash: ping_hash, ping_at: ping_at}
+      def update_ping(node_id, ping_hash, ping_at: Time.now.to_i)
+        @peers_ping_records[node_id] = {ping_hash: ping_hash, ping_at: ping_at}
       end
 
-      def update_last_seen(raw_node_id, at: Time.now.to_i)
-        @peers_seen_records[raw_node_id] = at
+      def update_last_seen(node_id, at: Time.now.to_i)
+        @peers_seen_records[node_id] = at
       end
 
-      def has_seen?(raw_node_id, expires_in: PEER_LAST_SEEN_VALID)
-        return false if has_ban?(raw_node_id)
-        seen = (last_seen_at = @peers_seen_records[raw_node_id]) && (last_seen_at + expires_in > Time.now.to_i)
+      def has_seen?(node_id, expires_in: PEER_LAST_SEEN_VALID)
+        return false if has_ban?(node_id)
+        seen = (last_seen_at = @peers_seen_records[node_id]) && (last_seen_at + expires_in > Time.now.to_i)
         # convert to bool
         !!seen
       end
@@ -106,24 +106,24 @@ module Ciri
         add_node(node)
       end
 
-      def has_ban?(raw_node_id, now: Time.now)
-        record = @ban_peers[raw_node_id]
+      def has_ban?(node_id, now: Time.now)
+        record = @ban_peers[node_id]
         if record && (record[:ban_at].to_i + record[:timeout_secs]) > now.to_i
           true
         else
-          @ban_peers.delete(raw_node_id)
+          @ban_peers.delete(node_id)
           false
         end
       end
 
-      def ban_peer(raw_node_id, now: Time.now, timeout_secs:600)
-        @ban_peers[raw_node_id] = {ban_at: now, timeout_secs: timeout_secs}
+      def ban_peer(node_id, now: Time.now, timeout_secs:600)
+        @ban_peers[node_id] = {ban_at: now, timeout_secs: timeout_secs}
       end
 
-      def report_peer(raw_node_id, behaviour)
+      def report_peer(node_id, behaviour)
         score = @score_schema[behaviour]
         raise ValueError.new("unsupport report behaviour: #{behaviour}") if score.nil?
-        if (node_info = @peers[raw_node_id])
+        if (node_info = @peers[node_id])
           node_info[:score] += score
         end
       end
@@ -138,7 +138,7 @@ module Ciri
       def find_attempt_peers(count)
         @peers.values.reject do |peer_info|
           # reject already connected peers and bootnodes
-          @bootnodes.include?(peer_info[:node]) || peer_status(peer_info[:node].raw_node_id) == Status::CONNECTED
+          @bootnodes.include?(peer_info[:node]) || peer_status(peer_info[:node].node_id) == Status::CONNECTED
         end.sort_by do |peer_info|
           -peer_info[:score]
         end.map do |peer_info|
@@ -146,33 +146,33 @@ module Ciri
         end.take(count)
       end
 
-      def add_node_addresses(raw_node_id, addresses)
-        node_info = @peers[raw_node_id]
+      def add_node_addresses(node_id, addresses)
+        node_info = @peers[node_id]
         node = node_info && node_info[:node]
         if node
           node.addresses = (node.addresses + addresses).uniq
         end
       end
 
-      def get_node_addresses(raw_node_id)
-        peer_info = @peers[raw_node_id]
+      def get_node_addresses(node_id)
+        peer_info = @peers[node_id]
         peer_info && peer_info[:node].addresses
       end
 
       def add_node(node)
-        @peers[node.raw_node_id] = {node: node, score: PEER_INITIAL_SCORE, status: Status::UNKNOWN}
+        @peers[node.node_id] = {node: node, score: PEER_INITIAL_SCORE, status: Status::UNKNOWN}
       end
 
-      def peer_status(raw_node_id)
-        if (peer_info = @peers[raw_node_id])
+      def peer_status(node_id)
+        if (peer_info = @peers[node_id])
           peer_info[:status]
         else
           Status::UNKNOWN
         end
       end
 
-      def update_peer_status(raw_node_id, status)
-        if (peer_info = @peers[raw_node_id])
+      def update_peer_status(node_id, status)
+        if (peer_info = @peers[node_id])
           peer_info[:status] = status
         end
       end

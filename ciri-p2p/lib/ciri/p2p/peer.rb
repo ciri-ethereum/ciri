@@ -55,7 +55,7 @@ module Ciri
 
       def to_s
         @display_name ||= begin
-          Utils.to_hex(node_id.id)[0..8]
+          Utils.hex(node_id.to_bytes)[0..8]
         end
       end
 
@@ -64,23 +64,19 @@ module Ciri
       end
 
       def hash
-        raw_node_id.hash
+        node_id.to_bytes.hash
       end
 
       def ==(peer)
-        self.class == peer.class && raw_node_id == peer.raw_node_id
+        self.class == peer.class && node_id.to_bytes == peer.node_id.to_bytes
       end
 
       alias eql? ==
 
-      # get id of node in bytes form
-      def raw_node_id
-        node_id.to_bytes
-      end
-
       # get NodeID object
       def node_id
-        @node_id ||= NodeID.from_raw_id(@handshake.id)
+        key = Ciri::Key.from_public_key(@handshake.id)
+        @node_id ||= NodeID.new(key)
       end
       
       # disconnect peer connections

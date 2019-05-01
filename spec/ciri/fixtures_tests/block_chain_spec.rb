@@ -71,7 +71,7 @@ RSpec.describe Ciri::POWChain::Chain do
         prepare_state(state, t)
 
         genesis = if t['genesisRLP']
-                    Ciri::POWChain::Block.rlp_decode(t['genesisRLP'].decode_hex)
+                    Ciri::POWChain::Block.rlp_decode(t['genesisRLP'].dehex)
                   elsif t['genesisBlockHeader']
                     Ciri::POWChain::Block.new(header: parse_header(t['genesisBlockHeader']), transactions: [], ommers: [])
                   end
@@ -82,7 +82,7 @@ RSpec.describe Ciri::POWChain::Chain do
         # run block
         t['blocks'].each do |b|
           begin
-            block = Ciri::POWChain::Block.rlp_decode b['rlp'].decode_hex
+            block = Ciri::POWChain::Block.rlp_decode b['rlp'].dehex
             chain.import_block(block)
           rescue Ciri::POWChain::Chain::InvalidBlockError,
               Ciri::RLP::InvalidError,

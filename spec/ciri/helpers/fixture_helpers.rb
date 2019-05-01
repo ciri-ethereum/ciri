@@ -72,10 +72,10 @@ module FixtureHelpers
     data ||= fixture_normalize(b, BLOCK_HEADER_MAPPING)
     # convert hex to binary
     %i{extra_data hash logs_bloom beneficiary mix_hash nonce parent_hash receipts_root ommers_hash state_root transactions_root}.each do |k|
-      data[k] = Ciri::Utils.to_bytes(data[k]) if data.has_key?(k)
+      data[k] = Ciri::Utils.dehex(data[k]) if data.has_key?(k)
     end
     %i{difficulty gas_used gas_limit number timestamp}.each do |k|
-      data[k] = Ciri::Utils.hex_to_number(data[k]) if data.has_key?(k) && !data[k].is_a?(Integer)
+      data[k] = Ciri::Utils.dehex_number(data[k]) if data.has_key?(k) && !data[k].is_a?(Integer)
     end
     data = data.select {|k, v| Ciri::POWChain::Header.schema.keys.include? k}.to_h
     Ciri::POWChain::Header.new(**data)
@@ -95,13 +95,13 @@ module FixtureHelpers
   def fixture_to_transaction(b, data = nil)
     data ||= fixture_normalize(b, TRANSACTION_MAPPING)
     %i{data to}.each do |k|
-      data[k] = Ciri::Utils.to_bytes(data[k]) if data.has_key?(k)
+      data[k] = Ciri::Utils.dehex(data[k]) if data.has_key?(k)
     end
 
     data[:to] = Ciri::Types::Address.new(data[:to])
 
     %i{gas_used gas_limit gas_price nonce r s v value}.each do |k|
-      data[k] = Ciri::Utils.hex_to_number(data[k]) if data.has_key?(k)
+      data[k] = Ciri::Utils.dehex_number(data[k]) if data.has_key?(k)
     end
 
     Ciri::POWChain::Transaction.new(**data)
@@ -125,36 +125,36 @@ module FixtureHelpers
 
   def parse_account(account_hash)
     storage = account_hash["storage"].map do |k, v|
-      [k.decode_hex.decode_big_endian, v.decode_hex.decode_big_endian]
-      #[k.decode_hex, v.decode_hex.pad_zero(32)]
+      [k.dehex.big_endian_decode, v.dehex.big_endian_decode]
+      #[k.dehex, v.dehex.pad_zero(32)]
     end.to_h
     account = Ciri::Types::Account.new(
-        balance: account_hash["balance"].decode_hex.decode_big_endian,
-        nonce: account_hash["nonce"].decode_hex.decode_big_endian)
-    code = account_hash['code'].decode_hex
+        balance: account_hash["balance"].dehex.big_endian_decode,
+        nonce: account_hash["nonce"].dehex.big_endian_decode)
+    code = account_hash['code'].dehex
     [account, code, storage]
   end
 
   def parse_header(data)
     columns = {}
-    columns[:logs_bloom] = data['bloom'].decode_hex
-    columns[:beneficiary] = data['coinbase'].decode_hex
-    columns[:difficulty] = data['difficulty'].decode_hex.decode_big_endian
-    columns[:extra_data] = data['extraData'].decode_hex
-    columns[:gas_limit] = data['gasLimit'].decode_hex.decode_big_endian
-    columns[:gas_used] = data['gasUsed'].decode_hex.decode_big_endian
-    columns[:mix_hash] = data['mixHash'].decode_hex
-    columns[:nonce] = data['nonce'].decode_hex
-    columns[:number] = data['number'].decode_hex.decode_big_endian
-    columns[:parent_hash] = data['parentHash'].decode_hex
-    columns[:receipts_root] = data['receiptTrie'].decode_hex
-    columns[:state_root] = data['stateRoot'].decode_hex
-    columns[:transactions_root] = data['transactionsTrie'].decode_hex
-    columns[:timestamp] = data['timestamp'].decode_hex.decode_big_endian
-    columns[:ommers_hash] = data['uncleHash'].decode_hex
+    columns[:logs_bloom] = data['bloom'].dehex
+    columns[:beneficiary] = data['coinbase'].dehex
+    columns[:difficulty] = data['difficulty'].dehex.big_endian_decode
+    columns[:extra_data] = data['extraData'].dehex
+    columns[:gas_limit] = data['gasLimit'].dehex.big_endian_decode
+    columns[:gas_used] = data['gasUsed'].dehex.big_endian_decode
+    columns[:mix_hash] = data['mixHash'].dehex
+    columns[:nonce] = data['nonce'].dehex
+    columns[:number] = data['number'].dehex.big_endian_decode
+    columns[:parent_hash] = data['parentHash'].dehex
+    columns[:receipts_root] = data['receiptTrie'].dehex
+    columns[:state_root] = data['stateRoot'].dehex
+    columns[:transactions_root] = data['transactionsTrie'].dehex
+    columns[:timestamp] = data['timestamp'].dehex.big_endian_decode
+    columns[:ommers_hash] = data['uncleHash'].dehex
 
     header = Ciri::POWChain::Header.new(**columns)
-    unless Ciri::Utils.to_hex(header.get_hash) == data['hash']
+    unless Ciri::Utils.hex(header.get_hash) == data['hash']
       error columns
     end
     header
@@ -215,7 +215,7 @@ module FixtureHelpers
 
   def prepare_state(state, fixture)
     fixture['pre'].each do |address, v|
-      address = Ciri::Types::Address.new address.decode_hex
+      address = Ciri::Types::Address.new address.dehex
 
       account, code, storage = parse_account v
       state.set_balance(address, account.balance)
@@ -223,7 +223,7 @@ module FixtureHelpers
       state.set_account_code(address, code)
 
       storage.each do |key, value|
-        # key, value = k.decode_big_endian, v.decode_big_endian
+        # key, value = k.big_endian_decode, v.big_endian_decode
         state.store(address, key, value)
       end
     end

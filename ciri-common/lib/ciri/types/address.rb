@@ -56,8 +56,8 @@ module Ciri
 
       alias to_str to_s
 
-      def to_hex
-        Utils.to_hex to_s
+      def hex
+        Utils.hex to_s
       end
 
       def empty?

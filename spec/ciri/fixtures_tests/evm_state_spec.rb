@@ -43,24 +43,24 @@ RSpec.describe Ciri::EVM do
   end
 
   def parse_account(v)
-    balance = Ciri::Utils.hex_to_number(v["balance"])
-    nonce = Ciri::Utils.hex_to_number(v["nonce"])
-    code = Ciri::Utils.to_bytes(v["code"])
+    balance = Ciri::Utils.dehex_number(v["balance"])
+    nonce = Ciri::Utils.dehex_number(v["nonce"])
+    code = Ciri::Utils.dehex(v["code"])
     storage = v["storage"].map do |k, v|
-      [Ciri::Utils.hex_to_number(k), Ciri::Utils.hex_to_number(v)]
+      [Ciri::Utils.dehex_number(k), Ciri::Utils.dehex_number(v)]
     end.to_h
     [Ciri::Types::Account.new(balance: balance, nonce: nonce), code, storage]
   end
 
   def build_transaction(transaction_data, args)
-    key = Ciri::Key.new(raw_private_key: Ciri::Utils.to_bytes(transaction_data['secretKey']))
+    key = Ciri::Key.from_private_key(Ciri::Utils.dehex(transaction_data['secretKey']))
     transaction = Ciri::POWChain::Transaction.new(
-        data: Ciri::Utils.to_bytes(transaction_data['data'][args['data']]),
-        gas_limit: Ciri::Utils.hex_to_number(transaction_data['gasLimit'][args['gas']]),
-        gas_price: Ciri::Utils.hex_to_number(transaction_data['gasPrice']),
-        nonce: Ciri::Utils.hex_to_number(transaction_data['nonce']),
-        to: Ciri::Types::Address.new(Ciri::Utils.to_bytes(transaction_data['to'])),
-        value: Ciri::Utils.hex_to_number(transaction_data['value'][args['value']])
+        data: Ciri::Utils.dehex(transaction_data['data'][args['data']]),
+        gas_limit: Ciri::Utils.dehex_number(transaction_data['gasLimit'][args['gas']]),
+        gas_price: Ciri::Utils.dehex_number(transaction_data['gasPrice']),
+        nonce: Ciri::Utils.dehex_number(transaction_data['nonce']),
+        to: Ciri::Types::Address.new(Ciri::Utils.dehex(transaction_data['to'])),
+        value: Ciri::Utils.dehex_number(transaction_data['value'][args['value']])
     )
     transaction.sign_with_key!(key)
     transaction
@@ -88,7 +88,7 @@ RSpec.describe Ciri::EVM do
   def self.block_info_from_env(env)
     return nil unless env
     Ciri::EVM::BlockInfo.new(
-        coinbase: Ciri::Utils.to_bytes(env['currentCoinbase']),
+        coinbase: Ciri::Utils.dehex(env['currentCoinbase']),
         difficulty: env['currentDifficulty'].to_i(16),
         gas_limit: env['currentGasLimit'].to_i(16),
         number: env['currentNumber'].to_i(16),
@@ -98,7 +98,7 @@ RSpec.describe Ciri::EVM do
 
   def prepare_state(state, fixture)
     fixture['pre'].each do |address, v|
-      address = Ciri::Types::Address.new Ciri::Utils.to_bytes(address)
+      address = Ciri::Types::Address.new Ciri::Utils.dehex(address)
 
       account, code, storage = parse_account(v)
       state.set_balance(address, account.balance)
@@ -138,7 +138,7 @@ RSpec.describe Ciri::EVM do
               end
 
               if config['logs']
-                expect(Ciri::Utils.to_hex result.logs_hash).to eq config['logs']
+                expect(Ciri::Utils.hex result.logs_hash).to eq config['logs']
               end
 
             end

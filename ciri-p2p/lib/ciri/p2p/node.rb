@@ -30,12 +30,6 @@ module Ciri
     # present node id
     class NodeID
 
-      class << self
-        def from_raw_id(raw_id)
-          NodeID.new(Ciri::Key.new(raw_public_key: "\x04".b + raw_id))
-        end
-      end
-
       attr_reader :public_key
 
       alias key public_key
@@ -47,18 +41,20 @@ module Ciri
         @public_key = public_key
       end
 
-      def id
+      def to_bytes
         @id ||= key.raw_public_key[1..-1]
       end
 
-      alias to_bytes id
+      def hash
+        to_bytes.hash
+      end
 
-      def == (other)
-        self.class == other.class && id == other.id
+      def ==(other)
+        self.class == other.class && to_bytes == other.to_bytes
       end
 
       def to_hex
-        Ciri::Utils.to_hex id
+        Ciri::Utils.hex to_bytes
       end
 
       alias to_s to_hex
@@ -73,8 +69,16 @@ module Ciri
       attr_reader :node_id, :added_at
       attr_accessor :addresses
 
-      def initialize(raw_node_id: nil,
-                     node_id: raw_node_id && NodeID.from_raw_id(raw_node_id),
+      class << self
+        def parse(node_url)
+          uri = URI.parse(node_url)
+          node_id = NodeID.new(Ciri::Key.from_public_key(Ciri::Utils::dehex(uri.user)))
+          address =Address.new(ip: uri.host, udp_port: uri.port, tcp_port: uri.port)
+          new(node_id: node_id, addresses: [address])
+        end
+      end
+
+      def initialize(node_id:,
                      addresses:,
                      added_at: nil)
         @node_id = node_id
@@ -82,12 +86,8 @@ module Ciri
         @added_at = added_at
       end
 
-      def == (other)
+      def ==(other)
         self.class == other.class && node_id == other.node_id
-      end
-
-      def raw_node_id
-        node_id.to_bytes
       end
     end
 

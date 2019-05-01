@@ -20,22 +20,23 @@ module Ciri
         s1.size == s2.size && s1.each_byte.each_with_index.map {|b, i| b ^ s2[i].ord}.reduce(0, :+) == 0
       end
 
-      def to_bytes(hex)
-        hex = hex[2..-1] if hex.start_with?('0x')
-        [hex].pack("H*")
-      end
-
-      def hex_to_number(hex)
-        big_endian_decode to_bytes(hex)
-      end
-
-      def to_hex(data)
+      def hex(data)
         hex = data.to_s.unpack("H*").first
         '0x' + hex
       end
 
-      def number_to_hex(number)
-        to_hex big_endian_encode(number)
+      def dehex(hex)
+        hex = hex[2..-1] if hex.start_with?('0x')
+        [hex].pack("H*")
+      end
+
+
+      def dehex_number(hexed_number)
+        big_endian_decode dehex(hexed_number)
+      end
+
+      def hex_number(number)
+        hex big_endian_encode(number)
       end
 
       def create_ec_pk(raw_pubkey: nil, raw_privkey: nil)

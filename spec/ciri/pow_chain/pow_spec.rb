@@ -29,9 +29,9 @@ RSpec.describe Ciri::POWChain::POW do
 
   it 'check_pow' do
     block_number = 1
-    mining = Ciri::Utils.to_bytes '85913a3057ea8bec78cd916871ca73802e77724e014dda65add3405d02240eb7'
-    mix_hash = Ciri::Utils.to_bytes('0x969b900de27b6ac6a67742365dd65f55a0526c41fd18e1b16f1a1215c2e66f59')
-    nonce = Ciri::Utils.to_bytes('0x539bd4979fef1ec4')
+    mining = Ciri::Utils.dehex '85913a3057ea8bec78cd916871ca73802e77724e014dda65add3405d02240eb7'
+    mix_hash = Ciri::Utils.dehex('0x969b900de27b6ac6a67742365dd65f55a0526c41fd18e1b16f1a1215c2e66f59')
+    nonce = Ciri::Utils.dehex('0x539bd4979fef1ec4')
     difficulty = 17171480576
 
     # not satisfy difficulty

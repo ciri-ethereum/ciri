@@ -67,7 +67,7 @@ module Ciri
         caps = protocols.map do |protocol|
           Cap.new(name: protocol.name, version: protocol.version)
         end
-        @handshake = ProtocolHandshake.new(version: BASE_PROTOCOL_VERSION, name: @node_name, id: @local_node_id.id, caps: caps)
+        @handshake = ProtocolHandshake.new(version: BASE_PROTOCOL_VERSION, name: @node_name, id: @local_node_id.to_bytes, caps: caps)
         @host = host
         @tcp_port = tcp_port
         @udp_port = udp_port
@@ -144,7 +144,7 @@ module Ciri
           end
           socket.listen(Socket::SOMAXCONN)
           loop do
-            client, addrinfo = socket.accept
+            client, _addrinfo = socket.accept
             c = Connection.new(client)
             c.encryption_handshake!(private_key: @private_key)
             remote_handshake = c.protocol_handshake!(handshake)

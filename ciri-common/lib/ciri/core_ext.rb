@@ -28,25 +28,21 @@ module Ciri
   module CoreExt
 
     refine(String) do
-      def to_hex
-        Utils.to_hex(self)
+      def hex
+        Utils.hex(self)
       end
 
-      alias encode_hex to_hex
-
-      def decode_hex
-        Utils.to_bytes(self)
+      def dehex
+        Utils.dehex(self)
       end
 
       def keccak
         Utils.keccak(self)
       end
 
-      def decode_big_endian
+      def big_endian_decode
         Utils.big_endian_decode(self)
       end
-
-      alias decode_number decode_big_endian
 
       def pad_zero(size)
         self.rjust(size, "\x00".b)
@@ -58,7 +54,7 @@ module Ciri
         Utils.ceil_div(self, size)
       end
 
-      def encode_big_endian
+      def big_endian_encode
         Utils.big_endian_encode(self)
       end
     end

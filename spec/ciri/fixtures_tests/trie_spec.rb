@@ -38,8 +38,8 @@ RSpec.describe Ciri::Trie do
         # in
         input = t['in'].map do |key, value|
           [
-            key.start_with?('0x') ? Ciri::Utils.to_bytes(key) : key,
-            value&.start_with?('0x') ? Ciri::Utils.to_bytes(value) : value
+            key.start_with?('0x') ? Ciri::Utils.dehex(key) : key,
+            value&.start_with?('0x') ? Ciri::Utils.dehex(value) : value
           ]
         end
 
@@ -52,7 +52,7 @@ RSpec.describe Ciri::Trie do
           end
 
         end
-        expect(Ciri::Utils.to_hex trie.root_hash).to eq (t['root'])
+        expect(Ciri::Utils.hex trie.root_hash).to eq (t['root'])
 
       end
 

@@ -18,5 +18,5 @@ priv_key = Key.random
 # sign transaction
 transaction.sign_with_key!(priv_key)
 
-sender = Utils.to_hex(transaction.sender)
-puts "#{sender}\n-> send #{transaction.value} to\n#{Utils.to_hex transaction.to}"
+sender = Utils.hex(transaction.sender)
+puts "#{sender}\n-> send #{transaction.value} to\n#{Utils.hex transaction.to}"

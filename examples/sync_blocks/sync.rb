@@ -22,7 +22,7 @@ def read_genesis_block(path)
   genesis_info = YAML.load open(path).read
   genesis_info = genesis_info.map {|k, v| [k.to_sym, v]}.to_h
   %i{extra_data logs_bloom beneficiary mix_hash nonce parent_hash receipts_root ommers_hash state_root transactions_root}.each do |i|
-    genesis_info[i] = Utils.to_bytes(genesis_info[i])
+    genesis_info[i] = Utils.dehex(genesis_info[i])
   end
   transactions = genesis_info.delete(:transactions)
   ommers = genesis_info.delete(:ommers)
@@ -35,11 +35,8 @@ def get_target_node
     puts "Usage: ruby examples/sync_blocks/sync.rb <node_id>"
     exit(1)
   end
-  id = ARGV[0]
-  raw_public_key = "\x04".b + [id].pack('H*')
-  node_id = Ciri::P2P::NodeID.new Ciri::Key.new(raw_public_key: raw_public_key)
-  address = Ciri::P2P::Address.new(ip: '127.0.0.1', udp_port: 30303, tcp_port: 30303)
-  Ciri::P2P::Node.new(node_id: node_id, addresses: [address])
+  node_url = ARGV[0]
+  Ciri::P2P::Node.parse(node_url)
 end
 
 # init genesis block

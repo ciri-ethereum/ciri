@@ -46,7 +46,7 @@ RSpec.describe Ciri::EVM do
         state = Ciri::State.new(db)
         # pre
         t['pre'].each do |address, account_hash|
-          address = Ciri::Utils.to_bytes(address)
+          address = Ciri::Utils.dehex(address)
           account, _code, storage = parse_account(account_hash)
           state.set_balance(address, account.balance)
           state.set_nonce(address, account.nonce)
@@ -56,15 +56,15 @@ RSpec.describe Ciri::EVM do
         end
         # env
         # exec
-        gas = Ciri::Utils.big_endian_decode Ciri::Utils.to_bytes(t['exec']['gas'])
-        address = Ciri::Utils.to_bytes(t['exec']['address'])
-        origin = Ciri::Utils.to_bytes(t['exec']['origin'])
-        caller = Ciri::Utils.to_bytes(t['exec']['caller'])
-        gas_price = Ciri::Utils.big_endian_decode Ciri::Utils.to_bytes(t['exec']['gasPrice'])
-        code = Ciri::Utils.to_bytes(t['exec']['code'])
-        value = Ciri::Utils.to_bytes(t['exec']['value'])
-        data = Ciri::Utils.to_bytes(t['exec']['data'])
-        env = t['env'] && t['env'].map {|k, v| [k, Ciri::Utils.to_bytes(v)]}.to_h
+        gas = Ciri::Utils.big_endian_decode Ciri::Utils.dehex(t['exec']['gas'])
+        address = Ciri::Utils.dehex(t['exec']['address'])
+        origin = Ciri::Utils.dehex(t['exec']['origin'])
+        caller = Ciri::Utils.dehex(t['exec']['caller'])
+        gas_price = Ciri::Utils.big_endian_decode Ciri::Utils.dehex(t['exec']['gasPrice'])
+        code = Ciri::Utils.dehex(t['exec']['code'])
+        value = Ciri::Utils.dehex(t['exec']['value'])
+        data = Ciri::Utils.dehex(t['exec']['data'])
+        env = t['env'] && t['env'].map {|k, v| [k, Ciri::Utils.dehex(v)]}.to_h
 
         instruction = Ciri::EVM::Instruction.new(address: address, origin: origin, price: gas_price, sender: caller,
                                                  bytes_code: code, value: value, data: data)
@@ -88,25 +88,25 @@ RSpec.describe Ciri::EVM do
 
         next unless t['post']
         # post
-        output = t['out'].yield_self {|out| out && Ciri::Utils.to_bytes(out)}
+        output = t['out'].yield_self {|out| out && Ciri::Utils.dehex(out)}
         if output
           # padding vm output, cause testcases return length is uncertain
           vm_output = (context.output || '').rjust(output.size, "\x00".b)
           expect(vm_output).to eq output
         end
 
-        remain_gas = t['gas'].yield_self {|remain_gas| remain_gas && Ciri::Utils.big_endian_decode(Ciri::Utils.to_bytes(remain_gas))}
+        remain_gas = t['gas'].yield_self {|remain_gas| remain_gas && Ciri::Utils.big_endian_decode(Ciri::Utils.dehex(remain_gas))}
         expect(context.remain_gas).to eq remain_gas if remain_gas
 
         state = vm.state
         t['post'].each do |address, account_hash|
-          address = Ciri::Utils.to_bytes(address)
+          address = Ciri::Utils.dehex(address)
           account, code, storage = parse_account(account_hash)
           vm_account = state.find_account(address)
 
           storage.each do |k, v|
             data = state.fetch(address, k)
-            expect(Ciri::Utils.to_hex(data)).to eq Ciri::Utils.to_hex(v)
+            expect(Ciri::Utils.hex(data)).to eq Ciri::Utils.hex(v)
           end
 
           expect(vm_account.nonce).to eq account.nonce

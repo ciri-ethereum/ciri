@@ -31,7 +31,7 @@ require 'ciri/utils'
 RSpec.describe Ciri::DB::AccountDB do
 
   let(:account1) do
-    [Ciri::Utils.to_bytes('0x8888f1f195afa192cfee860698584c030f4c9db1'), Ciri::Types::Account.new_empty]
+    [Ciri::Utils.dehex('0x8888f1f195afa192cfee860698584c030f4c9db1'), Ciri::Types::Account.new_empty]
   end
 
   it 'find_account' do
@@ -43,7 +43,7 @@ RSpec.describe Ciri::DB::AccountDB do
   end
 
   it 'store' do
-    address, account = account1
+    address, _account = account1
 
     account_db = Ciri::DB::AccountDB.new({})
     account_db.store(address, 42, 1530984410)

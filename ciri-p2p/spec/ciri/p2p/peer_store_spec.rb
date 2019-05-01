@@ -106,9 +106,9 @@ RSpec.describe Ciri::P2P::PeerStore do
         Ciri::P2P::Node.new(node_id: node_id, addresses: [])
       end
       nodes.each {|node| peer_store.add_node(node) }
-      peer_store.update_peer_status(nodes[0].raw_node_id, Ciri::P2P::PeerStore::Status::CONNECTED)
-      peer_store.update_peer_status(nodes[1].raw_node_id, Ciri::P2P::PeerStore::Status::DISCONNECTED)
-      peer_store.update_peer_status(nodes[2].raw_node_id, Ciri::P2P::PeerStore::Status::UNKNOWN)
+      peer_store.update_peer_status(nodes[0].node_id, Ciri::P2P::PeerStore::Status::CONNECTED)
+      peer_store.update_peer_status(nodes[1].node_id, Ciri::P2P::PeerStore::Status::DISCONNECTED)
+      peer_store.update_peer_status(nodes[2].node_id, Ciri::P2P::PeerStore::Status::UNKNOWN)
       expect(peer_store.find_attempt_peers(2)).to eq nodes[1..2]
       expect(peer_store.find_attempt_peers(3)).to eq nodes[1..2]
     end
@@ -120,13 +120,13 @@ RSpec.describe Ciri::P2P::PeerStore do
       node2 = Ciri::P2P::Node.new(node_id: node_ids[0], addresses: [])
       peer_store.add_node(node)
       peer_store.add_node(node2)
-      peer_store.report_peer(node.raw_node_id, Ciri::P2P::PeerStore::Behaviours::PING)
+      peer_store.report_peer(node.node_id, Ciri::P2P::PeerStore::Behaviours::PING)
       # report peer
       expect(peer_store.find_attempt_peers(1)).to eq [node]
       expect(peer_store.find_attempt_peers(2)).to eq [node, node2]
       # update score for reported peers
-      peer_store.report_peer(node2.raw_node_id, Ciri::P2P::PeerStore::Behaviours::PING)
-      peer_store.report_peer(node2.raw_node_id, Ciri::P2P::PeerStore::Behaviours::PING)
+      peer_store.report_peer(node2.node_id, Ciri::P2P::PeerStore::Behaviours::PING)
+      peer_store.report_peer(node2.node_id, Ciri::P2P::PeerStore::Behaviours::PING)
       expect(peer_store.find_attempt_peers(1)).to eq [node2]
       expect(peer_store.find_attempt_peers(2)).to eq [node2, node]
     end
@@ -161,18 +161,18 @@ RSpec.describe Ciri::P2P::PeerStore do
       expect(peer_store.get_node_addresses(node_ids[0])).to be_nil
       # add a node
       peer_store.add_node(nodes[0])
-      peer_store.add_node_addresses(nodes[0].raw_node_id, addresses.take(1))
-      expect(peer_store.get_node_addresses(nodes[0].raw_node_id)).to eq addresses.take(1)
+      peer_store.add_node_addresses(nodes[0].node_id, addresses.take(1))
+      expect(peer_store.get_node_addresses(nodes[0].node_id)).to eq addresses.take(1)
       # should ignore duplicated address
-      peer_store.add_node_addresses(nodes[0].raw_node_id, addresses.take(2))
-      expect(peer_store.get_node_addresses(nodes[0].raw_node_id).sort).to eq addresses.take(2).sort
+      peer_store.add_node_addresses(nodes[0].node_id, addresses.take(2))
+      expect(peer_store.get_node_addresses(nodes[0].node_id).sort).to eq addresses.take(2).sort
     end
 
     it '#get_node_addresses' do
       # get bootnode addresses
-      expect(peer_store.get_node_addresses(nodes[0].raw_node_id)).to be_nil
+      expect(peer_store.get_node_addresses(nodes[0].node_id)).to be_nil
       peer_store.add_bootnode(nodes[0])
-      expect(peer_store.get_node_addresses(nodes[0].raw_node_id)).not_to be_nil
+      expect(peer_store.get_node_addresses(nodes[0].node_id)).not_to be_nil
     end
   end
 
